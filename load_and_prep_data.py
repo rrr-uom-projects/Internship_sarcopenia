@@ -102,7 +102,7 @@ def crop(slices_arr, masks_arr):
       slices_cropped.append(crop_image)
       masks_cropped.append(crop_seg)
       return slices_cropped, masks_cropped
-      
+
 window = 350
 level = 50
 
@@ -162,6 +162,13 @@ ids_combined = np.concatenate(ids_l, ids)
 pixel_areas_combined = np.concatenate(pixel_areas_l, pixel_areas)
 print(slices_combined.shape)
  
+#change names depending on whether one or two peoples data being uploaded
+slices_cropped, masks_cropped = crop(slices_combined, masks_combined)
+
 total_c3s = np.savez("/content/total_c3s", slices = slices_cropped, masks = masks_cropped, ids=id_array, pixel_areas = area_array)
 
 
+for i in range(0, len(slices_cropped)):
+  PrintTrainingDataLiv(slices_cropped, masks_cropped, id_array, i)
+
+printTrainingData(36)
