@@ -41,12 +41,12 @@ from torch.utils.tensorboard import SummaryWriter
 from functools import partial
 import pandas as pd
 
+""""
 import tensorflow as tf
 tf.test.gpu_device_name()
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
-CUDA_LAUNCH_BLOCKING=1
-os.environ['CUDA_VISIBLE_DEVICES']='2, 3'
+"""
 
 #definitions
 def diceCoeff(pred, gt, smooth=1, activation='sigmoid'):
@@ -164,6 +164,7 @@ def validate(model, val_dataloader, device):
     model.eval()
     val_running_loss = 0.0
     val_running_correct = 0
+    torch.no_grad()
     for int, data in enumerate(val_dataloader):
         data, target = data[0].to(device), data[1].to(device)
         data = data.type(torch.float32)
@@ -341,12 +342,13 @@ loss = L.BinaryFocalLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = loss
 scheduler = lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+#scheduler = lr_scheduler.OneCycleLR(optimizer, step_size=25, gamma=0.5)
 
 #%%
 train_loss , train_accuracy = [], []
 val_loss , val_accuracy = [], []
 start = time.time()
-num_epochs = 300
+num_epochs = 10
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
@@ -370,17 +372,17 @@ print("train loss: ", train_loss)
 print("val loss: ", val_loss)
 end = time.time()
 print((end-start)/60, 'minutes')
-
+#%%
 #save model weights
-model_stat_dict_300_FL = torch.save(model.cpu().state_dict(), "/content/model_state_dict_300_FL.pt")
+#model_stat_dict_300_FL = torch.save(model.cpu().state_dict(), "/home/hermione/Documents/Internship_sarcopenia/model_state_dict_300_FL_VS.pt")
 #save the loss
 loss = np.concatenate((np.asarray(train_loss), np.asarray(val_loss)), axis = 0)
 print(loss)
-loss = np.savetxt("/content/loss_16_02.csv", loss, delimiter=',')
+#loss = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/loss_07_07.csv", loss, delimiter=',')
 
 #%%
 #testing the model
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 model.to(device)
 c3s, test_predictions = test(model, test_dataloader)
 print(test_predictions.shape, c3s.shape)
@@ -456,4 +458,4 @@ print(mean_density, "HU" ,"sd", den_sd)
 array = np.transpose(np.array(feature_list_ours))
 print(array)
 df = pd.DataFrame(array, index= feat_list, columns=ids).T
-df.to_excel(excel_writer = "/content/muscle_area_and_density_training_data.xlsx")
+df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/muscle_area_and_density_training_data_07_07.xlsx")
