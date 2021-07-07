@@ -6,6 +6,7 @@ Created on Wed Jul  7 09:41:29 2021
 
 test change
 """
+#%%
 
 #imports
 from __future__ import division
@@ -155,7 +156,7 @@ class H_custom_Dataset(TensorDataset):
 #main
 #Loading the data
 # change this if not using colabs
-path =   "/home/olivia/Documents/model files/1_27plusminus5.npz" 
+path =   "/home/olivia/Documents/Internship_sarcopenia/176-215bone.npz" 
 data = np.load(path, allow_pickle=True)
 
 slices = data['slices']
@@ -163,6 +164,7 @@ bone = data['bone_masks']
 ids = data['ids']
 areas = data['pixel_areas']
 #%%
+#h
 # preprocess slices and bone masks
 slices_processed, masks_processed = preprocess(slices, bone)
 # define test transforms
@@ -172,10 +174,11 @@ test_transform = A.Compose([A.Resize(260, 260), A.Normalize(mean=(0.485, 0.456, 
 test_dataset = H_custom_Dataset(slices_processed, masks_processed, transform = test_transform)
 test_dataloader = DataLoader(test_dataset, batch_size = 8, num_workers = 2, shuffle = False)
 
+
 #%%
 #initilaise and load the model
 model = models.segmentation.fcn_resnet50(pretrained=False, num_classes=1)
-model_path = "C:\\Users\\Olivia\\Documents\\University\\Fourth Year\\MPhys\\Imaging\\Testing\\model_state_dict_300_FL_testing.pt"
+model_path = "/home/olivia/Documents/Internship_sarcopenia/model_state_dict_300_FL_testing.pt"
 model.load_state_dict(torch.load(model_path, map_location="cuda:0"))
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)

@@ -45,6 +45,8 @@ import tensorflow as tf
 tf.test.gpu_device_name()
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
+CUDA_LAUNCH_BLOCKING=1
+os.environ['CUDA_VISIBLE_DEVICES']='2, 3'
 
 #definitions
 def diceCoeff(pred, gt, smooth=1, activation='sigmoid'):
