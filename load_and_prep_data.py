@@ -1,3 +1,7 @@
+#File to load in and store nifty images
+#updated: 07/07/2021
+#by hermione
+
 import matplotlib.pyplot as plt
 #from skimage.io import imread
 #from __future__ import print_function
