@@ -167,7 +167,6 @@ slices_cropped, masks_cropped = crop(slices_combined, masks_combined)
 
 total_c3s = np.savez("/content/total_c3s", slices = slices_cropped, masks = masks_cropped, ids=id_array, pixel_areas = area_array)
 
-
 for i in range(0, len(slices_cropped)):
   PrintTrainingDataLiv(slices_cropped, masks_cropped, id_array, i)
 
