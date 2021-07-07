@@ -3,11 +3,7 @@
 #by hermione
 
 import matplotlib.pyplot as plt
-#from skimage.io import imread
-#from __future__ import print_function
-%matplotlib inline
 import SimpleITK as sitk
-#from skimage.io import imread
 import numpy as np
 import os
 from scipy import ndimage
