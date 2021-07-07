@@ -80,6 +80,29 @@ def PrintTrainingDataLiv(slicef_array, maskf_array, idf_array, i ):
   plt.imshow(seg_slice, cmap = plt.cm.autumn, alpha = 0.6)
   plt.show()
 
+def crop(slices_arr, masks_arr):
+  slices_cropped = []
+  masks_cropped = []
+  for i in range(0,len(slices_arr)):
+      crop_slice = slices_arr[i][0:250, 0:512]#(slices[i].shape[1]-100)
+      #mask_slice = masks[i][0:250, 0:512]
+      ret,threshold = cv2.threshold(crop_slice,200,250,cv2.THRESH_TOZERO)
+      coords = ndimage.measurements.center_of_mass(threshold)
+      size = 130
+      x_min = int(((coords[0] - size)+126)/2)
+      x_max = int(((coords[0] + size)+386)/2)
+      y_min = int(((coords[1] - size)+126)/2)
+      y_max = int(((coords[1] + size)+386)/2)
+      #x_min = 126
+      #x_max = 386
+      #y_min = 126
+      #y_max = 386
+      crop_image = slices_arr[i][x_min:x_max, y_min:y_max]
+      crop_seg = masks_arr[i][x_min:x_max, y_min:y_max]
+      slices_cropped.append(crop_image)
+      masks_cropped.append(crop_seg)
+      return slices_cropped, masks_cropped
+      
 window = 350
 level = 50
 
@@ -115,3 +138,30 @@ area_array = np.asarray(pixel_areas)
 printTrainingDataForPatient(12)
 
 print(slices_array.shape)
+
+data = np.load("/content/training_data_h_c3_cropped.npz", allow_pickle=True)
+slices = data['slices']
+masks = data['masks']
+ids = data['ids']
+pixel_areas = data['pixel_areas']
+print(slices.shape)
+
+data_l = np.load("/content/first_50_test_o.npz", allow_pickle=True)
+slices_l = data_l['slices']
+masks_l = data_l['masks']
+ids_l = data_l['ids']
+pixel_areas_l = data_l['pixels']
+#print(list(data_l.keys()))
+#print(slices_l)
+slices_l_new = np.array(np.delete(slices_l, [0]))
+print(slices_l_new[0].shape)
+
+slices_combined = np.concatenate((slices_l, slices))
+masks_combined = np.concatenate(masks_l, masks)
+ids_combined = np.concatenate(ids_l, ids)
+pixel_areas_combined = np.concatenate(pixel_areas_l, pixel_areas)
+print(slices_combined.shape)
+ 
+total_c3s = np.savez("/content/total_c3s", slices = slices_cropped, masks = masks_cropped, ids=id_array, pixel_areas = area_array)
+
+
