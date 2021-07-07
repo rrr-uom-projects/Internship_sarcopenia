@@ -37,7 +37,7 @@ import torchvision.transforms as T
 import albumentations as A
 import random
 from albumentations.pytorch import ToTensor
-#from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from functools import partial
 import pandas as pd
 
@@ -227,7 +227,8 @@ def getDensity(image, mask, area, label=1):#pixel density
 
 #%%
 #loading the data
-data_path = "C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\training data\\total_abstract_training_data.npz"
+data_path = "/home/hermione/Documents/Internship_sarcopenia/total_abstract_training_data 1.npz"
+#data_path = "C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\training data\\total_abstract_training_data.npz"
 data = np.load(data_path, allow_pickle=True)
 print([*data.keys()])
 slices= data['slices']
