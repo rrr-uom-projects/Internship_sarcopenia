@@ -80,3 +80,38 @@ def PrintTrainingDataLiv(slicef_array, maskf_array, idf_array, i ):
   plt.imshow(seg_slice, cmap = plt.cm.autumn, alpha = 0.6)
   plt.show()
 
+window = 350
+level = 50
+
+slices_array = []
+mask_array = []
+id_array = []
+pixel_areas = []
+
+for i in range(90,143):
+  if i != 100 and i != 114 and i != 116 and i != 136 and i != 137: #patients 24 and 25 did not have rt scans
+    path_ct = "/content/" + str(i) + ".nii"
+    path_seg = "/content/" + str(i) + "_seg.nii"
+    ct_scan = sitk.ReadImage(path_ct, imageIO="NiftiImageIO")
+    segment = sitk.ReadImage(path_seg, imageIO="NiftiImageIO")
+    slice_no = GetSliceNumber(segment)
+    pixel_areas.append(((ct_scan.GetSpacing())[0])*((ct_scan.GetSpacing())[1]))
+    ct_slice = sitk.GetArrayFromImage(ct_scan)[slice_no,:,:]
+    ct_slice = ct_slice.astype(float)
+    slices_array.append(ct_slice)
+    mask = sitk.GetArrayFromImage(segment)[slice_no,:,:]
+    mask = mask.astype(float)
+    #mask[mask_array == 0] = np.nan
+    mask_array.append(mask)
+    id_array_element = "01-00" + str(i)
+    id_array.append(id_array_element)
+
+print(pixel_areas)
+slices_array = np.asarray(slices_array)
+mask_array = np.asarray(mask_array)
+id_array = np.asarray(id_array)
+area_array = np.asarray(pixel_areas)
+
+printTrainingDataForPatient(12)
+
+print(slices_array.shape)
