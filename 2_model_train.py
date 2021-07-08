@@ -11,6 +11,7 @@
 #imports
 from __future__ import division
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np
 import os
 import math
@@ -41,12 +42,12 @@ from torch.utils.tensorboard import SummaryWriter
 from functools import partial
 import pandas as pd
 
+""""
 import tensorflow as tf
 tf.test.gpu_device_name()
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
-CUDA_LAUNCH_BLOCKING=1
-os.environ['CUDA_VISIBLE_DEVICES']='2, 3'
+"""
 
 #definitions
 def diceCoeff(pred, gt, smooth=1, activation='sigmoid'):
@@ -155,7 +156,7 @@ def train(model, train_dataloader, device):
     train_loss = train_running_loss/len(train_dataloader.dataset)
     #train_accuracy = train_running_correct/len(train_dataloader.dataset)
     #train_accuracy = diceCoeff(output["out"], masks_train)
-    #writer.add_scalar('training loss', train_loss, epoch)
+    writer.add_scalar('training loss', train_loss, epoch)
     #print(f'Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.2f}')
     #writer.add_scalar('training accuracy', train_accuracy, epoch)
     return train_loss
@@ -164,6 +165,7 @@ def validate(model, val_dataloader, device):
     model.eval()
     val_running_loss = 0.0
     val_running_correct = 0
+    torch.no_grad()
     for int, data in enumerate(val_dataloader):
         data, target = data[0].to(device), data[1].to(device)
         data = data.type(torch.float32)
@@ -178,7 +180,7 @@ def validate(model, val_dataloader, device):
     
     val_loss = val_running_loss/len(val_dataloader.dataset)
     #writing to tensorboard
-    #writer.add_scalar('Validation loss', val_loss, epoch)
+    writer.add_scalar('Validation loss', val_loss, epoch)
     #val_accuracy = val_running_correct/len(val_dataloader.dataset)
     #val_accuracy = diceCoeff(output["out"], target)
     #writer.add_scalar('Validation accuracy', val_accuracy, epoch)
@@ -238,7 +240,7 @@ masks = data['masks']
 ids = data['ids']
 masks_slb = data['boneless']
 bone_masks = data['bone_masks']
-pixel_areas = data['areas']
+pixel_area = data['areas']
 
 slices_processed, masks_processed = preprocess(slices, masks_slb)
 
@@ -264,7 +266,8 @@ for i in range(0,10):
   print(ids_test[i])
   ax.append(fig.add_subplot(2,5, i+1))
   plt.imshow(slice_test[i])
-
+  plt.axis("off")
+plt.show()
 
 #%%
 #classs inbalence
@@ -310,7 +313,7 @@ test_dataloader = DataLoader(test_dataset, batch_size = len(slice_test), num_wor
 val_dataloader = DataLoader(val_dataset, batch_size = 8, num_workers = 2, shuffle = True)
 
 #set up tensorboard
-#writer = SummaryWriter()
+writer = SummaryWriter()
 
 # Load pre-trained model
 pt_model = models.segmentation.fcn_resnet50(pretrained=True)
@@ -341,13 +344,14 @@ loss = L.BinaryFocalLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = loss
 scheduler = lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+#scheduler = lr_scheduler.OneCycleLR(optimizer, step_size=25, gamma=0.5)
 
 #%%
 train_loss , train_accuracy = [], []
 val_loss , val_accuracy = [], []
 start = time.time()
-num_epochs = 300
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+num_epochs = 100
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
 #training the model
@@ -370,24 +374,24 @@ print("train loss: ", train_loss)
 print("val loss: ", val_loss)
 end = time.time()
 print((end-start)/60, 'minutes')
-
+#%%
 #save model weights
-model_stat_dict_300_FL = torch.save(model.cpu().state_dict(), "/content/model_state_dict_300_FL.pt")
+#model_stat_dict_300_FL = torch.save(model.cpu().state_dict(), "/home/hermione/Documents/Internship_sarcopenia/model_state_dict_300_FL_VS.pt")
 #save the loss
 loss = np.concatenate((np.asarray(train_loss), np.asarray(val_loss)), axis = 0)
 print(loss)
-loss = np.savetxt("/content/loss_16_02.csv", loss, delimiter=',')
+loss = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/loss_08_07.csv", loss, delimiter=',')
 
 #%%
 #testing the model
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 model.to(device)
 c3s, test_predictions = test(model, test_dataloader)
 print(test_predictions.shape, c3s.shape)
 test_predictions = torch.from_numpy(test_predictions)
 #removing the bone masks from the models predictions
-segment_pred_slb = np.logical_and(test_predictions, bone_masks[:,np.newaxis,...])
-segment_pred_slb = (segment_pred_slb.float()).numpy()
+segment_pred_slb = np.logical_and(test_predictions, bone_masks_test[:,np.newaxis,...])
+segment_pred_slb = (segment_pred_slb.float())#.numpy()
 print(np.unique(segment_pred_slb))
 
 fig=plt.figure(figsize=(20, 10))
@@ -419,11 +423,15 @@ ct_scans = np.array(slice_test)
 network_pred = segment_pred_slb[:,0,...]
 
 print("Patients IDs in test data: ", ids_test)
+#for i in range(0, len(ids)):
+# test_index = []
+  #if ids(i) = ids_test.any():
+    #test_index.append(i)
 #%%
 pixel_area_id = [pixel_area[33-3],pixel_area[34-3],pixel_area[35-4],pixel_area[36-3],pixel_area[38-4],pixel_area[33-3],pixel_area[34-3],pixel_area[35-4],pixel_area[36-3],pixel_area[38-4]]
 pixel_area_id = np.array(pixel_area_id)
 print(pixel_area_id)
-pixel_area = np.repeat(np.array(areas)*(0.1*0.1), 2)
+pixel_area = np.repeat(np.array(pixel_area)*(0.1*0.1), 2)
 print(pixel_area.shape)
 #%%
 
@@ -456,4 +464,4 @@ print(mean_density, "HU" ,"sd", den_sd)
 array = np.transpose(np.array(feature_list_ours))
 print(array)
 df = pd.DataFrame(array, index= feat_list, columns=ids).T
-df.to_excel(excel_writer = "/content/muscle_area_and_density_training_data.xlsx")
+#df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/muscle_area_and_density_training_data_07_07.xlsx")
