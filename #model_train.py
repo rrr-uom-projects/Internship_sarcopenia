@@ -349,7 +349,7 @@ scheduler = lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
 #%%
 train_loss , train_accuracy = [], []
 val_loss , val_accuracy = [], []
-""" start = time.time()
+start = time.time()
 num_epochs = 10
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 model.to(device)
@@ -415,7 +415,7 @@ dice_net_v_pred = diceCoeff(segment_pred_slb, test_lab, smooth=1, activation=Non
 
 print("Dice ", dice_net_v_pred)
 mean = np.mean(dice_net_v_pred.item())
-print("Dice: ", mean) """
+print("Dice: ", mean)
 
 #Area and Density of SM in the tests
 ct_scans = np.array(slice_test)
@@ -430,10 +430,9 @@ for i in range(0, len(ids)):
     print(i)
 print(test_index)
 #%%
-#pixel_area_id = [pixel_area[33-3],pixel_area[34-3],pixel_area[35-4],pixel_area[36-3],pixel_area[38-4],pixel_area[33-3],pixel_area[34-3],pixel_area[35-4],pixel_area[36-3],pixel_area[38-4]]
 pixel_area_id = pixel_area[test_index]
-pixel_area_id = np.array(pixel_area_id)
-print(pixel_area_id)
+pixel_area_id = np.array(pixel_area_id*(0.1*0.1))#cm^2->mm^2
+print("pixel areas of the test images: ", pixel_area_id)
 #pixel_area = np.repeat(np.array(pixel_area)*(0.1*0.1), 2)
 #print(pixel_area.shape)
 #%%
