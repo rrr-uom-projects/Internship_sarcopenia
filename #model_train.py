@@ -267,7 +267,7 @@ for i in range(0,10):
   ax.append(fig.add_subplot(2,5, i+1))
   plt.imshow(slice_test[i])
   plt.axis("off")
-plt.show()
+#plt.show()
 
 #%%
 #classs inbalence
@@ -405,7 +405,7 @@ for i in range(0, len(c3s)):
   plt.imshow(segment_pred_slb[i,0,...], cmap = "autumn", alpha = 0.5)
   ax[-1].set_title("Network test:"+str(i))
   plt.axis("off")
-plt.show()
+#plt.show()
 #%%
 #Dice - comparing our netowrks output to the GTs
 for batch_idx, test_dataset in enumerate(test_dataloader):  
