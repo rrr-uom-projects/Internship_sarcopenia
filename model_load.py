@@ -21,10 +21,10 @@ import albumentations as A
 from albumentations.pytorch import ToTensor
 from functools import partial
 from torchvision import datasets, models, transforms
-#import segmentation_models_pytorch as smp
+######import segmentation_models_pytorch as smp
 import pandas as pd
 from sklearn import preprocessing
-
+#%%
 # function definitions
 # function to preprocess masks and slices
 def preprocess(slice_array, masks_array):
@@ -177,10 +177,13 @@ test_dataloader = DataLoader(test_dataset, batch_size = 8, num_workers = 2, shuf
 
 #%%
 #initilaise and load the model
+from torchvision import models
 model = models.segmentation.fcn_resnet50(pretrained=False, num_classes=1)
 model_path = "/home/olivia/Documents/Internship_sarcopenia/model_state_dict_300_FL_testing.pt"
-model.load_state_dict(torch.load(model_path, map_location="cuda:0"))
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#%%
+model.load_state_dict(torch.load(model_path, map_location="cuda:0"))
+#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
 #%%
 # generating test predictions from model
@@ -192,6 +195,7 @@ segment_pred_slb = (segment_pred_slb.float()).numpy()
 test_predictions = (test_predictions.float()).numpy()
 
 
+#%%
 #skeletal muscle area and density
 ct_scans = np.array(slices)#or slices processed
 pixel_areas = np.array(areas)*(0.1*0.1)#cm^2
@@ -219,7 +223,7 @@ den_sd = ndimage.standard_deviation(smd)
 array = np.transpose(np.array(feature_list_net))
 print(array)
 df = pd.DataFrame(array, index= feat_list_1, columns=ids).T
-df.to_excel(excel_writer = "/content/muscle_area_and_density_all_slb_abstract.xlsx")
+df.to_excel(excel_writer = "/home/olivia/Documents/Internship_sarcopenia/muscle_area_and_density_all_slb_abstract.xlsx")
 
 #display the predictions
 fig=plt.figure(figsize=(10, 120))
@@ -236,7 +240,7 @@ for i in range(0, len(slices)):
   plt.axis("off")
 plt.tight_layout(True)
 plt.show()
-fig.savefig("/content/my_figure.png")
+fig.savefig("/home/olivia/Documents/Internship_sarcopenia/my_figure.png")
 
 fig2 = plt.figure()
 ax = []
@@ -263,4 +267,6 @@ ax.append(fig2.add_subplot(1,4,4))
 plt.imshow(c3s[5,0,...], cmap="gray")
 plt.imshow(bone[5], cmap = "cool", alpha = 0.5)
 plt.axis('off')
-plt.savefig("/content/my_figure2.png")
+plt.savefig("/home/olivia/Documents/Internship_sarcopenia/my_figure2.png")
+
+# %%
