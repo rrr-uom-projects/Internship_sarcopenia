@@ -267,7 +267,7 @@ for i in range(0,10):
   ax.append(fig.add_subplot(2,5, i+1))
   plt.imshow(slice_test[i])
   plt.axis("off")
-plt.show()
+#plt.show()
 
 #%%
 #classs inbalence
@@ -350,7 +350,7 @@ scheduler = lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
 train_loss , train_accuracy = [], []
 val_loss , val_accuracy = [], []
 start = time.time()
-num_epochs = 100
+num_epochs = 10
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
@@ -405,10 +405,9 @@ for i in range(0, len(c3s)):
   plt.imshow(segment_pred_slb[i,0,...], cmap = "autumn", alpha = 0.5)
   ax[-1].set_title("Network test:"+str(i))
   plt.axis("off")
-plt.show()
+#plt.show()
 #%%
 #Dice - comparing our netowrks output to the GTs
-#dice_array = []
 for batch_idx, test_dataset in enumerate(test_dataloader):  
       test_em, test_lab = test_dataset[0], test_dataset[1]
       break
@@ -420,19 +419,22 @@ print("Dice: ", mean)
 
 #Area and Density of SM in the tests
 ct_scans = np.array(slice_test)
-network_pred = segment_pred_slb[:,0,...]
+#network_pred = segment_pred_slb[:,0,...]
 
 print("Patients IDs in test data: ", ids_test)
-#for i in range(0, len(ids)):
-# test_index = []
-  #if ids(i) = ids_test.any():
-    #test_index.append(i)
+ids_test = np.array(ids_test)
+test_index = []
+for i in range(0, len(ids)):
+  if any(ids[i] == j for j in ids_test) == True:
+    test_index.append(i)
+    print(i)
+print(test_index)
 #%%
-pixel_area_id = [pixel_area[33-3],pixel_area[34-3],pixel_area[35-4],pixel_area[36-3],pixel_area[38-4],pixel_area[33-3],pixel_area[34-3],pixel_area[35-4],pixel_area[36-3],pixel_area[38-4]]
-pixel_area_id = np.array(pixel_area_id)
-print(pixel_area_id)
-pixel_area = np.repeat(np.array(pixel_area)*(0.1*0.1), 2)
-print(pixel_area.shape)
+pixel_area_id = pixel_area[test_index]
+pixel_area_id = np.array(pixel_area_id*(0.1*0.1))#cm^2->mm^2
+print("pixel areas of the test images: ", pixel_area_id)
+#pixel_area = np.repeat(np.array(pixel_area)*(0.1*0.1), 2)
+#print(pixel_area.shape)
 #%%
 
 ## Note that the areas have some thresholds applied that are from the literature
@@ -461,7 +463,7 @@ den_sd = ndimage.standard_deviation(smd)
 print(mean_density, "HU" ,"sd", den_sd)
 
 #saving to an excel file
-array = np.transpose(np.array(feature_list_ours))
+array = np.transpose(np.array(feature_list_net))
 print(array)
 df = pd.DataFrame(array, index= feat_list, columns=ids).T
 #df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/muscle_area_and_density_training_data_07_07.xlsx")
