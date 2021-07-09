@@ -351,7 +351,7 @@ train_loss , train_accuracy = [], []
 val_loss , val_accuracy = [], []
 start = time.time()
 num_epochs = 10
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
 #training the model
@@ -378,13 +378,21 @@ print((end-start)/60, 'minutes')
 #save model weights
 #model_stat_dict_300_FL = torch.save(model.cpu().state_dict(), "/home/hermione/Documents/Internship_sarcopenia/model_state_dict_300_FL_VS.pt")
 #save the loss
-loss = np.concatenate((np.asarray(train_loss), np.asarray(val_loss)), axis = 0)
+#loss = np.concatenate((np.asarray(train_loss), np.asarray(val_loss)), axis = 1)
+#print(loss)
+#loss = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/loss_08_07.csv", loss, delimiter=',')
+
+#d = {'col1': [1, 2], 'col2': [3, 4]}
+loss = {'Training': [train_loss], 'Validation': [val_loss]}
+#loss_table = np.transpose(np.array(loss))
 print(loss)
-loss = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/loss_08_07.csv", loss, delimiter=',')
+l_df = pd.DataFrame(loss, columns=["Training", "Validation"]).T
+l_df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/loss.xlsx")
+
 
 #%%
 #testing the model
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
 c3s, test_predictions = test(model, test_dataloader)
 print(test_predictions.shape, c3s.shape)
