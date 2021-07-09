@@ -378,14 +378,10 @@ print((end-start)/60, 'minutes')
 #save model weights
 #model_stat_dict_300_FL = torch.save(model.cpu().state_dict(), "/home/hermione/Documents/Internship_sarcopenia/model_state_dict_300_FL_VS.pt")
 #save the loss
-#loss = np.concatenate((np.asarray(train_loss), np.asarray(val_loss)), axis = 1)
-#print(loss)
-#loss = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/loss_08_07.csv", loss, delimiter=',')
-
-#d = {'col1': [1, 2], 'col2': [3, 4]}
 loss = {'Training': train_loss, 'Validation': val_loss}
 #loss_table = np.transpose(np.array(loss))
 print(loss)
+#loss_table = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/loss_08_07.csv", loss, delimiter=',')
 l_df = pd.DataFrame(loss)
 l_df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/loss.xlsx")
 
