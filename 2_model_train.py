@@ -383,7 +383,7 @@ print((end-start)/60, 'minutes')
 #loss = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/loss_08_07.csv", loss, delimiter=',')
 
 #d = {'col1': [1, 2], 'col2': [3, 4]}
-loss = {'Training': [train_loss], 'Validation': [val_loss]}
+loss = {'Training': train_loss, 'Validation': val_loss}
 #loss_table = np.transpose(np.array(loss))
 print(loss)
 l_df = pd.DataFrame(loss)
