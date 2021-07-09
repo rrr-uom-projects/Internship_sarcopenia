@@ -381,9 +381,9 @@ print((end-start)/60, 'minutes')
 loss = {'Training': train_loss, 'Validation': val_loss}
 #loss_table = np.transpose(np.array(loss))
 print(loss)
-#loss_table = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/loss_08_07.csv", loss, delimiter=',')
+#loss_table = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/loss_08_07.csv", loss, delimiter=',')
 l_df = pd.DataFrame(loss)
-l_df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/loss.xlsx")
+l_df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/loss.xlsx")
 
 #%%
 #testing the model
@@ -469,4 +469,4 @@ print(mean_density, "HU" ,"sd", den_sd)
 array = np.transpose(np.array(feature_list_net))
 print(array)
 df = pd.DataFrame(array, index= feat_list, columns=ids).T
-#df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/muscle_area_and_density_training_data_07_07.xlsx")
+#df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/muscle_area_and_density_training_data_07_07.xlsx")
