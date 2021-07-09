@@ -1,2 +1,10 @@
 #09/07/2021
 #3D Unet to locate C3 from 3D CT scana
+
+#https://towardsdatascience.com/creating-and-training-a-u-net-model-with-pytorch-for-2d-3d-semantic-segmentation-dataset-fb1f7f80fe55
+
+#put the training images into input and target directories
+
+import torch
+from skimage.io import imread
+from torch.utils import data
