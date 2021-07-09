@@ -15,6 +15,7 @@ import SimpleITK as sitk
 import numpy as np
 import albumentations as A
 from albumentations.pytorch import ToTensor
+from transformations import normalize_01
 
 class Segmentation3DDataset(Dataset):
     def __init__(self,
@@ -52,14 +53,12 @@ class Segmentation3DDataset(Dataset):
 
         # Preprocessing
         if self.transform is not None:
-            x, y = self.transform(x, y)
+            x, y = self.transform(x), self.transform(y)
 
         # Typecasting
         x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
 
         return x, y
-
-
 
 def path_list(no_patients, skip = []):
     path_list_inputs = []
@@ -79,6 +78,16 @@ inputs = np.array(path_list(3)[0])
 targets = np.array(path_list(3)[1])
 
 print(inputs.shape)
+
+training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=normalize_01)
+
+training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle=True)
+x, y = next(iter(training_dataloader))
+
+print(f'x = shape: {x.shape}; type: {x.dtype}')
+print(f'x = min: {x.min()}; max: {x.max()}')
+print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
+
 """
 def ReadIn(input_ID, target_ID):
     x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
@@ -100,13 +109,3 @@ for i in range(0, len(inputs)):
     y.append(ReadIn(inputs[i], targets[i])[1])
     print(x.shape)
 """
-
-training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=None)
-
-
-training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle=True)
-x, y = next(iter(training_dataloader))
-
-print(f'x = shape: {x.shape}; type: {x.dtype}')
-print(f'x = min: {x.min()}; max: {x.max()}')
-print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
