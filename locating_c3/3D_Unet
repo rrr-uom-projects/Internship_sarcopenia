@@ -28,18 +28,17 @@ class Segmentation3DDataset(Dataset):
     def __len__(self):
         return len(self.inputs)
 
-    def __getitem__(self,
-                    index: int):
+    def __getitem__(self, index: int):
         # Select the sample
         input_ID = self.inputs[index]
         target_ID = self.targets[index]
 
         # Load input and target
         #x, y = imread(input_ID), imread(target_ID)
-        ct = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
-        mask = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
-        ct_arr = sitk.GetArrayFromImage(ct)
-
+        x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
+        y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
+        x, y = sitk.GetArrayFromImage(x), sitk.GetArrayFromImage(y)
+        
         def voxeldim():
             voxel_dim = np.array[(ct.GetSpacing())[0],(ct.GetSpacing())[1],(ct.GetSpacing())[2]]
             return voxel_dim
@@ -53,4 +52,26 @@ class Segmentation3DDataset(Dataset):
 
         return x, y
 
-    
+def path_list(no_patients, skip = None):
+    path_list_inputs = []
+    path_list_targets = []
+    for i in range(1,no_patients+1):
+        path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/inputs/P'
+        path_list_inputs.append(path + str(i) + "_RT_sim_ct.nii.gz")
+        path_list_targets.append(path + str(i) + "_RT_sim_seg.nii.gz")
+    return path_list_inputs, path_list_targets
+
+inputs = [path_list(3)[0]]
+targets = [path_list(3)[1]]
+
+print(inputs)
+training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=None)
+
+training_dataloader = DataLoader(dataset=training_dataset,
+                                      batch_size=2,
+                                      shuffle=True)
+x, y = next(iter(training_dataloader))
+
+print(f'x = shape: {x.shape}; type: {x.dtype}')
+print(f'x = min: {x.min()}; max: {x.max()}')
+print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
