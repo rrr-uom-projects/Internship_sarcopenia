@@ -1,5 +1,5 @@
 #09/07/2021
-#3D Unet to locate C3 from 3D CT scana
+#3D Unet to locate C3 from 3D CT scans
 
 #https://towardsdatascience.com/creating-and-training-a-u-net-model-with-pytorch-for-2d-3d-semantic-segmentation-dataset-fb1f7f80fe55
 
@@ -14,6 +14,8 @@ import SimpleITK as sitk
 import numpy as np
 import albumentations as A
 from albumentations.pytorch import ToTensor
+
+class Preprocessing():
 
 class Segmentation3DDataset(Dataset):
     def __init__(self,
@@ -65,6 +67,7 @@ def path_list(no_patients, skip = None):
         path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
         path_list_inputs.append(path + "inputs/P" + str(i) + "_RT_sim_ct.nii.gz")
         path_list_targets.append(path + "targets/P" + str(i) + "_RT_sim_seg.nii.gz")
+    
     return path_list_inputs, path_list_targets
 
 inputs = [path_list(2)[0]]
