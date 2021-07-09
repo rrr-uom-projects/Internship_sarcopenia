@@ -386,9 +386,8 @@ print((end-start)/60, 'minutes')
 loss = {'Training': [train_loss], 'Validation': [val_loss]}
 #loss_table = np.transpose(np.array(loss))
 print(loss)
-l_df = pd.DataFrame(loss, columns=["Training", "Validation"]).T
+l_df = pd.DataFrame(loss)
 l_df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/loss.xlsx")
-
 
 #%%
 #testing the model
