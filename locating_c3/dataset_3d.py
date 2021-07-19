@@ -42,7 +42,7 @@ class Segmentation3DDataset(Dataset):
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
-        #cropping so they are the same size [512,512,117,1]
+        #cropping so they are the same size [512,512,117,1] #but do this before
         x, y = x[:117,...], y[:117,...]
         print("shape: ",x.shape)
         print("type:", x.dtype, y.dtype)
@@ -79,8 +79,12 @@ targets = np.array(path_list(3)[1])
 
 print(inputs.shape)
 
+#initialise dataset
 training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=normalize_01)
 
+#augmentations here
+
+#dataloader
 training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle=True)
 x, y = next(iter(training_dataloader))
 

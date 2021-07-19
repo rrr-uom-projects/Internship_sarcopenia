@@ -1,12 +1,15 @@
 #transformations
-#09/07/21
-
+#created: 09/07/21
+#last updated: 19/07/2021
 #hermione 
 
 import numpy as np
+import SimpleITK as sitk
 import albumentations as A
 import random
 from albumentations.pytorch import ToTensor
+from sklearn import preprocessing
+import torch
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (clipping)"""
@@ -24,3 +27,91 @@ def normalize(inp: np.ndarray, mean: float, std: float):
     """Normalize based on mean and standard deviation."""
     inp_out = (inp - mean) / std
     return inp_out
+
+def cropping(inp: np.ndarray, msk: np.ndarray):
+    x, y = inp[:117,...], msk[:117,...]
+    return x, y
+
+class preprocessing():
+    def __init__(self,
+                 inputs: list,
+                 targets: list,
+                 transform=None, cropping = None, normalise = None
+                 ):
+        self.inputs = inputs
+        self.targets = targets
+        self.transform = transform
+        self.inputs_dtype = torch.float32
+        self.targets_dtype = torch.long
+        self.cropping = cropping
+        self.normalise = normalise
+
+    def __len__(self):
+        return len(self.inputs)
+
+    def __getitem__(self, index: int):
+        # Select the sample
+        input_ID = self.inputs[index]
+        target_ID = self.targets[index]
+
+        # Load input and target
+        #x, y = imread(input_ID), imread(target_ID)
+        x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
+        y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
+        x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
+        #cropping so they are the same size [512,512,117,1] #but do this before
+        x, y = x[:117,...], y[:117,...]
+        print("shape: ",x.shape)
+        print("type:", x.dtype, y.dtype)
+        
+        # def voxeldim(): #save this to file
+        #     voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
+        #     return voxel_dim
+
+        # Preprocessing
+        if self.transform is not None:
+            x, y = self.transform(x), self.transform(y)
+        
+        if self.cropping is not None:
+            x, y = self.cropping(x), self.cropping(y)
+
+        if self.normalise is not None:
+            x, y = self.normalise(x), self.normalise(y)
+
+        # Typecasting
+        #x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
+
+        return x, y
+
+def path_list(no_patients, skip = []):
+    path_list_inputs = []
+    path_list_targets = []
+    ids = []
+
+    for i in range(1,no_patients+1):
+        if i not in skip:
+            path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
+            path_list_inputs.append(path + "inputs/P" + str(i) + "_RT_sim_ct.nii.gz")
+            path_list_targets.append(path + "targets/P" + str(i) + "_RT_sim_seg.nii.gz")
+            id = "01-00" + str(i)
+            ids.append(id)
+    return path_list_inputs, path_list_targets, ids
+
+def save_preprocessed(inputs, targets, ids):
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
+    np.savez(path, inputs = inputs, mask = targets, ids = ids)
+#main
+inputs = np.array(path_list(3)[0])
+targets = np.array(path_list(3)[1])
+
+print(inputs.shape)
+
+#apply preprocessing
+preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping)
+
+x, y = next(iter(preprocessed_data))
+
+
+print(f'x = shape: {x.shape}; type: {x.dtype}')
+print(f'x = min: {x.min()}; max: {x.max()}')
+print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
