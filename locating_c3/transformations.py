@@ -28,8 +28,8 @@ def normalize(inp: np.ndarray, mean: float, std: float):
     inp_out = (inp - mean) / std
     return inp_out
 
-def cropping(x,y):
-    x, y = x[:117,...], y[:117,...]
+def cropping(inp: np.ndarray, msk: np.ndarray):
+    x, y = inp[:117,...], msk[:117,...]
     return x, y
 
 class preprocessing():
@@ -79,6 +79,39 @@ class preprocessing():
             x, y = self.normalise(x), self.normalise(y)
 
         # Typecasting
-        x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
+        #x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
 
         return x, y
+
+def path_list(no_patients, skip = []):
+    path_list_inputs = []
+    path_list_targets = []
+    ids = []
+
+    for i in range(1,no_patients+1):
+        if i not in skip:
+            path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
+            path_list_inputs.append(path + "inputs/P" + str(i) + "_RT_sim_ct.nii.gz")
+            path_list_targets.append(path + "targets/P" + str(i) + "_RT_sim_seg.nii.gz")
+            id = "01-00" + str(i)
+            ids.append(id)
+    return path_list_inputs, path_list_targets, ids
+
+def save_preprocessed(inputs, targets, ids):
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
+    np.savez(path, inputs = inputs, mask = targets, ids = ids)
+#main
+inputs = np.array(path_list(3)[0])
+targets = np.array(path_list(3)[1])
+
+print(inputs.shape)
+
+#apply preprocessing
+preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping)
+
+x, y = next(iter(preprocessed_data))
+
+
+print(f'x = shape: {x.shape}; type: {x.dtype}')
+print(f'x = min: {x.min()}; max: {x.max()}')
+print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
