@@ -12,7 +12,7 @@ from sklearn import preprocessing
 import torch
 
 def normalize_01(inp: np.ndarray):
-    """Squash image input to the value range [0, 1] (clipping)"""
+    """Squash image input to the value range [0, 1] (plus clipping)"""
     window = 350
     level = 50
     vmax = level/2 + window
