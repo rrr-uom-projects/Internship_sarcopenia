@@ -15,6 +15,15 @@ import SimpleITK as sitk
 import numpy as np
 import albumentations as A
 from albumentations.pytorch import ToTensor
+import kornia as k
+#import kornia.augmentation.augmentation3d 
+import torchvision
+
+#augmentation
+def augmentations(inp: torch.tensor):
+    RandomHorizontalFlip3D(p = 0.5)
+
+    return aug_image
 
 class Segmentation3DDataset(Dataset):
     def __init__(self,
