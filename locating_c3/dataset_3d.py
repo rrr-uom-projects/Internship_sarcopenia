@@ -15,7 +15,6 @@ import SimpleITK as sitk
 import numpy as np
 import albumentations as A
 from albumentations.pytorch import ToTensor
-from transformations import normalize_01
 
 class Segmentation3DDataset(Dataset):
     def __init__(self,
@@ -39,11 +38,12 @@ class Segmentation3DDataset(Dataset):
 
         # Load input and target
         #x, y = imread(input_ID), imread(target_ID)
-        x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
-        y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
-        x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
+        #x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
+        #y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
+        #x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         #cropping so they are the same size [512,512,117,1] #but do this before
-        x, y = x[:117,...], y[:117,...]
+        x = self.inputs[index]
+        y = self.targets[index]
         print("shape: ",x.shape)
         print("type:", x.dtype, y.dtype)
         
@@ -61,26 +61,30 @@ class Segmentation3DDataset(Dataset):
         return x, y
 
 def path_list(no_patients, skip = []):
-    path_list_inputs = []
-    path_list_targets = []
+    inputs = []
+    targets = []
     ids = []
     for i in range(1,no_patients+1):
         if i not in skip:
-            path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
-            path_list_inputs.append(path + "inputs/P" + str(i) + "_RT_sim_ct.nii.gz")
-            path_list_targets.append(path + "targets/P" + str(i) + "_RT_sim_seg.nii.gz")
-            id = "01-00" + str(i)
-            ids.append(id)
-    return path_list_inputs, path_list_targets, ids
+            path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+            data = np.load(path)
+            #print([*data.keys()])
+            inputs.append(data['inputs'])
+            targets.append(data['masks'])
+            ids.append(data['ids'])
+    return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
 
 #main
-inputs = np.array(path_list(3)[0])
-targets = np.array(path_list(3)[1])
+no_patients = 3
+data = path_list(no_patients)
+inputs = data[0]
+targets = data[1]
+ids = data[2]
 
 print(inputs.shape)
 
 #initialise dataset
-training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=normalize_01)
+training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets)
 
 #augmentations here
 
