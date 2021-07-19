@@ -98,16 +98,20 @@ def path_list(no_patients, skip = []):
             path_list_targets.append(path + "targets/P" + str(i) + "_RT_sim_seg.nii.gz")
             id = "01-00" + str(i)
             ids.append(id)
-    return path_list_inputs, path_list_targets, ids
+    return np.array(path_list_inputs), np.array(path_list_targets), np.array(ids)
 
 def save_preprocessed(inputs, targets, ids):
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
-    np.savez(path, inputs = inputs, mask = targets, ids = ids)
+    np.savez(path, inputs = inputs, masks = targets, ids = ids)
+    print("Saved preprocessed data")
+
 
 #main
 #get the file names
-inputs = np.array(path_list(3)[0])
-targets = np.array(path_list(3)[1])
+no_patients = 3
+inputs = path_list(no_patients)[0]
+targets = path_list(no_patients)[1]
+ids = path_list(no_patients)[2]
 
 print(inputs.shape)
 
@@ -118,8 +122,18 @@ for i in range(len(preprocessed_data)):
     sample = preprocessed_data[i]
     print(i, "inp: ", sample['input'].shape, "msk: ", sample['mask'].shape)
 
-samples = next(iter(preprocessed_data))
-x, y = samples['input'], samples['mask']
-print(f'x = shape: {x.shape}; type: {y.dtype}')
-print(f'x = min: {x.min()}; max: {x.max()}')
-print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
+CTs = []
+masks = []
+for i in range(len(preprocessed_data)):
+    samples = next(iter(preprocessed_data))
+    x, y = samples['input'], samples['mask']
+    CTs.append(x)
+    masks.append(y)
+    print(i)
+    print(f'x = shape: {x.shape}; type: {y.dtype}')
+    print(f'x = min: {x.min()}; max: {x.max()}')
+    print(f'y = shape: {y.shape}; class: {np.unique(y)}; type: {y.dtype}')
+CTs, masks = np.array(CTs), np.array(masks)
+
+#save the preprocessed masks and cts for the dataset
+save_preprocessed(CTs, masks, ids)
