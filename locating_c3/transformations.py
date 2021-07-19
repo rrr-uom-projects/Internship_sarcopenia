@@ -17,8 +17,9 @@ def normalize_01(inp: np.ndarray):
     level = 50
     vmax = level/2 + window
     vmin = level/2-window
-    inp[inp > vmax] = vmax
-    inp[inp<vmin] = vmin
+    for i in range(len(inp)):
+        inp[i][inp[i] > vmax] = vmax
+        inp[i][inp[i] < vmin] = vmin
     inp_out = (inp - np.min(inp)) / np.ptp(inp)
     return inp_out
 
@@ -28,9 +29,9 @@ def normalize(inp: np.ndarray, mean: float, std: float):
     inp_out = (inp - mean) / std
     return inp_out
 
-def cropping(inp: np.ndarray, msk: np.ndarray):
-    x, y = inp[:117,...], msk[:117,...]
-    return x, y
+def cropping(inp: np.ndarray):
+    x = inp[:117,...]
+    return x,
 
 class preprocessing():
     def __init__(self,
@@ -63,25 +64,27 @@ class preprocessing():
         x, y = x[:117,...], y[:117,...]
         print("shape: ",x.shape)
         print("type:", x.dtype, y.dtype)
-        
         # def voxeldim(): #save this to file
         #     voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         #     return voxel_dim
 
         # Preprocessing
-        if self.transform is not None:
-            x, y = self.transform(x), self.transform(y)
-        
         if self.cropping is not None:
             x, y = self.cropping(x), self.cropping(y)
+            #data = self.cropping(data)
+
+        if self.transform is not None:
+            x, y = self.transform(x), self.transform(y)
+            #data = self.transform(data)
 
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
+            #data = self.normalise(data)
 
         # Typecasting
         #x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
-
-        return x, y
+        data = {'input': x, 'mask': y}  
+        return data
 
 def path_list(no_patients, skip = []):
     path_list_inputs = []
@@ -100,7 +103,9 @@ def path_list(no_patients, skip = []):
 def save_preprocessed(inputs, targets, ids):
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
     np.savez(path, inputs = inputs, mask = targets, ids = ids)
+
 #main
+#get the file names
 inputs = np.array(path_list(3)[0])
 targets = np.array(path_list(3)[1])
 
@@ -109,9 +114,12 @@ print(inputs.shape)
 #apply preprocessing
 preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping)
 
-x, y = next(iter(preprocessed_data))
+for i in range(len(preprocessed_data)):
+    sample = preprocessed_data[i]
+    print(i, "inp: ", sample['input'].shape, "msk: ", sample['mask'].shape)
 
-
-print(f'x = shape: {x.shape}; type: {x.dtype}')
+samples = next(iter(preprocessed_data))
+x, y = samples['input'], samples['mask']
+print(f'x = shape: {x.shape}; type: {y.dtype}')
 print(f'x = min: {x.min()}; max: {x.max()}')
 print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
