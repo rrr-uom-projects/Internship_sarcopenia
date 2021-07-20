@@ -106,3 +106,9 @@ plt.show()
 
 def PrintSlice(input, targets):
     new = input.permute(2,3,4,0,1).squeeze()
+    new_target = targets.permute(2,3,4,0,1).squeeze()
+    slice_no = GetSliceNumber(targets)
+    plt.imshow(new[slice_no,:,:,0], cmap = "gray")
+    plt.imshow(new_target[slice_no,:,:,0], cmap = "alpha")
+    plt.imshow()
+    plt.show()
