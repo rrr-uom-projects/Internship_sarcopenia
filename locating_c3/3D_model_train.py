@@ -1,5 +1,7 @@
+
 import DUnet
 from DUnet import UNet
+
 model = UNet(in_channels = 1,
  out_channels = 2,
  n_blocks = 3,
@@ -14,4 +16,3 @@ model = UNet(in_channels = 1,
  full_norm= True,
  dim=3,
  conv_mode= 'same')
-
