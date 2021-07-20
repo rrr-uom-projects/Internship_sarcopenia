@@ -9,6 +9,7 @@
 from kornia.geometry import transform
 #from sklearn import preprocessing
 import torch
+import cv2
 from skimage.io import imread
 #from torch.utils import data
 from torch.utils.data import DataLoader, TensorDataset, Dataset
@@ -17,8 +18,10 @@ import numpy as np
 import albumentations as A
 from albumentations.pytorch import ToTensor
 import kornia.augmentation as K
-#import kornia.augmentation.augmentation3d 
-import torchvision
+from kornia import augmentation as K
+from kornia.augmentation import AugmentationSequential 
+from kornia.utils import image_to_tensor, tensor_to_image
+from torchvision.transforms import transforms
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from utils import GetSliceNumber
@@ -54,10 +57,11 @@ class Segmentation3DDataset(Dataset):
 
         # Preprocessing
         if self.transform is not None:
-            #augs = self.transform(img = x, mask = y)
-            x, y = self.transform(x), self.transform(y)
-            #x = augs["img"]
-            #y = augs["mask"]
+            augs = self.transform(x, y)
+
+            #x, y = self.transform(x), self.transform(y)
+            x = augs['input']
+            y = augs['mask']
         
         return x, y
 
@@ -79,8 +83,9 @@ ids = data[2]
 print("inputs: ", inputs.shape)
 
 #augmentation
-augmentations = nn.Sequential(K.RandomHorizontalFlip3D(p = 0),
+augmentations = K.AugmentationSequential(K.RandomHorizontalFlip3D(p = 1),
                             K.RandomRotation3D([0, 0, 30], p = 1),
+                            data_keys=["input", "mask"],
                             )
 
 #initialise dataset
@@ -109,6 +114,7 @@ def PrintSlice(input, targets):
     #for i in range(len(new_target)):
         #new_target[i,...,0][new_target[i,...,0] == 0] = np.nan
     plt.imshow(new_target[slice_no,:,:,0], cmap = "cool", alpha = 0.5)
+    plt.axis('off')
     plt.show()
 
 PrintSlice(x, y)
