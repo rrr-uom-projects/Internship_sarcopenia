@@ -963,4 +963,4 @@ if __name__ == '__main__':
     print()
     test_planar_configs()
     print('All tests sucessful!')
-    # # TODO: Also test valid convolution architecture. 
+    # # TODO: Also test valid convolution architecture.
