@@ -61,7 +61,7 @@ class preprocessing():
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         #cropping so they are the same size [512,512,117,1] #but do this before
-        x, y = x[:117,...], y[:117,...]
+        #x, y = x[:117,...], y[:117,...]
         print("shape: ",x.shape)
         print("type:", x.dtype, y.dtype)
         # def voxeldim(): #save this to file
@@ -102,6 +102,7 @@ def path_list(no_patients, skip = []):
 
 def save_preprocessed(inputs, targets, ids):
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
+    print("final shape: ", inputs.shape, targets.shape, ids.shape)
     np.savez(path, inputs = inputs, masks = targets, ids = ids)
     print("Saved preprocessed data")
 
