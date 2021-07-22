@@ -6,17 +6,18 @@
 #creating dataset and dataloader
 #put the training images into input and target directories
 
+from PIL.Image import NEAREST
 from kornia.geometry import transform
 #from sklearn import preprocessing
 import torch
 import cv2
-from skimage.io import imread
+#from skimage.io import imread
 #from torch.utils import data
 from torch.utils.data import DataLoader, TensorDataset, Dataset
 import SimpleITK as sitk
 import numpy as np
 import albumentations as A
-from albumentations.pytorch import ToTensor
+#from albumentations.pytorch import ToTensor
 from kornia import augmentation as K
 from kornia.augmentation import AugmentationSequential 
 from kornia.utils import image_to_tensor, tensor_to_image
@@ -56,16 +57,14 @@ class Segmentation3DDataset(Dataset):
 
         # Preprocessing
         if self.transform is not None:
-            augs = self.transform(x, y)
-
-            #x, y = self.transform(x), self.transform(y)
-            x = augs['input']
-            y = augs['mask']
+            augs = self.transform(x,y, data_keys=["input","input"])
+            x = augs[0].unsqueeze(0)
+            y = augs[1].unsqueeze(0).long()
         
         return x, y
 
 def get_data():
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+    path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     data = np.load(path)
     #print([*data.keys()])
     inputs = data['inputs']
@@ -82,13 +81,14 @@ ids = data[2]
 print("inputs: ", inputs.shape)
 
 #augmentation
-# augmentations = AugmentationSequential(K.RandomHorizontalFlip3D(p = 1),
-#                             K.RandomRotation3D([0, 0, 30], p = 1),
-#                             data_keys=["input","mask"],
-#                             )
+augmentations = AugmentationSequential(K.RandomHorizontalFlip3D( p = 1),
+                            K.RandomRotation3D([0, 0, 30],resample = NEAREST, p = 1),
+                            data_keys=["input","input"],
+                            keepdim = True,
+                            )
 
 #initialise dataset
-training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets)#transform=augmentations
+training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=augmentations)#transform=augmentations
 
 #dataloader
 training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle = False)
