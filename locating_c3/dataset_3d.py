@@ -103,17 +103,17 @@ print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
 #plt.imshow(x_new[83,:,:,0], cmap = "gray")
 #plt.show()
 
-def PrintSlice(input, targets):
-    new = np.asarray(input.permute(3,4,5,0,1,2).squeeze())
-    #slice_no = GetSliceNumber(targets[0])
-    slice_no=62
-    new_target = np.asarray(targets.permute(3,4,5,0,1,2).squeeze())
-    print(new_target.shape)
-    plt.imshow(new[slice_no,:,:,0], cmap = "gray")
-    #for i in range(len(new_target)):
-        #new_target[i,...,0][new_target[i,...,0] == 0] = np.nan
-    plt.imshow(new_target[slice_no,:,:,0], cmap = "cool", alpha = 0.5)
-    plt.axis('off')
-    plt.show()
+# def PrintSlice(input, targets):
+#     new = np.asarray(input.permute(3,4,5,0,1,2).squeeze())
+#     #slice_no = GetSliceNumber(targets[0])
+#     slice_no=62
+#     new_target = np.asarray(targets.permute(3,4,5,0,1,2).squeeze())
+#     print(new_target.shape)
+#     plt.imshow(new[slice_no,:,:,0], cmap = "gray")
+#     #for i in range(len(new_target)):
+#         #new_target[i,...,0][new_target[i,...,0] == 0] = np.nan
+#     plt.imshow(new_target[slice_no,:,:,0], cmap = "cool", alpha = 0.5)
+#     plt.axis('off')
+#     plt.show()
 
-PrintSlice(x, y)
+# PrintSlice(x, y)
