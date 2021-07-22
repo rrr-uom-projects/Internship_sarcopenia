@@ -6,9 +6,9 @@
 from kornia.augmentation.augmentation3d import CenterCrop3D
 import numpy as np
 import SimpleITK as sitk
-import albumentations as A
+#import albumentations as A
 import random
-from albumentations.pytorch import ToTensor
+#from albumentations.pytorch import ToTensor
 from scipy.ndimage.measurements import center_of_mass
 from sklearn import preprocessing
 import torch
@@ -110,16 +110,20 @@ def path_list(no_patients, skip = []):
 
     for i in range(1,no_patients+1):
         if i not in skip:
-            path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
-            path_list_inputs.append(path + "inputs/P" + str(i) + "_RT_sim_ct.nii.gz")
-            path_list_targets.append(path + "targets/P" + str(i) + "_RT_sim_seg.nii.gz")
+            #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
+            path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
+            # path_list_inputs.append(path + "inputs/P" + str(i) + "_RT_sim_ct.nii.gz")
+            # path_list_targets.append(path + "targets/P" + str(i) + "_RT_sim_seg.nii.gz")
+            path_list_inputs.append(path + "/P" + str(i) + "_RT_sim_ct.nii.gz")
+            path_list_targets.append(path + "/P" + str(i) + "_RT_sim_seg.nii.gz")
             id = "01-00" + str(i)
             ids.append(id)
     print("no read in: ", len(path_list_inputs))
     return np.array(path_list_inputs), np.array(path_list_targets), np.array(ids)
 
 def save_preprocessed(inputs, targets, ids):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
+    #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
+    path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
     print("slice no: ",GetSliceNumber(targets[1,0]))
     np.savez(path, inputs = inputs, masks = targets, ids = ids)
@@ -162,7 +166,7 @@ for i in range(len(preprocessed_data)):
 CTs, masks = np.array(CTs), np.array(masks)
 
 #save the preprocessed masks and cts for the dataset
-#save_preprocessed(CTs, masks, ids)
+save_preprocessed(CTs, masks, ids)
 
 def PrintSlice(input, targets):
     #slice_no=62

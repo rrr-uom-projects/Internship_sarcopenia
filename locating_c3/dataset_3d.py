@@ -6,6 +6,7 @@
 #creating dataset and dataloader
 #put the training images into input and target directories
 
+from PIL.Image import NEAREST
 from kornia.geometry import transform
 #from sklearn import preprocessing
 import torch
@@ -15,7 +16,6 @@ import cv2
 from torch.utils.data import DataLoader, TensorDataset, Dataset
 import SimpleITK as sitk
 import numpy as np
-#import albumentations as A
 #from albumentations.pytorch import ToTensor
 from kornia import augmentation as K
 from kornia.augmentation import AugmentationSequential 
@@ -56,16 +56,14 @@ class Segmentation3DDataset(Dataset):
 
         # Preprocessing
         if self.transform is not None:
-            augs = self.transform(x, y)
-
-            #x, y = self.transform(x), self.transform(y)
-            x = augs['input']
-            y = augs['mask']
+            augs = self.transform(x,y, data_keys=["input","input"])
+            x = augs[0].unsqueeze(0)
+            y = augs[1].unsqueeze(0).long()
         
         return x, y
 
 def get_data():
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+    path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     data = np.load(path)
     #print([*data.keys()])
     inputs = data['inputs']
@@ -82,13 +80,14 @@ ids = data[2]
 print("inputs: ", inputs.shape)
 
 #augmentation
-# augmentations = AugmentationSequential(K.RandomHorizontalFlip3D(p = 1),
-#                             K.RandomRotation3D([0, 0, 30], p = 1),
-#                             data_keys=["input","mask"],
-#                             )
+augmentations = AugmentationSequential(K.RandomHorizontalFlip3D( p = 1),
+                            K.RandomRotation3D([0, 0, 30],resample = NEAREST, p = 1),
+                            data_keys=["input","input"],
+                            keepdim = True,
+                            )
 
 #initialise dataset
-training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets)#transform=augmentations
+training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=augmentations)#transform=augmentations
 
 #dataloader
 training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle = False)
@@ -103,17 +102,17 @@ print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
 #plt.imshow(x_new[83,:,:,0], cmap = "gray")
 #plt.show()
 
-def PrintSlice(input, targets):
-    new = np.asarray(input.permute(3,4,5,0,1,2).squeeze())
-    #slice_no = GetSliceNumber(targets[0])
-    slice_no=62
-    new_target = np.asarray(targets.permute(3,4,5,0,1,2).squeeze())
-    print(new_target.shape)
-    plt.imshow(new[slice_no,:,:,0], cmap = "gray")
-    #for i in range(len(new_target)):
-        #new_target[i,...,0][new_target[i,...,0] == 0] = np.nan
-    plt.imshow(new_target[slice_no,:,:,0], cmap = "cool", alpha = 0.5)
-    plt.axis('off')
-    plt.show()
+# def PrintSlice(input, targets):
+#     new = np.asarray(input.permute(3,4,5,0,1,2).squeeze())
+#     #slice_no = GetSliceNumber(targets[0])
+#     slice_no=62
+#     new_target = np.asarray(targets.permute(3,4,5,0,1,2).squeeze())
+#     print(new_target.shape)
+#     plt.imshow(new[slice_no,:,:,0], cmap = "gray")
+#     #for i in range(len(new_target)):
+#         #new_target[i,...,0][new_target[i,...,0] == 0] = np.nan
+#     plt.imshow(new_target[slice_no,:,:,0], cmap = "cool", alpha = 0.5)
+#     plt.axis('off')
+#     plt.show()
 
-PrintSlice(x, y)
+# PrintSlice(x, y)
