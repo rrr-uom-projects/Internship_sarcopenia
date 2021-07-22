@@ -3,14 +3,18 @@
 #last updated: 19/07/2021
 #hermione 
 
+from kornia.augmentation.augmentation3d import CenterCrop3D
 import numpy as np
 import SimpleITK as sitk
 import albumentations as A
 import random
 from albumentations.pytorch import ToTensor
+from scipy.ndimage.measurements import center_of_mass
 from sklearn import preprocessing
 import torch
 from utils import GetSliceNumber, Guassian
+import cv2
+import matplotlib.pyplot as plt
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
@@ -31,7 +35,17 @@ def normalize(inp: np.ndarray, mean: float, std: float):
     return inp_out
 
 def cropping(inp: np.ndarray, tar: np.ndarray ):
-    x, y = inp[:117,...], tar[:117,...]
+    x, y= inp, tar
+    print("ct max: ", np.max(x))
+    _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
+    coords = center_of_mass(x)
+    print("coords: ", coords)
+    size =130
+    x_min = int(((coords[1] - size)+126)/2)
+    x_max = int(((coords[1] + size)+386)/2)
+    y_min = int(((coords[2] - size)+126)/2)
+    y_max = int(((coords[2] + size)+386)/2)
+    x, y = inp[:117,x_min:x_max,y_min:y_max], tar[:117,x_min:x_max,y_min:y_max]
     return x, y
 
 class preprocessing():
@@ -62,9 +76,7 @@ class preprocessing():
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
-        #cropping so they are the same size [512,512,117,1] #but do this before
-        #x, y = x[:117,...], y[:117,...]
-        print("shape: ",x.shape)
+        print("max: ",np.max(x))
         print("type:", x.dtype, y.dtype)
         # def voxeldim(): #save this to file
         #     voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
@@ -103,6 +115,7 @@ def path_list(no_patients, skip = []):
             path_list_targets.append(path + "targets/P" + str(i) + "_RT_sim_seg.nii.gz")
             id = "01-00" + str(i)
             ids.append(id)
+    print("no read in: ", len(path_list_inputs))
     return np.array(path_list_inputs), np.array(path_list_targets), np.array(ids)
 
 def save_preprocessed(inputs, targets, ids):
@@ -116,9 +129,10 @@ def save_preprocessed(inputs, targets, ids):
 #main
 #get the file names
 no_patients = 3
-inputs = path_list(no_patients)[0]
-targets = path_list(no_patients)[1]
-ids = path_list(no_patients)[2]
+PathList =  path_list(no_patients)
+inputs = PathList[0]
+targets = PathList[1]
+ids = PathList[2]
 
 print(inputs.shape)
 #print(targets.shape)
@@ -126,22 +140,39 @@ print(inputs.shape)
 #apply preprocessing
 preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping)
 
-for i in range(len(preprocessed_data)):
-    sample = preprocessed_data[i]
-    print(i, "inp: ", sample['input'].shape, "msk: ", sample['mask'].shape)
-
 CTs = []
 masks = []
 for i in range(len(preprocessed_data)):
-    samples = next(iter(preprocessed_data))
-    x, y = samples['input'], samples['mask']
+    sample = preprocessed_data[i]
+    print(i, "inp: ", sample['input'].shape, "msk: ", sample['mask'].shape)
+    x, y = sample['input'], sample['mask']
     CTs.append(x)
     masks.append(y)
-    print(i)
-    print(f'x = shape: {x.shape}; type: {y.dtype}')
-    print(f'x = min: {x.min()}; max: {x.max()}')
-    print(f'y = shape: {y.shape}; class: {np.unique(y)}; type: {y.dtype}')
+
+
+# for i in range(len(preprocessed_data)):
+#     samples = next(iter(preprocessed_data))
+#     x, y = samples['input'], samples['mask']
+#     CTs.append(x)
+#     masks.append(y)
+#     print(i)
+#     print(f'x = shape: {x.shape}; type: {y.dtype}')
+#     print(f'x = min: {x.min()}; max: {x.max()}')
+#     print(f'y = shape: {y.shape}; class: {np.unique(y)}; type: {y.dtype}')
 CTs, masks = np.array(CTs), np.array(masks)
 
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids)
+#save_preprocessed(CTs, masks, ids)
+
+def PrintSlice(input, targets):
+    #slice_no=62
+    slice_no = GetSliceNumber(targets)
+    print(targets.shape)
+    plt.imshow(input[slice_no,...], cmap = "gray")
+    #for i in range(len(targets)):
+        #targets[i,...,0][targets[i,...,0] == 0] = np.nan
+    plt.imshow(targets[slice_no,...], cmap = "cool", alpha = 0.5)
+    plt.axis('off')
+    plt.show()
+
+PrintSlice(CTs[2], masks[2])
