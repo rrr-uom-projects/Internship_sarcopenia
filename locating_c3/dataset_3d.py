@@ -16,7 +16,6 @@ import cv2
 from torch.utils.data import DataLoader, TensorDataset, Dataset
 import SimpleITK as sitk
 import numpy as np
-import albumentations as A
 #from albumentations.pytorch import ToTensor
 from kornia import augmentation as K
 from kornia.augmentation import AugmentationSequential 
