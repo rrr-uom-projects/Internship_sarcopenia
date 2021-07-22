@@ -10,7 +10,7 @@ import random
 from albumentations.pytorch import ToTensor
 from sklearn import preprocessing
 import torch
-from utils import GetSliceNumber
+from utils import GetSliceNumber, Guassian
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
@@ -30,15 +30,15 @@ def normalize(inp: np.ndarray, mean: float, std: float):
     inp_out = (inp - mean) / std
     return inp_out
 
-def cropping(inp: np.ndarray):
-    x = inp[:117,...]
-    return x,
+def cropping(inp: np.ndarray, tar: np.ndarray ):
+    x, y = inp[:117,...], tar[:117,...]
+    return x, y
 
 class preprocessing():
     def __init__(self,
                  inputs: list,
                  targets: list,
-                 transform=None, cropping = None, normalise = None
+                 transform=None, cropping = None, normalise = None, heatmap = None
                  ):
         self.inputs = inputs
         self.targets = targets
@@ -47,6 +47,7 @@ class preprocessing():
         self.targets_dtype = torch.long
         self.cropping = cropping
         self.normalise = normalise
+        self.heatmap = heatmap
 
     def __len__(self):
         return len(self.inputs)
@@ -71,8 +72,11 @@ class preprocessing():
 
         # Preprocessing
         if self.cropping is not None:
-            x, y = self.cropping(x), self.cropping(y)
+            x, y = self.cropping(x, y)
             #data = self.cropping(data)
+        
+        if self.heatmap is not None:
+            y = self.heatmap(y)
 
         if self.transform is not None:
             x, y = self.transform(x), self.transform(y)

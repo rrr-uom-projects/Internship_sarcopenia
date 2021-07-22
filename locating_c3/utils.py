@@ -3,6 +3,7 @@
 #hermione
 
 import numpy as np
+import scipy.ndimage as nd
 
 def GetSliceNumber(segment):
   slice_number = 0
@@ -26,3 +27,7 @@ def GetTargetCoords(target):
             slice_number = x
 
     return coords
+
+def Guassian(inp: np.ndarray):
+  gauss = nd.gaussian_filter(inp)
+  return gauss
