@@ -20,11 +20,15 @@ from utils import GetSliceNumber
 import DUnet
 from DUnet import UNet
 from dataset_3d import Segmentation3DDataset, get_data
-
+from trainer import Trainer
 #retrieving data
 
 
-
+# device
+if torch.cuda.is_available():
+    device = torch.device('cuda:1')
+else:
+    torch.device('cpu')
 #Creating model
 model = UNet(in_channels = 1,
  out_channels = 2,
@@ -78,6 +82,27 @@ training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets)#transfo
 
 #dataloader
 training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle=True)
-x, y = next(iter(training_dataloader))
 
 
+
+# criterion
+criterion = torch.nn.CrossEntropyLoss()
+
+# optimizer
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+
+model = model.to(device)
+# trainer
+trainer = Trainer(model=model,
+                  device= device,
+                  criterion=criterion,
+                  optimizer=optimizer,
+                  training_DataLoader= training_dataloader,
+                  validation_DataLoader= training_dataloader,
+                  lr_scheduler=None,
+                  epochs=2,
+                  epoch=0,
+                  notebook=True)
+
+# start training
+training_losses, validation_losses, lr_rates = trainer.run_trainer()

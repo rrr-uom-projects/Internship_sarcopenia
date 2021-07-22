@@ -1,5 +1,5 @@
 # trainer
-import numpy
+import numpy as np
 import torch
 from DUnet import UNet
 from dataset_3d import Segmentation3DDataset, get_data

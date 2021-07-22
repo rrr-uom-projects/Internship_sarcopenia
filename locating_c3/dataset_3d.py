@@ -63,12 +63,14 @@ class Segmentation3DDataset(Dataset):
             x, y = self.transform(x), self.transform(y)
 
         # Typecasting
+
         x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
+ 
 
         return x, y
 
 def get_data():
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
     data = np.load(path)
     #print([*data.keys()])
     inputs = data['inputs']
@@ -88,7 +90,13 @@ print("inputs: ", inputs.shape)
 augmentations = nn.Sequential(K.RandomHorizontalFlip3D(p = 0),
                             K.RandomRotation3D([20, 0, 0],p=0))
 
+
 #initialise dataset
+if torch.cuda.is_available():
+    device = torch.device('cuda:0')
+else:
+    torch.device('cpu')
+
 training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets)#transform=augmentations
 
 #dataloader
@@ -99,16 +107,17 @@ print(f'x = shape: {x.shape}; type: {x.dtype}')
 print(f'x = min: {x.min()}; max: {x.max()}')
 print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
 
-x_new = x.permute(2,3,4,0,1).squeeze()
-print(x_new.shape)
-plt.imshow(x_new[83,:,:,0], cmap = "gray")
-plt.show()
+# x_new = x.permute(2,3,4,0,1).squeeze()
+# x_new = x_new.cpu()
+# print(x_new.shape)
+# plt.imshow(x_new[83,:,:,0], cmap = "gray")
+# plt.show()
 
-def PrintSlice(input, targets):
-    new = input.permute(2,3,4,0,1).squeeze()
-    new_target = targets.permute(2,3,4,0,1).squeeze()
-    slice_no = GetSliceNumber(targets)
-    plt.imshow(new[slice_no,:,:,0], cmap = "gray")
-    plt.imshow(new_target[slice_no,:,:,0], cmap = "alpha")
-    plt.imshow()
-    plt.show()
+# def PrintSlice(input, targets):
+#     new = input.permute(2,3,4,0,1).squeeze()
+#     new_target = targets.permute(2,3,4,0,1).squeeze()
+#     slice_no = GetSliceNumber(targets)
+#     plt.imshow(new[slice_no,:,:,0], cmap = "gray")
+#     plt.imshow(new_target[slice_no,:,:,0], cmap = "alpha")
+#     plt.imshow()
+#     plt.show()
