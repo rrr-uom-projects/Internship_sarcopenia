@@ -6,19 +6,21 @@
 #creating dataset and dataloader
 #put the training images into input and target directories
 
+from PIL.Image import NEAREST
 from kornia.geometry import transform
 #from sklearn import preprocessing
 import torch
-from skimage.io import imread
+import cv2
+#from skimage.io import imread
 #from torch.utils import data
 from torch.utils.data import DataLoader, TensorDataset, Dataset
 import SimpleITK as sitk
 import numpy as np
-import albumentations as A
-from albumentations.pytorch import ToTensor
-import kornia.augmentation as K
-#import kornia.augmentation.augmentation3d 
-import torchvision
+#from albumentations.pytorch import ToTensor
+from kornia import augmentation as K
+from kornia.augmentation import AugmentationSequential 
+from kornia.utils import image_to_tensor, tensor_to_image
+from torchvision.transforms import transforms
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from utils import GetSliceNumber
@@ -33,22 +35,13 @@ class Segmentation3DDataset(Dataset):
         self.targets = targets
         self.transform = transform
         self.inputs_dtype = torch.float32
-        self.targets_dtype = torch.long
+        self.targets_dtype = torch.float32
 
     def __len__(self):
         return len(self.inputs)
 
     def __getitem__(self, index: int):
-        # Select the sample
-        input_ID = self.inputs[index]
-        target_ID = self.targets[index]
-
         # Load input and target
-        #x, y = imread(input_ID), imread(target_ID)
-        #x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
-        #y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
-        #x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
-        #cropping so they are the same size [512,512,117,1] #but do this before
         x = self.inputs[index]
         y = self.targets[index]
         print("shape: ",x.shape)
@@ -57,20 +50,25 @@ class Segmentation3DDataset(Dataset):
         def voxeldim():
             voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
             return voxel_dim
-
-        # Preprocessing
-        if self.transform is not None:
-            x, y = self.transform(x), self.transform(y)
-
+        
         # Typecasting
 
         x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
  
 
+        # Preprocessing
+        if self.transform is not None:
+            augs = self.transform(x,y, data_keys=["input","input"])
+            x = augs[0].unsqueeze(0)
+            y = augs[1].unsqueeze(0).long()
+        
         return x, y
 
 def get_data():
-    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+
+    path_O = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+    path_H = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
+
     data = np.load(path)
     #print([*data.keys()])
     inputs = data['inputs']
@@ -87,37 +85,47 @@ ids = data[2]
 print("inputs: ", inputs.shape)
 
 #augmentation
-augmentations = nn.Sequential(K.RandomHorizontalFlip3D(p = 0),
-                            K.RandomRotation3D([20, 0, 0],p=0))
+augmentations = AugmentationSequential(K.RandomHorizontalFlip3D( p = 0.5),
+                            K.RandomRotation3D([0, 0, 30], p = 0.5),
+                            data_keys=["input","input"],
+                            keepdim = True,
+                            )
 
 
 #initialise dataset
-if torch.cuda.is_available():
-    device = torch.device('cuda:0')
-else:
-    torch.device('cpu')
 
-training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets)#transform=augmentations
+
+
+training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=augmentations)#transform=augmentations
+
 
 #dataloader
-training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle=True)
+training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle = False)
 x, y = next(iter(training_dataloader))
 
 print(f'x = shape: {x.shape}; type: {x.dtype}')
 print(f'x = min: {x.min()}; max: {x.max()}')
 print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
 
-# x_new = x.permute(2,3,4,0,1).squeeze()
-# x_new = x_new.cpu()
-# print(x_new.shape)
-# plt.imshow(x_new[83,:,:,0], cmap = "gray")
-# plt.show()
 
-# def PrintSlice(input, targets):
-#     new = input.permute(2,3,4,0,1).squeeze()
-#     new_target = targets.permute(2,3,4,0,1).squeeze()
-#     slice_no = GetSliceNumber(targets)
-#     plt.imshow(new[slice_no,:,:,0], cmap = "gray")
-#     plt.imshow(new_target[slice_no,:,:,0], cmap = "alpha")
-#     plt.imshow()
-#     plt.show()
+#x_new = x.permute(2,3,4,0,1).squeeze()
+#print(x_new.shape)
+#plt.imshow(x_new[83,:,:,0], cmap = "gray")
+#plt.show()
+
+def PrintSlice(input, targets):
+    new = np.asarray((input.squeeze()).permute(1,2,3,0))
+    new_target = np.asarray((targets.squeeze()).permute(1,2,3,0))
+    slice_no = GetSliceNumber(new_target[...,0])
+    print(slice_no)
+    #slice_no=62
+    print(new_target.shape)
+    plt.imshow(new[slice_no,:,:,0], cmap = "gray")
+    #for i in range(len(new_target)):
+        #new_target[i,...,0][new_target[i,...,0] == 0] = np.nan
+    plt.imshow(new_target[slice_no,:,:,0], cmap = "cool", alpha = 0.5)
+    plt.axis('off')
+    plt.show()
+
+PrintSlice(x, y)
+
