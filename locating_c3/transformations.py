@@ -17,6 +17,7 @@ import cv2
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from skimage import measure
+from scipy.ndimage import binary_fill_holes
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
@@ -36,7 +37,54 @@ def normalize(inp: np.ndarray, mean: float, std: float):
     inp_out = (inp - mean) / std
     return inp_out
 
+"""
 def cropping(inp: np.ndarray, tar: np.ndarray ):
+    #want to crop all CT scans to be [177,260,260]
+    x, y= inp, tar
+    print("ct max: ", np.max(x))
+    _,threshold = cv2.threshold(x,500,0,cv2.THRESH_TOZERO)
+    coords = center_of_mass(threshold)
+    print("coords: ", coords)
+    size =130
+    #x, y direction cropping
+    x_min = int(((coords[1] - size)+126)/2)
+    x_max = int(((coords[1] + size)+386)/2)
+    y_min = int(((coords[2] - size)+126)/2)
+    y_max = int(((coords[2] + size)+386)/2)
+    if (x.shape[0]>=117):
+        print("True", x.shape[0])
+    else:
+        print("too small ffs")
+    
+    #z axis cropping
+    inds = x < -500
+    im = x
+    im[...] = 1
+    im[inds] = 0
+    im = binary_fill_holes(im).astype(int)
+    filled_inds = np.nonzero(im)
+    print("im shape: ", im.shape, np.unique(im))
+    for z in range(len(im)-1,0, -1):
+        seg_slice = im[z,...]
+        val = np.sum(seg_slice)
+        if val != 0:
+            high_cc_cut = z
+            print(z)
+            break
+    high_cc_cut = filled_inds[0][-1]
+    im = x[(high_cc_cut-116):high_cc_cut,:,:]
+    #y = y[(high_cc_cut-116):high_cc_cut,:,:]
+
+    # Cuts complete
+    cutdown_shape = np.array(im.shape)
+    print("cropped shape: ", cutdown_shape)
+    x, y = x[(high_cc_cut-116):high_cc_cut,x_min:x_max,y_min:y_max], tar[(high_cc_cut-116):high_cc_cut,x_min:x_max,y_min:y_max]
+   
+    #x, y = im[(im.shape[0]-117):,x_min:x_max,y_min:y_max], tar[(im.shape[0]-117):,x_min:x_max,y_min:y_max]
+    return x, y"""
+
+def cropping(inp: np.ndarray, tar: np.ndarray ):
+    #working one but z axis crop needs improving
     x, y= inp, tar
     print("ct max: ", np.max(x))
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
@@ -100,7 +148,7 @@ class preprocessing():
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
-        print("max: ",np.max(x))
+        print("max, min: ",np.max(x), np.min(x))
         print("type:", x.dtype, y.dtype)
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         
@@ -126,7 +174,7 @@ class preprocessing():
         data = {'input': x, 'mask': y}  
         return data
 
-def path_list(no_patients, skip = []):
+def path_list(no_patients, skip: list):
     path_list_inputs = []
     path_list_targets = []
     ids = []
@@ -156,8 +204,9 @@ def save_preprocessed(inputs, targets, ids):
 
 #main
 #get the file names
-no_patients = 10
-PathList =  path_list(no_patients)
+no_patients = 3
+skip = []
+PathList =  path_list(no_patients, skip)
 inputs = PathList[0]
 targets = PathList[1]
 ids = PathList[2]
@@ -201,5 +250,5 @@ def PrintSlice(input, targets):
     plt.axis('off')
     plt.show()
 
-for i in range(0,9 ):
+for i in range(0,no_patients):
     PrintSlice(CTs[i], masks[i])
