@@ -15,6 +15,8 @@ import torch
 from utils import GetSliceNumber, Guassian
 import cv2
 import matplotlib.pyplot as plt
+from mpl_toolkits import mplot3d
+from skimage import measure
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
@@ -47,6 +49,24 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     y_max = int(((coords[2] + size)+386)/2)
     x, y = inp[:117,x_min:x_max,y_min:y_max], tar[:117,x_min:x_max,y_min:y_max]
     return x, y
+
+def sphereMask(tar: np.ndarray):
+    def create_bin_sphere(arr_size, center, r):
+        coords = np.ogrid[:arr_size[0], :arr_size[1], :arr_size[2]]
+        distance = np.sqrt((coords[0] - center[0])**2 + (coords[1]-center[1])**2 + (coords[2]-center[2])**2) 
+        return 1*(distance <= r)
+    
+    arr_size = tar.shape
+    sphere_center = center_of_mass(tar)
+    r=5
+    sphere = create_bin_sphere(arr_size, sphere_center, r)
+    print("sphere details", sphere.shape, np.unique(sphere))
+    #Plot the result
+    # fig =plt.figure(figsize=(6,6))
+    # ax = plt.axes(projection='3d')
+    # ax.voxels(sphere, edgecolor='red')
+    # plt.show()
+    return sphere
 
 class preprocessing():
     def __init__(self,
@@ -89,6 +109,7 @@ class preprocessing():
         
         if self.heatmap is not None:
             y = self.heatmap(y)
+            print("adding sphere: ", y.shape)
 
         if self.transform is not None:
             x, y = self.transform(x), self.transform(y)
@@ -142,7 +163,7 @@ print(inputs.shape)
 #print(targets.shape)
 
 #apply preprocessing
-preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping)
+preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= sphereMask)
 
 CTs = []
 masks = []
