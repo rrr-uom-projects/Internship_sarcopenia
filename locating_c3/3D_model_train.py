@@ -21,47 +21,18 @@ import DUnet
 from DUnet import UNet
 from dataset_3d import Segmentation3DDataset, get_data
 from trainer import Trainer
+from EdHead import headHunter
 #retrieving data
 
 
 # device
 if torch.cuda.is_available():
-    device = torch.device('cuda:1')
+    device = torch.device('cuda:2')
 else:
     torch.device('cpu')
 #Creating model
-model = UNet(in_channels = 1,
- out_channels = 2,
- n_blocks = 3,
- start_filts= 32,
- up_mode ='transpose',
- merge_mode = 'concat',
- planar_blocks = (),
- batch_norm='unset',
- attention= False,
- activation = 'relu',
- normalization= 'batch',
- full_norm= True,
- dim=3,
- conv_mode= 'same')
 
-def predict(img,
-            model,
-            preprocess,
-            postprocess,
-            device,
-            ):
-    model.eval()
-    img = preprocess(img)  # preprocess image
-    x = torch.from_numpy(img).to(device)  # to torch, send to device
-    with torch.no_grad():
-        out = model(x)  # send through model/network
-
-    out_softmax = torch.softmax(out, dim=1)  # perform softmax on outputs
-    result = postprocess(out_softmax)  # postprocess outputs
-
-    return result
-
+model = headHunter(filter_factor=2, targets = 1, in_channels = 3)
 
 
 data = get_data()
@@ -82,27 +53,3 @@ training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets)#transfo
 
 #dataloader
 training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle=True)
-
-
-
-# criterion
-criterion = torch.nn.CrossEntropyLoss()
-
-# optimizer
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-
-model = model.to(device)
-# trainer
-trainer = Trainer(model=model,
-                  device= device,
-                  criterion=criterion,
-                  optimizer=optimizer,
-                  training_DataLoader= training_dataloader,
-                  validation_DataLoader= training_dataloader,
-                  lr_scheduler=None,
-                  epochs=2,
-                  epoch=0,
-                  notebook=True)
-
-# start training
-training_losses, validation_losses, lr_rates = trainer.run_trainer()
