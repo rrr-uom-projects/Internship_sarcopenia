@@ -80,8 +80,8 @@ ids = data[2]
 print("inputs: ", inputs.shape)
 
 #augmentation
-augmentations = AugmentationSequential(K.RandomHorizontalFlip3D( p = 1),
-                            K.RandomRotation3D([0, 0, 30],resample = NEAREST, p = 1),
+augmentations = AugmentationSequential(K.RandomHorizontalFlip3D( p = 0.5),
+                            K.RandomRotation3D([0, 0, 30], p = 0.5),
                             data_keys=["input","input"],
                             keepdim = True,
                             )
@@ -102,17 +102,18 @@ print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
 #plt.imshow(x_new[83,:,:,0], cmap = "gray")
 #plt.show()
 
-# def PrintSlice(input, targets):
-#     new = np.asarray(input.permute(3,4,5,0,1,2).squeeze())
-#     #slice_no = GetSliceNumber(targets[0])
-#     slice_no=62
-#     new_target = np.asarray(targets.permute(3,4,5,0,1,2).squeeze())
-#     print(new_target.shape)
-#     plt.imshow(new[slice_no,:,:,0], cmap = "gray")
-#     #for i in range(len(new_target)):
-#         #new_target[i,...,0][new_target[i,...,0] == 0] = np.nan
-#     plt.imshow(new_target[slice_no,:,:,0], cmap = "cool", alpha = 0.5)
-#     plt.axis('off')
-#     plt.show()
+def PrintSlice(input, targets):
+    new = np.asarray((input.squeeze()).permute(1,2,3,0))
+    new_target = np.asarray((targets.squeeze()).permute(1,2,3,0))
+    slice_no = GetSliceNumber(new_target[...,0])
+    print(slice_no)
+    #slice_no=62
+    print(new_target.shape)
+    plt.imshow(new[slice_no,:,:,0], cmap = "gray")
+    #for i in range(len(new_target)):
+        #new_target[i,...,0][new_target[i,...,0] == 0] = np.nan
+    plt.imshow(new_target[slice_no,:,:,0], cmap = "cool", alpha = 0.5)
+    plt.axis('off')
+    plt.show()
 
-# PrintSlice(x, y)
+PrintSlice(x, y)
