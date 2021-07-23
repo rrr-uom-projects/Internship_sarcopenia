@@ -58,7 +58,7 @@ def sphereMask(tar: np.ndarray):
     
     arr_size = tar.shape
     sphere_center = center_of_mass(tar)
-    r=5
+    r=3
     sphere = create_bin_sphere(arr_size, sphere_center, r)
     print("sphere details", sphere.shape, np.unique(sphere))
     #Plot the result
@@ -98,10 +98,8 @@ class preprocessing():
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         print("max: ",np.max(x))
         print("type:", x.dtype, y.dtype)
-        # def voxeldim(): #save this to file
-        #     voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
-        #     return voxel_dim
-
+        #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
+        
         # Preprocessing
         if self.cropping is not None:
             x, y = self.cropping(x, y)
@@ -146,7 +144,8 @@ def save_preprocessed(inputs, targets, ids):
     #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
     path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
-    print("slice no: ",GetSliceNumber(targets[1,0]))
+    for i in range(len(targets)):
+        print("slice no: ",GetSliceNumber(targets[i]))
     np.savez(path, inputs = inputs, masks = targets, ids = ids)
     print("Saved preprocessed data")
 
@@ -190,9 +189,7 @@ CTs, masks = np.array(CTs), np.array(masks)
 save_preprocessed(CTs, masks, ids)
 
 def PrintSlice(input, targets):
-    #slice_no=62
     slice_no = GetSliceNumber(targets)
-    print(targets.shape)
     plt.imshow(input[slice_no,...], cmap = "gray")
     #for i in range(len(targets)):
         #targets[i,...,0][targets[i,...,0] == 0] = np.nan
