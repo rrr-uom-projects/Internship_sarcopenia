@@ -44,7 +44,7 @@ def main():
     global args
 
     # decide checkpoint directory
-    checkpoint_dir = "/data/Jigsaw3D/spineSeeker_models/fold"+str(args.fold_num)
+    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     # Create main logger
     logger = get_logger('HeadHunter_Training')
 
@@ -55,14 +55,14 @@ def main():
         param.requires_grad = True
 
     # put the model on GPU(s)
-    device='cuda'
+    device='cuda:0'
     model.to(device)
 
     # Log the number of learnable parameters
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
     
-    train_BS = int(6 * args.GPUs)
-    val_BS = int(6 * args.GPUs)
+    train_BS = 1 #int(6 * args.GPUs)
+    val_BS = 1 #int(6 * args.GPUs)
     train_workers = int(8)
     val_workers = int(4)
 #main
@@ -73,15 +73,9 @@ def main():
 
 
 
-    #augmentation
-    augmentations = nn.Sequential(K.RandomHorizontalFlip3D(p = 0),
-                            K.RandomRotation3D([20, 0, 0],p=0))
-
-
-  
     # allocate ims to train, val and test
     dataset_size = len(inputs)
-    train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num=args.fold_num)
+    train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num= 2)
 
     # dataloaders
     training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)
