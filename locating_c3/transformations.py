@@ -47,7 +47,11 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     x_max = int(((coords[1] + size)+386)/2)
     y_min = int(((coords[2] - size)+126)/2)
     y_max = int(((coords[2] + size)+386)/2)
-    x, y = inp[:117,x_min:x_max,y_min:y_max], tar[:117,x_min:x_max,y_min:y_max]
+    if (x.shape[0]>=117):
+        print("True", x.shape[0])
+    else:
+        print("too small ffs")
+    x, y = inp[(x.shape[0]-117):,x_min:x_max,y_min:y_max], tar[(x.shape[0]-117):,x_min:x_max,y_min:y_max]
     return x, y
 
 def sphereMask(tar: np.ndarray):
@@ -152,7 +156,7 @@ def save_preprocessed(inputs, targets, ids):
 
 #main
 #get the file names
-no_patients = 3
+no_patients = 10
 PathList =  path_list(no_patients)
 inputs = PathList[0]
 targets = PathList[1]
@@ -197,4 +201,5 @@ def PrintSlice(input, targets):
     plt.axis('off')
     plt.show()
 
-PrintSlice(CTs[2], masks[2])
+for i in range(0,9 ):
+    PrintSlice(CTs[i], masks[i])
