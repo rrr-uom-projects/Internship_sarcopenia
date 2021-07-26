@@ -73,9 +73,6 @@ def main():
     targets = data[1]
     ids = data[2]
 
-
-
-
     # allocate ims to train, val and test
     dataset_size = len(inputs)
     train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num= 2)

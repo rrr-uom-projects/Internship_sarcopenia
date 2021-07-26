@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from skimage import measure
 from scipy.ndimage import binary_fill_holes
+from skimage.transform import rescale, resize
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
@@ -100,6 +101,10 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     else:
         print("too small ffs")
     x, y = inp[(x.shape[0]-117):,x_min:x_max,y_min:y_max], tar[(x.shape[0]-117):,x_min:x_max,y_min:y_max]
+    # downsampling
+    x = rescale(x, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
+    y = rescale(y, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
+   
     return x, y
 
 def sphereMask(tar: np.ndarray):
@@ -119,6 +124,8 @@ def sphereMask(tar: np.ndarray):
     # ax.voxels(sphere, edgecolor='red')
     # plt.show()
     return sphere
+
+
 
 class preprocessing():
     def __init__(self,
@@ -204,7 +211,7 @@ def save_preprocessed(inputs, targets, ids):
 
 #main
 #get the file names
-no_patients = 3
+no_patients = 8
 skip = []
 PathList =  path_list(no_patients, skip)
 inputs = PathList[0]
