@@ -51,7 +51,7 @@ def main():
     logger = get_logger('HeadHunter_Training')
 
     # Create the model
-    model = headHunter(filter_factor=2, targets=args.targets, in_channels=1)
+    model = headHunter(filter_factor=0.5, targets=args.targets, in_channels=1)
     #model = spineSeeker()
     for param in model.parameters():
         param.requires_grad = True
@@ -72,9 +72,12 @@ def main():
     inputs = data[0]
     targets = data[1]
     ids = data[2]
+    print("inputs: ", inputs.shape)
+    print("targets: ", targets.shape)
 
     # allocate ims to train, val and test
     dataset_size = len(inputs)
+    print(dataset_size)
     train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num= 2)
 
     # dataloaders
@@ -106,8 +109,8 @@ def main():
     
     # Create model trainer
     trainer = headHunter_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1000, patience=500, iters_to_accumulate=1)
-    
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=100, patience=25, iters_to_accumulate=1)
+    print("got here")
     # Start training
     trainer.fit()
 
