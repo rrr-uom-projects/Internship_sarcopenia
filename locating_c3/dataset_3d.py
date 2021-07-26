@@ -52,7 +52,9 @@ class Segmentation3DDataset(Dataset):
             return voxel_dim
         
         # Typecasting
+
         x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
+ 
 
         # Preprocessing
         if self.transform is not None:
@@ -63,7 +65,10 @@ class Segmentation3DDataset(Dataset):
         return x, y
 
 def get_data():
-    path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
+
+    path_O = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+    path_H = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
+
     data = np.load(path)
     #print([*data.keys()])
     inputs = data['inputs']
@@ -86,8 +91,13 @@ augmentations = AugmentationSequential(K.RandomHorizontalFlip3D( p = 0.5),
                             keepdim = True,
                             )
 
+
 #initialise dataset
+
+
+
 training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=augmentations)#transform=augmentations
+
 
 #dataloader
 training_dataloader = DataLoader(dataset=training_dataset, batch_size=2,  shuffle = False)
@@ -96,6 +106,7 @@ x, y = next(iter(training_dataloader))
 print(f'x = shape: {x.shape}; type: {x.dtype}')
 print(f'x = min: {x.min()}; max: {x.max()}')
 print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
+
 
 #x_new = x.permute(2,3,4,0,1).squeeze()
 #print(x_new.shape)
@@ -117,3 +128,4 @@ def PrintSlice(input, targets):
     plt.show()
 
 PrintSlice(x, y)
+
