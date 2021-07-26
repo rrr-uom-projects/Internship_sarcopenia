@@ -44,7 +44,10 @@ def main():
     global args
 
     # decide checkpoint directory
-    checkpoint_dir = "/data/Jigsaw3D/spineSeeker_models/fold"+str(args.fold_num)
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3'
+    #checkpoint_dir = "/data/Jigsaw3D/spineSeeker_models/fold"+str(args.fold_num)
+    checkpoint_dir = path+str(args.fold_num)
+    
     # Create main logger
     logger = get_logger('HeadHunter_Training')
 
@@ -74,14 +77,17 @@ def main():
 
 
     #augmentation
-    augmentations = nn.Sequential(K.RandomHorizontalFlip3D(p = 0),
-                            K.RandomRotation3D([20, 0, 0],p=0))
+    augmentations = AugmentationSequential(K.RandomHorizontalFlip3D(p = 0.5),
+                            K.RandomRotation3D([0, 0, 30], p = 0.5),
+                            data_keys=["input" ,"input"],
+                            keepdim = True,
+                            )
 
 
   
     # allocate ims to train, val and test
     dataset_size = len(inputs)
-    train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num=args.fold_num)
+    train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num=2)
 
     # dataloaders
     training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)

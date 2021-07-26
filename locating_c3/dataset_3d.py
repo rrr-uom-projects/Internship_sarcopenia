@@ -29,6 +29,7 @@ class Segmentation3DDataset(Dataset):
     def __init__(self,
                  inputs: list,
                  targets: list,
+                 image_inds:list,
                  transform=None
                  ):
         self.inputs = inputs
@@ -36,14 +37,18 @@ class Segmentation3DDataset(Dataset):
         self.transform = transform
         self.inputs_dtype = torch.float32
         self.targets_dtype = torch.float32
+        self.availableInputs = [sorted(inputs)[ind] for ind in image_inds]
+        self.availableTargets = [sorted(targets)[ind] for ind in image_inds]
 
     def __len__(self):
-        return len(self.inputs)
+        return len(self.availableInputs)
 
     def __getitem__(self, index: int):
         # Load input and target
-        x = self.inputs[index]
-        y = self.targets[index]
+        #x = self.inputs[index]
+        #y = self.targets[index]
+        x = self.availableInputs[index]
+        y = self.availableTargets[index]
         print("shape: ",x.shape)
         print("type:", x.dtype, y.dtype)
         
@@ -80,12 +85,13 @@ ids = data[2]
 print("inputs: ", inputs.shape)
 
 #augmentation
-augmentations = AugmentationSequential(K.RandomHorizontalFlip3D(p = 1),
-                            K.RandomRotation3D([0, 0, 30], p = 1),
+head_augmentations = AugmentationSequential(K.RandomHorizontalFlip3D(p = 0.5),
+                            K.RandomRotation3D([0, 0, 30], p = 0.5),
                             data_keys=["input" ,"input"],
                             keepdim = True,
                             )
 
+"""
 #initialise dataset
 training_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, transform=augmentations)#transform=augmentations
 
@@ -116,3 +122,4 @@ print(f'y = shape: {y.shape}; class: {y.unique()}; type: {y.dtype}')
 #     plt.show()
 
 # PrintSlice(x, y)
+"""
