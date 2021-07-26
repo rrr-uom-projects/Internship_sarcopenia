@@ -45,7 +45,7 @@ def main():
 
     # decide checkpoint directory
 
-    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs/"
 
     # Create main logger
     logger = get_logger('HeadHunter_Training')
