@@ -6,10 +6,15 @@ import torch
 import shutil
 import os
 
+from torch.utils import data
+
 def k_fold_split_train_val_test(dataset_size, fold_num):
     k = int(fold_num-1)
     #train_ims, val_ims, test_ims = 192, 24, 22
+
     train_ims, val_ims, test_ims = 4, 2, 2
+
+
     assert(train_ims+val_ims+test_ims == dataset_size)
     train_inds, val_inds, test_inds = [], [], []
     # initial shuffle
