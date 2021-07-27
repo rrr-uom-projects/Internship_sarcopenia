@@ -49,17 +49,7 @@ def main():
     logger = get_logger('HeadHunter_Training')
 
     # Create the model
-    model = headHunter(filter_factor=2, targets=args.targets, in_channels=1)
-    #model = spineSeeker()
-    for param in model.parameters():
-        param.requires_grad = True
 
-    # put the model on GPU(s)
-    device='cuda:0'
-    model.to(device)
-
-    # Log the number of learnable parameters
-    logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
     
     train_BS = 1 #int(6 * args.GPUs)
     val_BS = 1 #int(6 * args.GPUs)
@@ -84,6 +74,17 @@ def main():
     validation_dataset = Segmentation3DDataset(inputs=inputs, targets=targets, image_inds = val_inds)
     validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
+    model = headHunter(filter_factor=2, targets= 1, in_channels=1)
+    #model = spineSeeker()
+    for param in model.parameters():
+        param.requires_grad = True
+
+    # put the model on GPU(s)
+    device='cuda:0'
+    model.to(device)
+
+    # Log the number of learnable parameters
+    logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
 
     # # allocate ims to train, val and test
     # dataset_size = len(sorted(getFiles(imagedir)))

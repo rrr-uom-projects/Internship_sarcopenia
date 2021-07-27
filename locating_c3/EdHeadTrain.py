@@ -77,9 +77,11 @@ class headHunter_trainer:
             self.logger.info(f'Training iteration {self.num_iterations}. Batch {batch_idx + 1}. Epoch [{self.num_epoch + 1}/{self.max_num_epochs}]')
             #bodyMask = sample['bodyMask'].type(torch.HalfTensor) 
             ct_im = sample[0].type(torch.FloatTensor)
+            print("ct_im shape: ", ct_im.shape)
             #target = sample['target'].numpy()
             h_target = sample[1].type(torch.FloatTensor) 
             # send tensors to GPU
+            print("h_target shape: ", h_target.shape)
             ct_im = ct_im.to(self.device)
             h_target = h_target.to(self.device)
             
@@ -228,6 +230,7 @@ class headHunter_trainer:
             output = self.model(ct_im)
             # MSE loss contribution - unchanged for >1 targets
             loss = torch.nn.MSELoss()(output, h_target)
+            #loss = torch.nn.MSELoss().item()
             # L1 loss contribution
             output = output.cpu()
             if (output.shape[1] == 1):
@@ -242,7 +245,7 @@ class headHunter_trainer:
                 # for loc_idx in range(output.shape[1]):
                 #    single_pred_vox = torch.tensor([np.unravel_index(torch.argmax(output[i, loc_idx]), output.size()[2:]) for i in range(output.size(0))]).type(torch.FloatTensor)
                 #    pred_vox[:, loc_idx] = single_pred_vox
-            loss += (torch.nn.L1Loss()(pred_vox) * 0.01) # scaling factor for the L1 supplementary term
+            # DSNT here: loss += (torch.nn.L1Loss()(pred_vox) * 0.01) # scaling factor for the L1 supplementary term
             return output, loss
 
     def _is_best_eval_score(self, eval_score):

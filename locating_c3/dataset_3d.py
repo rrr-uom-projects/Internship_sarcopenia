@@ -47,31 +47,32 @@ class Segmentation3DDataset(Dataset):
         # Load input and target
         x = self.availableInputs[index]
         y = self.availableTargets[index]
-        print("shape: ",x.shape)
-        print("type:", x.dtype, y.dtype)
+
         
         def voxeldim():
             voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
             return voxel_dim
         
         # Typecasting
-
+        x = x[:32,:128,:128]
+        y = y[:32, :128, :128]
         x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
  
 
         # Preprocessing
         if self.transform is not None:
             augs = self.transform(x,y, data_keys=["input","input"])
-            x = augs[0] #.unsqueeze(0)
+            x = augs[0]# .unsqueeze(0)
             y = augs[1] #.unsqueeze(0).long()
-            print("image shape: ", x.shape)
-            print("Target shape: ", y.shape)
+            
+
+
         
-        return x, y
+        return x.unsqueeze(0), y.unsqueeze(0).long()
 
 def get_data():
 
-    path_O = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+    path_O = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed(3).npz'
     path_H = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
 
     data = np.load(path_O)
@@ -87,7 +88,7 @@ inputs = data[0]
 targets = data[1]
 ids = data[2]
 
-print("inputs: ", inputs.shape)
+
 
 #augmentation
 head_augmentations = AugmentationSequential(K.RandomHorizontalFlip3D( p = 0.5),
