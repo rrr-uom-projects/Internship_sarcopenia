@@ -62,8 +62,8 @@ class Segmentation3DDataset(Dataset):
             augs = self.transform(x,y, data_keys=["input","input"])
             x = augs[0].unsqueeze(0)
             y = augs[1].unsqueeze(0).long()
-            print("image shape: ", x.shape)
-            print("Target shape: ", y.shape)
+            #print("image shape: ", x.shape)
+            #print("Target shape: ", y.shape)
         
         return x, y
 
@@ -71,6 +71,7 @@ def get_data():
     #path_O = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
     #path_H = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
     path_H = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
+
     data = np.load(path_H)
     #print([*data.keys()])
     inputs = data['inputs']
