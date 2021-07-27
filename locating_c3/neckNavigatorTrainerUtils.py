@@ -1,4 +1,8 @@
-#consensually sloten and adapted from https://github.com/rrr-uom-projects/3DSegmentationNetwork/blob/master/headHunter
+# 27/07/2021
+# Hermione Warr and Olivia Murray
+# consensually stolen and adapted from https://github.com/rrr-uom-projects/3DSegmentationNetwork/blob/master/headHunter
+
+#imports
 import os
 import numpy as np
 import torch

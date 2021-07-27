@@ -1,4 +1,8 @@
-# consensually sloten and adapted from https://github.com/rrr-uom-projects/3DSegmentationNetwork/blob/master/headHunter
+# 27/07/2021
+# Hermione Warr and Olivia Murray
+# consensually stolen and adapted from https://github.com/rrr-uom-projects/3DSegmentationNetwork/blob/master/headHunter
+
+#imports
 import os
 import torch
 import numpy as np
@@ -7,13 +11,13 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import EdHeadUtils as utils
+import neckNavigatorUtils as utils
 import time
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
 #####################################################################################################
-class headHunter_trainer:
+class neckNavigator_trainer:
     def __init__(self, model, optimizer, lr_scheduler, device, train_loader, val_loader, logger, checkpoint_dir, max_num_epochs=100,
                 num_iterations=1, num_epoch=0, patience=10, iters_to_accumulate=4, best_eval_score=None, eval_score_higher_is_better=False):
         self.logger = logger
@@ -75,16 +79,14 @@ class headHunter_trainer:
         self.model.train()      # set the model in training mode
         for batch_idx, sample in enumerate(train_loader):
             self.logger.info(f'Training iteration {self.num_iterations}. Batch {batch_idx + 1}. Epoch [{self.num_epoch + 1}/{self.max_num_epochs}]')
-            #bodyMask = sample['bodyMask'].type(torch.HalfTensor) 
-            ct_im = sample['ct_im'].type(torch.HalfTensor)
-            target = sample['target'].numpy()
-            h_target = sample['h_target'].type(torch.FloatTensor) 
+            ct_im = sample[0].type(torch.FloatTensor)
+            h_target = sample[1].type(torch.FloatTensor) 
             # send tensors to GPU
             ct_im = ct_im.to(self.device)
             h_target = h_target.to(self.device)
             
             # forward
-            output, loss = self._forward_pass(ct_im, h_target, target)
+            output, loss = self._forward_pass(ct_im, h_target)
             train_losses.update(loss.item(), self._batch_size(ct_im))
             
             # compute gradients and update parameters
@@ -140,108 +142,42 @@ class headHunter_trainer:
             which_to_show = np.random.randint(0, self.val_loader.batch_size)
             for batch_idx, sample in enumerate(self.val_loader):
                 self.logger.info(f'Validation iteration {batch_idx + 1}')
-                ct_im = sample['ct_im'].type(torch.HalfTensor) 
-                target = sample['target'].numpy()
-                h_target = sample['h_target'].type(torch.FloatTensor)  
+                ct_im = sample[0].type(torch.FloatTensor) 
+                h_target = sample[1].type(torch.FloatTensor)  
                 
                 # send tensors to GPU
                 ct_im = ct_im.to(self.device)
                 h_target = h_target.to(self.device)
                 
-                output, loss = self._forward_pass(ct_im, h_target, target)
+                output, loss = self._forward_pass(ct_im, h_target)
                 val_losses.update(loss.item(), self._batch_size(ct_im))
                 
                 if (batch_idx == 0) and ((self.num_epoch < 100) or (self.num_epoch < 500 and not self.num_epoch%10) or (not self.num_epoch%100)):
                     # plot im
-                    target = target[which_to_show]
                     h_target = h_target.cpu().numpy()[which_to_show]
                     output = output.cpu().numpy()[which_to_show]
-                    print(f'target: {target}')
-                    #pred = np.unravel_index(output[0].argmax(), output[0].shape)
-                    #print(f'prediction: {pred}, map value: {output[0,pred[0],pred[1],pred[2]]}')
-                    '''
-                    # CoM of Parotids and Brainstem plots
-                    # axial plot
-                    fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(15, 5), tight_layout=True)
-                    ax_slice = ct_im.cpu().numpy()[which_to_show, 2, int(target[0])]              # <-- batch_num, contrast_channel, ax_slice
-                    ax0.imshow(ax_slice, aspect=1.0, cmap='Greys_r')
-                    ax_slice = h_target[0, int(target[0])]
-                    ax1.imshow(ax_slice, aspect=1.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(h_target)))
-                    ax_slice = output[0, int(target[0])]
-                    ax2.imshow(ax_slice, aspect=1.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(output)))
-                    self.writer.add_figure(tag='Val_pred_ax', figure=fig, global_step=self.num_epoch)
-                    fig.savefig(os.path.join(self.fig_dir, 'Val_pred_ax_'+str(self.num_epoch)+'.png'))
-                    # sagittal plot
-                    fig2, (ax3, ax4, ax5) = plt.subplots(1, 3, figsize=(10, 3), tight_layout=True)
-                    sag_slice = ct_im.cpu().numpy()[which_to_show,2,:,:,int(target[2])]
-                    ax3.imshow(sag_slice, aspect=2.0, cmap='Greys_r')
-                    sag_slice = h_target[0, :, :, int(target[2])]
-                    ax4.imshow(sag_slice, aspect=2.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(h_target)))
-                    sag_slice = output[0, :, :, int(target[2])]
-                    ax5.imshow(sag_slice, aspect=2.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(output)))
-                    self.writer.add_figure(tag='Val_pred_sag', figure=fig2, global_step=self.num_epoch)
-                    #fig2.savefig(os.path.join(self.fig_dir, 'Val_pred_sag_'+str(self.num_epoch)+'.png'))
-                    '''                    
-                    '''
-                    # Parotid figures
-                    # axial plot - lpar
-                    fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(15, 5), tight_layout=True)
-                    ax_slice = ct_im.cpu().numpy()[which_to_show, 2, int(target[0,0])]              # <-- batch_num, contrast_channel, ax_slice (loc_idx, axial_idx)
-                    ax0.imshow(ax_slice, aspect=1.0, cmap='Greys_r')
-                    ax_slice = h_target[0, int(target[0,0])]
-                    ax1.imshow(ax_slice, aspect=1.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(h_target)))
-                    ax_slice = output[0, int(target[0,0])]
-                    ax2.imshow(ax_slice, aspect=1.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(output)))
-                    self.writer.add_figure(tag='Val_lpar_pred_ax', figure=fig, global_step=self.num_epoch)
-                    fig.savefig(os.path.join(self.fig_dir, 'Val_lpar_pred_ax_'+str(self.num_epoch)+'.png'))
+                    print(f'target: {h_target}')
                     
-                    # axial plot - rpar
-                    fig2, (ax3, ax4, ax5) = plt.subplots(1, 3, figsize=(15, 5), tight_layout=True)
-                    ax_slice = ct_im.cpu().numpy()[which_to_show, 2, int(target[1,0])]              # <-- batch_num, contrast_channel, ax_slice (loc_idx, axial_idx)
-                    ax3.imshow(ax_slice, aspect=1.0, cmap='Greys_r')
-                    ax_slice = h_target[1, int(target[1,0])]
-                    ax4.imshow(ax_slice, aspect=1.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(h_target)))
-                    ax_slice = output[1, int(target[1,0])]
-                    ax5.imshow(ax_slice, aspect=1.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(output)))
-                    self.writer.add_figure(tag='Val_rpar_pred_ax', figure=fig2, global_step=self.num_epoch)
-                    fig2.savefig(os.path.join(self.fig_dir, 'Val_rpar_pred_ax_'+str(self.num_epoch)+'.png'))
-                    '''
-                    # Spine targetted plots
-                    # sagittal plots
-                    for target_idx in range(target.shape[0]):
-                        fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(10, 3), tight_layout=True)
-                        sag_slice = ct_im.cpu().numpy()[which_to_show,0,:,:,int(target[target_idx,2])]
-                        ax0.imshow(sag_slice, aspect=2.0, cmap='Greys_r', vmin=ct_im.cpu().numpy().min(), vmax=ct_im.cpu().numpy().max())
-                        sag_slice = h_target[target_idx, :, :, int(target[target_idx,2])]
-                        ax1.imshow(sag_slice, aspect=2.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(h_target)))
-                        sag_slice = output[target_idx, :, :, int(target[target_idx,2])]
-                        ax2.imshow(sag_slice, aspect=2.0, cmap='nipy_spectral', vmin=0, vmax=max(self.epsilon,np.max(output)))
-                        self.writer.add_figure(tag='Val_pred_sag_'+str(target_idx), figure=fig, global_step=self.num_epoch)
                     
             self._log_stats('val', val_losses.avg)
             self.logger.info(f'Validation finished. Loss: {val_losses.avg}')
             return val_losses.avg
 
-    def _forward_pass(self, ct_im, h_target, target):
+    # functions
+    def _forward_pass(self, ct_im, h_target):
         with torch.cuda.amp.autocast():
             # forward pass
             output = self.model(ct_im)
             # MSE loss contribution - unchanged for >1 targets
             loss = torch.nn.MSELoss()(output, h_target)
+            #loss = torch.nn.MSELoss().item()
             # L1 loss contribution
             output = output.cpu()
             if (output.shape[1] == 1):
                 # single target case
-                target_vox = torch.tensor(np.round(target)).type(torch.FloatTensor)
                 pred_vox = torch.tensor([np.unravel_index(torch.argmax(output[i, 0]), output.size()[2:]) for i in range(output.size(0))]).type(torch.FloatTensor)
-            else:
-                # multi-target case
-                target_vox = torch.tensor(np.round(target)).type(torch.FloatTensor)
-                pred_vox = torch.zeros(output.shape[:2]+(3,))   # Important to capture batch 
-                for loc_idx in range(output.shape[1]):
-                    single_pred_vox = torch.tensor([np.unravel_index(torch.argmax(output[i, loc_idx]), output.size()[2:]) for i in range(output.size(0))]).type(torch.FloatTensor)
-                    pred_vox[:, loc_idx] = single_pred_vox
-            loss += (torch.nn.L1Loss()(pred_vox, target_vox) * 0.01) # scaling factor for the L1 supplementary term
+
+            # DSNT here: loss += (torch.nn.L1Loss()(pred_vox) * 0.01) # scaling factor for the L1 supplementary term
             return output, loss
 
     def _is_best_eval_score(self, eval_score):

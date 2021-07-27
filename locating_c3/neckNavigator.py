@@ -1,5 +1,9 @@
-
+# 27/07/2021
+# Hermione Warr and Olivia Murray
+# Neck Navigator Model
 # code taken and adapted from https://github.com/rrr-uom-projects/3DSegmentationNetwork/blob/master/headHunter/models.py with permission
+
+#imports
 import os
 from collections import OrderedDict
 
@@ -8,11 +12,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 #####################################################################################
-###############################  Head Hunter model ##################################
+############################  Neck Navigator model ##################################
 #####################################################################################
-class headHunter(nn.Module):
+class neckNavigator(nn.Module):
     def __init__(self, filter_factor=2, targets=1, in_channels=3):
-        super(headHunter, self).__init__()
+        super(neckNavigator, self).__init__()
         ff = filter_factor # filter factor (easy net scaling)
         # Input --> (3, 48, 120, 120)
         # conv layers set 1 - down 1
