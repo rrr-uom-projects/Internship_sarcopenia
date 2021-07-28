@@ -4,7 +4,7 @@
 # train_neckNavigator.py
 
 #imports
-from locating_c3.neckNavigatorTester import neckNavigatorTest
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -29,7 +29,7 @@ from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
 from neckNavigatorTester import neckNavigatorTest
-
+from utils import PrintSlice , GetSliceNumber
 
 def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
@@ -105,13 +105,14 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, patience=50, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=4, patience=50, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()
-    
-    c3s, segments = neckNavigatorTest(model, test_dataloader)
-    
+
+    tester = neckNavigatorTest(model, test_dataloader)
+    c3s, segments = tester[0], tester[1]
+    PrintSlice(c3s, segments)
 
     return
     
