@@ -2,7 +2,8 @@
 #created: 09/07/21
 #last updated: 19/07/2021
 #hermione 
-
+#%%
+from SimpleITK.extra import Resample
 from kornia.augmentation.augmentation3d import CenterCrop3D
 import numpy as np
 import SimpleITK as sitk
@@ -18,6 +19,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from skimage import measure
 from scipy.ndimage import binary_fill_holes
+from skimage.transform import rescale, resize
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
@@ -86,20 +88,30 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
 def cropping(inp: np.ndarray, tar: np.ndarray ):
     #working one but z axis crop needs improving
     x, y= inp, tar
-    print("ct max: ", np.max(x))
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
     coords = center_of_mass(x)
-    print("coords: ", coords)
-    size =130
+    size =126
     x_min = int(((coords[1] - size)+126)/2)
     x_max = int(((coords[1] + size)+386)/2)
     y_min = int(((coords[2] - size)+126)/2)
     y_max = int(((coords[2] + size)+386)/2)
-    if (x.shape[0]>=117):
+    #z crop
+    z_size = 112
+    z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
+    
+    if (z_size < x.shape[0] < 200):
         print("True", x.shape[0])
+        #z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
+    elif (200 < x.shape[0]):
+        print("big boi", x.shape[0])
+        if(x.shape[0] > int(coords[0])+z_size):
+            z_coords = {"z_min": int(coords[0]), "z_max": int(coords[0])+z_size}
+        
     else:
-        print("too small ffs")
-    x, y = inp[(x.shape[0]-117):,x_min:x_max,y_min:y_max], tar[(x.shape[0]-117):,x_min:x_max,y_min:y_max]
+        print("too small ffs: ", x.shape[0])
+
+    x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[(x.shape[0]-z_size):,x_min:x_max,y_min:y_max]
+    
     return x, y
 
 def sphereMask(tar: np.ndarray):
@@ -113,12 +125,16 @@ def sphereMask(tar: np.ndarray):
     r=3
     sphere = create_bin_sphere(arr_size, sphere_center, r)
     print("sphere details", sphere.shape, np.unique(sphere))
+    skip = False
+    if (max(np.unique(sphere)) != 1):
+        print("problematic")
+        skip = True
     #Plot the result
     # fig =plt.figure(figsize=(6,6))
     # ax = plt.axes(projection='3d')
     # ax.voxels(sphere, edgecolor='red')
     # plt.show()
-    return sphere
+    return sphere, skip
 
 class preprocessing():
     def __init__(self,
@@ -144,7 +160,6 @@ class preprocessing():
         target_ID = self.targets[index]
 
         # Load input and target
-        #x, y = imread(input_ID), imread(target_ID)
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
@@ -155,22 +170,21 @@ class preprocessing():
         # Preprocessing
         if self.cropping is not None:
             x, y = self.cropping(x, y)
-            #data = self.cropping(data)
-        
+            
         if self.heatmap is not None:
-            y = self.heatmap(y)
-            print("adding sphere: ", y.shape)
+            y,_ = self.heatmap(y)
 
         if self.transform is not None:
             x, y = self.transform(x), self.transform(y)
-            #data = self.transform(data)
-
+            
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
-            #data = self.normalise(data)
-
-        # Typecasting
-        #x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
+            
+        #downsampling #[32,128,128]
+        x = rescale(x, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
+        y = rescale(y, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
+        #x = Resample(x,[32,128,128])
+        #y = Resample(y,[32,128,128])
         data = {'input': x, 'mask': y}  
         return data
 
@@ -204,13 +218,14 @@ def save_preprocessed(inputs, targets, ids):
 
 #main
 #get the file names
-no_patients = 3
-skip = []
+no_patients = 35
+skip = [24,25,37]#[8,11,17]
 PathList =  path_list(no_patients, skip)
 inputs = PathList[0]
 targets = PathList[1]
 ids = PathList[2]
 
+new_patient_no = no_patients - len(skip)
 print(inputs.shape)
 #print(targets.shape)
 
@@ -226,23 +241,11 @@ for i in range(len(preprocessed_data)):
     CTs.append(x)
     masks.append(y)
 
-
-# for i in range(len(preprocessed_data)):
-#     samples = next(iter(preprocessed_data))
-#     x, y = samples['input'], samples['mask']
-#     CTs.append(x)
-#     masks.append(y)
-#     print(i)
-#     print(f'x = shape: {x.shape}; type: {y.dtype}')
-#     print(f'x = min: {x.min()}; max: {x.max()}')
-#     print(f'y = shape: {y.shape}; class: {np.unique(y)}; type: {y.dtype}')
 CTs, masks = np.array(CTs), np.array(masks)
 
-#save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids)
-
-def PrintSlice(input, targets):
+def PrintSlice(input, targets, number):
     slice_no = GetSliceNumber(targets)
+    print("patient ", number)
     plt.imshow(input[slice_no,...], cmap = "gray")
     #for i in range(len(targets)):
         #targets[i,...,0][targets[i,...,0] == 0] = np.nan
@@ -251,4 +254,8 @@ def PrintSlice(input, targets):
     plt.show()
 
 for i in range(0,no_patients):
-    PrintSlice(CTs[i], masks[i])
+    PrintSlice(CTs[i], masks[i], i)
+
+#%%
+#save the preprocessed masks and cts for the dataset
+save_preprocessed(CTs, masks, ids)
