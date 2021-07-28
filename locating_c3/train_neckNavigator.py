@@ -4,6 +4,7 @@
 # train_neckNavigator.py
 
 #imports
+from locating_c3.neckNavigatorTester import neckNavigatorTest
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -27,7 +28,7 @@ from neckNavigator import neckNavigator
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
-
+from neckNavigatorTester import neckNavigatorTest
 
 
 def setup_argparse():
@@ -74,6 +75,10 @@ def main():
     
     validation_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = val_inds)
     validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+    
+    test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
+    test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=True)
+
 
     # create model
     model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
@@ -104,7 +109,9 @@ def main():
     
     # Start training
     trainer.fit()
-
+    
+    c3s, segments = neckNavigatorTest(model, test_dataloader)
+    
 
     return
     
