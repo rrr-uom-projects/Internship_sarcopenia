@@ -13,7 +13,6 @@ def GetSliceNumber(segment):
     val = np.sum(seg_slice)
     if val != 0:
       slice_number.append(x)
-  #print(slice_number)
   return int(np.average(slice_number))
 
 def GetTargetCoords(target):

@@ -152,11 +152,11 @@ class neckNavigator_trainer:
                 output, loss = self._forward_pass(ct_im, h_target)
                 val_losses.update(loss.item(), self._batch_size(ct_im))
                 
-                if (batch_idx == 0) and ((self.num_epoch < 100) or (self.num_epoch < 500 and not self.num_epoch%10) or (not self.num_epoch%100)):
+                #if (batch_idx == 0) and ((self.num_epoch < 100) or (self.num_epoch < 500 and not self.num_epoch%10) or (not self.num_epoch%100)):
                     # plot im
-                    h_target = h_target.cpu().numpy()[which_to_show]
-                    output = output.cpu().numpy()[which_to_show]
-                    print(f'target: {h_target}')
+                    #h_target = h_target.cpu().numpy()[which_to_show]
+                    #output = output.cpu().numpy()[which_to_show]
+                    #print(f'target: {h_target}')
                     
                     
             self._log_stats('val', val_losses.avg)
