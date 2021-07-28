@@ -176,7 +176,7 @@ class neckNavigator_trainer:
             if (output.shape[1] == 1):
                 # single target case
                 pred_vox = torch.tensor([np.unravel_index(torch.argmax(output[i, 0]), output.size()[2:]) for i in range(output.size(0))]).type(torch.FloatTensor)
-
+                
             # DSNT here: loss += (torch.nn.L1Loss()(pred_vox) * 0.01) # scaling factor for the L1 supplementary term
             return output, loss
 

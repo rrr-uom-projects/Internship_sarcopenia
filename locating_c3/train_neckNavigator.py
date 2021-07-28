@@ -100,7 +100,7 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1000, patience=500, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, patience=50, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()
