@@ -21,6 +21,7 @@ from kornia.geometry import transform
 from kornia import augmentation as K
 from kornia.augmentation import AugmentationSequential 
 from kornia.utils import image_to_tensor, tensor_to_image
+import tensorflow as tf
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
 from neckNavigator import neckNavigator
@@ -51,7 +52,7 @@ def main():
     #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
     data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8rs.npz'
-    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_outputs"
+    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/attempt1"
 
     # Create main logger
     logger = get_logger('NeckNavigator_Training')
@@ -102,7 +103,7 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=100, patience=25, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, patience=5, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()

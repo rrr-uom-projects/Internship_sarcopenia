@@ -1,6 +1,6 @@
 #transformations
 #created: 09/07/21
-#last updated: 19/07/2021
+#last updated: 28/07/2021
 #hermione 
 #%%
 from SimpleITK.extra import Resample
