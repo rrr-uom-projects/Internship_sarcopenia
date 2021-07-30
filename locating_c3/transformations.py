@@ -1,6 +1,6 @@
 #transformations
 #created: 09/07/21
-#last updated: 19/07/2021
+#last updated: 28/07/2021
 #hermione 
 #%%
 from SimpleITK.extra import Resample
@@ -89,7 +89,8 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     #working one but z axis crop needs improving
     x, y= inp, tar
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
-    coords = center_of_mass(x)
+    coords = center_of_mass(threshold)
+    print("coords: ", coords)
     size =126
     x_min = int(((coords[1] - size)+126)/2)
     x_max = int(((coords[1] + size)+386)/2)
@@ -109,9 +110,15 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         
     else:
         print("too small ffs: ", x.shape[0])
-
-    x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[(x.shape[0]-z_size):,x_min:x_max,y_min:y_max]
-    
+        small_shape = np.shape(x)
+        print(small_shape)
+        padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
+        padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
+        inp, tar =padded_arr, padded_tar
+        z_coords = {"z_min": 0, "z_max": inp.shape[0]}
+        
+    x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
+    #print(x.shape, y.shape)
     return x, y
 
 def sphereMask(tar: np.ndarray):
@@ -176,10 +183,9 @@ class preprocessing():
 
         if self.transform is not None:
             x, y = self.transform(x), self.transform(y)
-            
+        
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
-            
         #downsampling #[32,128,128]
         x = rescale(x, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
         y = rescale(y, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
@@ -193,7 +199,7 @@ def path_list(no_patients, skip: list):
     path_list_targets = []
     ids = []
 
-    for i in range(1,no_patients+1):
+    for i in range(1,no_patients+len(skip)+1):
         if i not in skip:
             #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
             path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
@@ -225,7 +231,6 @@ inputs = PathList[0]
 targets = PathList[1]
 ids = PathList[2]
 
-new_patient_no = no_patients - len(skip)
 print(inputs.shape)
 #print(targets.shape)
 
@@ -259,3 +264,5 @@ for i in range(0,no_patients):
 #%%
 #save the preprocessed masks and cts for the dataset
 save_preprocessed(CTs, masks, ids)
+
+# %%

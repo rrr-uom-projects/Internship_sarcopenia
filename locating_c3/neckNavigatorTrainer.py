@@ -13,6 +13,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
+from utils import projections
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
@@ -41,7 +42,11 @@ class neckNavigator_trainer:
             self.best_eval_score = best_eval_score
         self.patience = patience
         self.epochs_since_improvement = 0
-        self.writer = SummaryWriter(log_dir=os.path.join(checkpoint_dir, 'logs'))
+        #tensorboard 
+        runs = os.listdir(os.path.join(checkpoint_dir, 'logs'))
+        log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)))
+        os.makedirs(log_dir)
+        self.writer = SummaryWriter(log_dir = log_dir)
         self.fig_dir = os.path.join(checkpoint_dir, 'figs')
         try:
             os.mkdir(self.fig_dir)
@@ -152,11 +157,11 @@ class neckNavigator_trainer:
                 output, loss = self._forward_pass(ct_im, h_target)
                 val_losses.update(loss.item(), self._batch_size(ct_im))
                 
-                if (batch_idx == 0) and ((self.num_epoch < 100) or (self.num_epoch < 500 and not self.num_epoch%10) or (not self.num_epoch%100)):
+                #if (batch_idx == 0) and ((self.num_epoch < 100) or (self.num_epoch < 500 and not self.num_epoch%10) or (not self.num_epoch%100)):
                     # plot im
-                    h_target = h_target.cpu().numpy()[which_to_show]
-                    output = output.cpu().numpy()[which_to_show]
-                    print(f'target: {h_target}')
+                    #h_target = h_target.cpu().numpy()[which_to_show]
+                    #output = output.cpu().numpy()[which_to_show]
+                    #print(f'target: {h_target}')
                     
                     
             self._log_stats('val', val_losses.avg)

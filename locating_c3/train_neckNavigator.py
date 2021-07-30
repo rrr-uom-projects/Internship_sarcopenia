@@ -11,8 +11,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.utils.data as data
 from torch.utils.data import DataLoader
 import numpy as np
-from scipy.stats import norm
-from scipy.ndimage import distance_transform_edt as dist_xfm
+#from scipy.stats import norm
+#from scipy.ndimage import distance_transform_edt as dist_xfm
 import random
 import sys
 import os
@@ -21,6 +21,7 @@ from kornia.geometry import transform
 from kornia import augmentation as K
 from kornia.augmentation import AugmentationSequential 
 from kornia.utils import image_to_tensor, tensor_to_image
+import tensorflow as tf
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
 from neckNavigator import neckNavigator
@@ -46,8 +47,12 @@ def main():
     global args
 
     # decide file paths
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed(3).npz'
-    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    #livs paths
+    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed(3).npz'
+    #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    #herms paths
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8rs.npz'
+    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
     # Create main logger
     logger = get_logger('NeckNavigator_Training')
@@ -87,8 +92,6 @@ def main():
     # Log the number of learnable parameters
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
-
-
     # Create the optimizer
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.005)
 
@@ -100,7 +103,7 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1000, patience=500, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, patience=5, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()
