@@ -32,6 +32,15 @@ def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp)
   return gauss
 
+def PrintSlice(input, targets):
+    slice_no = GetSliceNumber(targets)
+    plt.imshow(input[slice_no,...], cmap = "gray")
+    #for i in range(len(targets)):
+        #targets[i,...,0][targets[i,...,0] == 0] = np.nan
+    plt.imshow(targets[slice_no,...], cmap = "cool", alpha = 0.5)
+    plt.axis('off')
+    plt.show()
+
 def projections(inp: torch.tensor, msk: torch.tensor):
   cor, sag, ax = 0,1,2
   inp = inp.cpu().detach().numpy()
@@ -40,3 +49,4 @@ def projections(inp: torch.tensor, msk: torch.tensor):
   sagital = np.array(np.max(inp, axis = sag), np.average(inp, axis = sag), np.std(inp, axis=sag), np.max(msk, axis = sag))
   axial = np.array(np.max(inp, axis = ax), np.average(inp, axis = ax), np.std(inp, axis=ax), np.max(msk, axis = ax))
   return coronal, sagital, axial
+
