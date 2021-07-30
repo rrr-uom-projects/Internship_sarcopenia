@@ -13,6 +13,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
+from utils import projections
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
@@ -41,7 +42,11 @@ class neckNavigator_trainer:
             self.best_eval_score = best_eval_score
         self.patience = patience
         self.epochs_since_improvement = 0
-        self.writer = SummaryWriter(log_dir=os.path.join(checkpoint_dir, 'logs'))
+        #tensorboard 
+        runs = os.listdir(os.path.join(checkpoint_dir, 'logs'))
+        log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)))
+        os.makedirs(log_dir)
+        self.writer = SummaryWriter(log_dir = log_dir)
         self.fig_dir = os.path.join(checkpoint_dir, 'figs')
         try:
             os.mkdir(self.fig_dir)

@@ -10,12 +10,9 @@ from skimage.io import imread
 from torch.utils.data import DataLoader, TensorDataset, Dataset
 import SimpleITK as sitk
 import numpy as np
-import albumentations as A
-from albumentations.pytorch import ToTensor
 from kornia import augmentation as K
 from kornia.augmentation import AugmentationSequential 
 from kornia.utils import image_to_tensor, tensor_to_image
-from torchvision.transforms import transforms
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from utils import GetSliceNumber

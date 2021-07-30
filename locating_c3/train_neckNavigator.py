@@ -11,8 +11,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.utils.data as data
 from torch.utils.data import DataLoader
 import numpy as np
-from scipy.stats import norm
-from scipy.ndimage import distance_transform_edt as dist_xfm
+#from scipy.stats import norm
+#from scipy.ndimage import distance_transform_edt as dist_xfm
 import random
 import sys
 import os
@@ -52,7 +52,7 @@ def main():
     #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
     data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8rs.npz'
-    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
     # Create main logger
     logger = get_logger('NeckNavigator_Training')
