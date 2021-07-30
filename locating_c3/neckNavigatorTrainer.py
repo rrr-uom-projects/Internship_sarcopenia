@@ -231,6 +231,9 @@ class neckNavigator_trainer:
         }
         for tag, value in tag_value.items():
             self.writer.add_scalar(tag, value, self.num_iterations)
+    #def _log_images(self, ):
+        #images = projections(inp, mask)
+        #tf.summary.image("predictions", images[0], step=epoch)
 
     def _log_params(self):
         self.logger.info('Logging model parameters and gradients')
