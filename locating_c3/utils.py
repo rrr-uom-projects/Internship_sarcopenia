@@ -5,6 +5,7 @@
 import numpy as np
 import scipy.ndimage as nd
 import torch
+import matplotlib.pyplot as plt
 
 def GetSliceNumber(segment):
   slice_number = []
@@ -34,6 +35,7 @@ def Guassian(inp: np.ndarray):
 
 def PrintSlice(input, targets):
     slice_no = GetSliceNumber(targets)
+    print()
     plt.imshow(input[slice_no,...], cmap = "gray")
     #for i in range(len(targets)):
         #targets[i,...,0][targets[i,...,0] == 0] = np.nan
@@ -41,12 +43,37 @@ def PrintSlice(input, targets):
     plt.axis('off')
     plt.show()
 
-def projections(inp: torch.tensor, msk: torch.tensor):
+def projections(inp, msk):
   cor, sag, ax = 0,1,2
-  inp = inp.cpu().detach().numpy()
-  msk = msk.cpu().detach().numpy()
-  coronal = np.array(np.max(inp, axis = cor), np.average(inp, axis = cor), np.std(inp, axis=cor), np.max(msk, axis = cor))
-  sagital = np.array(np.max(inp, axis = sag), np.average(inp, axis = sag), np.std(inp, axis=sag), np.max(msk, axis = sag))
-  axial = np.array(np.max(inp, axis = ax), np.average(inp, axis = ax), np.std(inp, axis=ax), np.max(msk, axis = ax))
+  # if inp.type == torch.tensor:
+  #   inp = inp.cpu().detach().numpy()
+  #   msk = msk.cpu().detach().numpy()
+  # coronal = (np.max(inp, axis = cor), np.average(inp, axis = cor), np.std(inp, axis=cor))
+  # holder = np.zeros((*(inp.shape), 3))
+  # for i, img in enumerate(coronal):
+  #       holder[..., i] = coronal
+  # print(coronal.shape)
+  # sagital = np.array[np.max(inp, axis = sag), np.average(inp, axis = sag), np.std(inp, axis=sag)]
+  # axial = np.array[np.max(inp, axis = ax), np.average(inp, axis = ax), np.std(inp, axis=ax)]
+  coronal = np.max(inp, axis = cor)
+  sagital = np.max(inp, axis = sag)
+  axial = np.max(inp, axis = ax)
+  cor_mask = np.max(msk, axis = cor)
+  sag_mask = np.max(msk, axis = sag)
+  ax_mask = np.max(msk, axis = ax)
+  
+  fig = plt.figure(figsize=(8, 8))
+  ax = []
+  columns = 3
+  rows = 1
+  images = (coronal,sagital,axial)
+  masks = (cor_mask, sag_mask, ax_mask)
+  for i in range(columns*rows):
+    # create subplot and append to ax
+    ax.append(fig.add_subplot(rows, columns, i+1) )
+    ax[-1].set_title("ax:"+str(i))
+    plt.imshow(images[i], cmap="gray")
+    plt.imshow(masks[i], cmap="cool", alpha=0.5)
+  plt.show()
   return coronal, sagital, axial
 

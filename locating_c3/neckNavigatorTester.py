@@ -7,7 +7,7 @@ import torch
 import numpy as np
 
 device='cuda:0'
-class neckNavigatorTest :
+class neckNavigatorTest:
     def __init__(self, model, test_dataloader):
         self.model = model
         self.test_dataloader = test_dataloader
@@ -19,23 +19,26 @@ class neckNavigatorTest :
         for batch_idx, test_data in enumerate(self.test_dataloader):
              
            test_em, test_lab = test_data[0].to(device), test_data[1].to(device)
-           test_em = test_em.type(torch.float32)
+           test_em = test_em.type(torch.FloatTensor)
            output = self.model(test_em)
            print("output shape: ", output.shape)
-           test_output = output.cpu()
-           sigmoid = 1/(1 + np.exp(-test_output.detach().numpy()))
+           test_output = output.squeeze().cpu().detach().numpy()
+           print(test_em.shape)
+           sigmoid = 1/(1 + np.exp(-test_output))
            segment = (sigmoid > 0.5)
            print("np unique segment: ", np.unique(segment))
-           if int == 0:
-              segments == segment
-              c3s == test_em
-           else:
-               print("segments size :", np.array(segments).shape, "segment size: ", np.array(segment).shape)
-               segments = np.append(segments, np.array(segment))
-               c3s = np.append(c3s, np.array(test_em.cpu()))
-  
-        segments = np.array(segments)
-        c3s = np.array(c3s)
+        #    if int == 0:
+        #       segments == segment
+        #       c3s == test_em.cpu().detach().numpy()
+        #    else:
+        #        print("segments size :", np.array(segments).shape, "segment size: ", np.array(segment).shape)
+        #        segments = np.append(segments, np.array(segment))
+        #        c3s = np.append(c3s, np.array(test_em.cpu().detach().numpy())
+           c3s.append(test_em.squeeze().cpu().detach().numpy())
+           segments.append(segment)
+
+        segments = np.asarray(segments)
+        c3s = np.asarray(c3s)
         return c3s, segments
 
 
