@@ -81,7 +81,7 @@ def main():
     validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
-    test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+    test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     # create model
     model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)

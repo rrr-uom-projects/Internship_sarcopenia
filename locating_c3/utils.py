@@ -4,6 +4,7 @@
 
 import numpy as np
 import scipy.ndimage as nd
+from scipy.ndimage.measurements import center_of_mass
 import torch
 import matplotlib.pyplot as plt
 
@@ -20,13 +21,23 @@ def GetSliceNumber(segment):
 def GetTargetCoords(target):
     coords = []
     target = np.asarray(target)
-    max_range = len(target)
-    for x in range(0,max_range):
-        seg_slice_2 = target[x,:,:]
-        val = np.sum(seg_slice_2)
-        if val != 0:
-            slice_number = x
-
+    coords  = center_of_mass(target)
+    #range = target.shape
+    # for z in range(0,range[0]):
+    #     seg_slice_2 = target[z,:,:]
+    #     val = np.sum(seg_slice_2)
+    #     if val != 0:
+    #         coords.append(z)
+    # for x in range(0,range[1]):
+    #     seg_slice_2 = target[:,x,:]
+    #     val = np.sum(seg_slice_2)
+    #     if val != 0:
+    #         coords.append(x)
+    # for y in range(0,range[2]):
+    #     seg_slice_2 = target[...,y]
+    #     val = np.sum(seg_slice_2)
+    #     if val != 0:
+    #         coords.append(y)
     return coords
 
 def Guassian(inp: np.ndarray):
@@ -44,20 +55,20 @@ def PrintSlice(input, targets):
     plt.show()
 
 def projections(inp, msk):
-  cor, sag, ax = 0,1,2
+  cor, sag, ax = 1,2,0
   # if inp.type == torch.tensor:
   #   inp = inp.cpu().detach().numpy()
   #   msk = msk.cpu().detach().numpy()
-  # coronal = (np.max(inp, axis = cor), np.average(inp, axis = cor), np.std(inp, axis=cor))
+  coronal = (np.max(inp, axis = cor), np.average(inp, axis = cor), np.std(inp, axis=cor))
   # holder = np.zeros((*(inp.shape), 3))
   # for i, img in enumerate(coronal):
   #       holder[..., i] = coronal
   # print(coronal.shape)
-  # sagital = np.array[np.max(inp, axis = sag), np.average(inp, axis = sag), np.std(inp, axis=sag)]
-  # axial = np.array[np.max(inp, axis = ax), np.average(inp, axis = ax), np.std(inp, axis=ax)]
-  coronal = np.max(inp, axis = cor)
-  sagital = np.max(inp, axis = sag)
-  axial = np.max(inp, axis = ax)
+  sagital = (np.max(inp, axis = sag), np.average(inp, axis = sag), np.std(inp, axis=sag))
+  axial = (np.max(inp, axis = ax), np.average(inp, axis = ax), np.std(inp, axis=ax))
+  #coronal = np.max(inp, axis = cor)
+  #sagital = np.max(inp, axis = sag)
+  #axial = np.max(inp, axis = ax)
   cor_mask = np.max(msk, axis = cor)
   sag_mask = np.max(msk, axis = sag)
   ax_mask = np.max(msk, axis = ax)
@@ -70,7 +81,7 @@ def projections(inp, msk):
   masks = (cor_mask, sag_mask, ax_mask)
   for i in range(columns*rows):
     # create subplot and append to ax
-    ax.append(fig.add_subplot(rows, columns, i+1) )
+    ax.append(fig.add_subplot(rows, columns, i+1))
     ax[-1].set_title("ax:"+str(i))
     plt.imshow(images[i], cmap="gray")
     plt.imshow(masks[i], cmap="cool", alpha=0.5)
