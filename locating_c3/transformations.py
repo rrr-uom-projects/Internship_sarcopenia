@@ -118,7 +118,7 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
         
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-    #print(x.shape, y.shape)
+    print(x.shape, y.shape)
     return x, y
 
 def sphereMask(tar: np.ndarray):
@@ -187,8 +187,8 @@ class preprocessing():
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
         #downsampling #[32,128,128]
-        x = rescale(x, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
-        y = rescale(y, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
+        #x = rescale(x, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
+        #y = rescale(y, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
         #x = Resample(x,[32,128,128])
         #y = Resample(y,[32,128,128])
         data = {'input': x, 'mask': y}  
@@ -250,16 +250,23 @@ CTs, masks = np.array(CTs), np.array(masks)
 
 def PrintSlice(input, targets, number):
     slice_no = GetSliceNumber(targets)
-    print("patient ", number)
+    #print("patient ", number)
     plt.imshow(input[slice_no,...], cmap = "gray")
     #for i in range(len(targets)):
         #targets[i,...,0][targets[i,...,0] == 0] = np.nan
     plt.imshow(targets[slice_no,...], cmap = "cool", alpha = 0.5)
     plt.axis('off')
-    plt.show()
+    
 
+fig  = plt.figure(figsize=(150,25))
+ax = []
+columns = 7
+rows = 5
 for i in range(0,no_patients):
+    ax.append(fig.add_subplot(rows, columns, i+1))
+    ax[-1].set_title(str(i+1))
     PrintSlice(CTs[i], masks[i], i)
+plt.show()
 
 #%%
 #save the preprocessed masks and cts for the dataset
