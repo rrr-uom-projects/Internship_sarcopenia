@@ -13,7 +13,7 @@ import random
 from scipy.ndimage.measurements import center_of_mass
 from sklearn import preprocessing
 import torch
-from utils import GetSliceNumber, Guassian
+from utils import GetSliceNumber, Guassian, projections
 import cv2
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
@@ -27,12 +27,13 @@ def normalize_01(inp: np.ndarray):
     level = 50
     vmax = level/2 + window
     vmin = level/2-window
+    thresh = 1500
     for i in range(len(inp)):
+        inp[i][inp[i] > thresh] = 0
         inp[i][inp[i] > vmax] = vmax
         inp[i][inp[i] < vmin] = vmin
     inp_out = (inp - np.min(inp)) / np.ptp(inp)
     return inp_out
-
 
 def normalize(inp: np.ndarray, mean: float, std: float):
     """Normalize based on mean and standard deviation."""
@@ -111,7 +112,7 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     else:
         print("too small ffs: ", x.shape[0])
         small_shape = np.shape(x)
-        print(small_shape)
+        #print(small_shape)
         padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         inp, tar =padded_arr, padded_tar
@@ -170,8 +171,8 @@ class preprocessing():
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
-        print("max, min: ",np.max(x), np.min(x))
-        print("type:", x.dtype, y.dtype)
+        #print("max, min: ",np.max(x), np.min(x))
+        #print("type:", x.dtype, y.dtype)
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         
         # Preprocessing
@@ -189,8 +190,13 @@ class preprocessing():
         #downsampling #[32,128,128]
         #x = rescale(x, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
         #y = rescale(y, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
+        x = rescale(x, scale=((16/7),1,1), order=0, multichannel=False,  anti_aliasing=False)
+        y = rescale(y, scale=((16/7),1,1), order=0, multichannel=False,  anti_aliasing=False)
         #x = Resample(x,[32,128,128])
         #y = Resample(y,[32,128,128])
+        
+        print("shape: ", x.shape, y.shape)
+        #print("max, min: ", np.max(x), np.min(x))
         data = {'input': x, 'mask': y}  
         return data
 
@@ -214,7 +220,7 @@ def path_list(no_patients, skip: list):
 
 def save_preprocessed(inputs, targets, ids):
     #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
-    path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
+    path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed_8.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
     for i in range(len(targets)):
         print("slice no: ",GetSliceNumber(targets[i]))
@@ -224,8 +230,9 @@ def save_preprocessed(inputs, targets, ids):
 
 #main
 #get the file names
-no_patients = 35
-skip = [24,25,37]#[8,11,17]
+no_patients = 3
+#skip = [24,25,37]
+skip = []
 PathList =  path_list(no_patients, skip)
 inputs = PathList[0]
 targets = PathList[1]
@@ -258,18 +265,19 @@ def PrintSlice(input, targets, number):
     plt.axis('off')
     
 
-fig  = plt.figure(figsize=(150,25))
-ax = []
-columns = 7
-rows = 5
-for i in range(0,no_patients):
-    ax.append(fig.add_subplot(rows, columns, i+1))
-    ax[-1].set_title(str(i+1))
-    PrintSlice(CTs[i], masks[i], i)
-plt.show()
+# fig  = plt.figure(figsize=(150,25))
+# ax = []
+# columns = 4
+# rows = 2
+# for i in range(0,no_patients):
+#     ax.append(fig.add_subplot(rows, columns, i+1))
+#     ax[-1].set_title(str(i+1))
+#     PrintSlice(CTs[i], masks[i], i)
+# plt.show()
 
+projections(CTs[0], masks[0])
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids)
+#save_preprocessed(CTs, masks, ids)
 
 # %%
