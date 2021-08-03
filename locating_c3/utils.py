@@ -1,6 +1,7 @@
 #utils
 #created: 20/07/2021
 #hermione
+#oh lord heal my branch
 
 import numpy as np
 import scipy.ndimage as nd
@@ -56,13 +57,9 @@ def projections(inp, msk, order,  type = "numpy"):
   coronal = arrange(inp, cor)
   sagital = arrange(inp, sag)
   axial = arrange(inp, axi)
-  #coronal = np.stack((np.average(inp, axis = cor), np.max(inp, axis = cor), np.std(inp, axis=cor)),axis=2)
   # holder = np.zeros((*(inp.shape), 3))
   # for i, img in enumerate(coronal):
   #       holder[..., i] = coronal
-  # print(coronal.shape)
-  #sagital = np.stack((np.average(inp, axis = sag), np.max(inp, axis = sag), np.std(inp, axis=sag)),axis=2)
-  #axial = np.stack((np.average(inp, axis = ax), np.max(inp, axis = ax), np.std(inp, axis=ax)),axis=2)
   cor_mask = np.max(msk, axis = cor)
   sag_mask = np.max(msk, axis = sag)
   ax_mask = np.max(msk, axis = axi)

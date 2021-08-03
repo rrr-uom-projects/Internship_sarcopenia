@@ -184,8 +184,8 @@ class preprocessing():
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
         #downsampling #[32,128,128]
-        x = rescale(x, scale=((16/7),1,1), order=0, multichannel=False,  anti_aliasing=False)
-        y = rescale(y, scale=((16/7),1,1), order=0, multichannel=False,  anti_aliasing=False)
+        x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
+        y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
        
         print("shape: ", x.shape, y.shape)
         #print("max, min: ", np.max(x), np.min(x))
@@ -250,6 +250,7 @@ for i in range(0,no_patients):
     ax.append(fig.add_subplot(rows, columns, i+1))
     ax[-1].set_title(str(i+1))
     PrintSlice(CTs[i], masks[i])
+    #projections(CTs[i], masks[i], order=[1,2,0])
 plt.show()
 
 #projections(CTs[0], masks[0], order=[1,2,0])
