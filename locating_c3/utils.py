@@ -26,15 +26,15 @@ def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp)
   return gauss
 
-def PrintSlice(input, targets):
+def PrintSlice(input, targets, show = False):
     slice_no = GetSliceNumber(targets)
-    print()
     plt.imshow(input[slice_no,...], cmap = "gray")
     #for i in range(len(targets)):
         #targets[i,...,0][targets[i,...,0] == 0] = np.nan
     plt.imshow(targets[slice_no,...], cmap = "cool", alpha = 0.5)
     plt.axis('off')
-    plt.show()
+    if show:
+      plt.show()
 
 def projections(inp, msk, order,  type = "numpy"):
   cor, sag, axi = 0,1,2

@@ -13,7 +13,7 @@ import random
 from scipy.ndimage.measurements import center_of_mass
 from sklearn import preprocessing
 import torch
-from utils import GetSliceNumber, Guassian, projections
+from utils import GetSliceNumber, Guassian, projections, PrintSlice
 import cv2
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
@@ -103,7 +103,6 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     
     if (z_size < x.shape[0] < 200):
         print("True", x.shape[0])
-        #z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
     elif (200 < x.shape[0]):
         print("big boi", x.shape[0])
         if(x.shape[0] > int(coords[0])+z_size):
@@ -112,7 +111,6 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     else:
         print("too small ffs: ", x.shape[0])
         small_shape = np.shape(x)
-        #print(small_shape)
         padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         inp, tar =padded_arr, padded_tar
@@ -171,8 +169,6 @@ class preprocessing():
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
-        #print("max, min: ",np.max(x), np.min(x))
-        #print("type:", x.dtype, y.dtype)
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         
         # Preprocessing
@@ -188,13 +184,9 @@ class preprocessing():
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
         #downsampling #[32,128,128]
-        #x = rescale(x, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
-        #y = rescale(y, scale=0.5, order=0, multichannel=False, preserve_range=True, anti_aliasing=False)
         x = rescale(x, scale=((16/7),1,1), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/7),1,1), order=0, multichannel=False,  anti_aliasing=False)
-        #x = Resample(x,[32,128,128])
-        #y = Resample(y,[32,128,128])
-        
+       
         print("shape: ", x.shape, y.shape)
         #print("max, min: ", np.max(x), np.min(x))
         data = {'input': x, 'mask': y}  
@@ -209,8 +201,6 @@ def path_list(no_patients, skip: list):
         if i not in skip:
             #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
             path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
-            # path_list_inputs.append(path + "inputs/P" + str(i) + "_RT_sim_ct.nii.gz")
-            # path_list_targets.append(path + "targets/P" + str(i) + "_RT_sim_seg.nii.gz")
             path_list_inputs.append(path + "/P" + str(i) + "_RT_sim_ct.nii.gz")
             path_list_targets.append(path + "/P" + str(i) + "_RT_sim_seg.nii.gz")
             id = "01-00" + str(i)
@@ -230,16 +220,13 @@ def save_preprocessed(inputs, targets, ids):
 
 #main
 #get the file names
-no_patients = 1
+no_patients = 8
 #skip = [24,25,37]
 skip = []
 PathList =  path_list(no_patients, skip)
 inputs = PathList[0]
 targets = PathList[1]
 ids = PathList[2]
-
-print(inputs.shape)
-#print(targets.shape)
 
 #apply preprocessing
 preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= sphereMask)
@@ -253,31 +240,19 @@ for i in range(len(preprocessed_data)):
     CTs.append(x)
     masks.append(y)
 
-CTs, masks = np.array(CTs), np.array(masks)
+CTs, masks = np.array(CTs), np.array(masks)   
 
-def PrintSlice(input, targets, number):
-    slice_no = GetSliceNumber(targets)
-    #print("patient ", number)
-    plt.imshow(input[slice_no,...], cmap = "gray")
-    #for i in range(len(targets)):
-        #targets[i,...,0][targets[i,...,0] == 0] = np.nan
-    plt.imshow(targets[slice_no,...], cmap = "cool", alpha = 0.5)
-    plt.axis('off')
-    
+fig  = plt.figure(figsize=(150,25))
+ax = []
+columns = 4
+rows = 2
+for i in range(0,no_patients):
+    ax.append(fig.add_subplot(rows, columns, i+1))
+    ax[-1].set_title(str(i+1))
+    PrintSlice(CTs[i], masks[i])
+plt.show()
 
-# fig  = plt.figure(figsize=(150,25))
-# ax = []
-# columns = 4
-# rows = 2
-# for i in range(0,no_patients):
-#     ax.append(fig.add_subplot(rows, columns, i+1))
-#     ax[-1].set_title(str(i+1))
-#     PrintSlice(CTs[i], masks[i], i)
-# plt.show()
-
-projections(CTs[0], masks[0], order=[1,2,0])
+#projections(CTs[0], masks[0], order=[1,2,0])
 #%%
 #save the preprocessed masks and cts for the dataset
 #save_preprocessed(CTs, masks, ids)
-
-# %%
