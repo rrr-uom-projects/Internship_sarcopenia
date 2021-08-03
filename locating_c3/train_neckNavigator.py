@@ -112,7 +112,12 @@ def main():
 
     tester = neckNavigatorTest(model, test_dataloader)
     c3s, segments = tester[0], tester[1]
-    PrintSlice(c3s, segments)
+
+    for i in range(0,2):
+        PrintSlice(np.array(c3s[i,:]), np.array(segments[i,:]))
+
+   # PrintSlice(CTs[i], masks[i])
+    
 
     return
     

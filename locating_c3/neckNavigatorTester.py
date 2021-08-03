@@ -26,16 +26,17 @@ class neckNavigatorTest :
            sigmoid = 1/(1 + np.exp(-test_output.detach().numpy()))
            segment = (sigmoid > 0.5)
            print("np unique segment: ", np.unique(segment))
-           if int == 0:
-              segments == segment
-              c3s == test_em
+           if batch_idx ==0:
+             segments = segment
+             c3s = test_em.detach().cpu()
            else:
-               print("segments size :", np.array(segments).shape, "segment size: ", np.array(segment).shape)
-               segments = np.append(segments, np.array(segment))
-               c3s = np.append(c3s, np.array(test_em.cpu()))
+             print("segments size :", np.array(segments).shape, "segment size: ", np.array(segment).shape)
+             segments = np.append(segments, np.array(segment), axis = 0)
+             c3s = np.append(c3s, np.array(test_em.detach().cpu()), axis = 0)
   
         segments = np.array(segments)
         c3s = np.array(c3s)
+        print("end of test shape: ", c3s.shape, segments.shape)
         return c3s, segments
 
 

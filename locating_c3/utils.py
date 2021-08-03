@@ -4,6 +4,8 @@
 
 import numpy as np
 import scipy.ndimage as nd
+import matplotlib.pyplot as plt
+from mpl_toolkits import mplot3d
 
 def GetSliceNumber(segment):
   slice_number = []
@@ -34,6 +36,8 @@ def Guassian(inp: np.ndarray):
 
 def PrintSlice(input, targets):
     slice_no = GetSliceNumber(targets)
+    print("slice no: ", slice_no)
+    print("input shape: ", input.shape)
     plt.imshow(input[slice_no,...], cmap = "gray")
     #for i in range(len(targets)):
         #targets[i,...,0][targets[i,...,0] == 0] = np.nan
