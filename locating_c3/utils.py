@@ -36,23 +36,26 @@ def PrintSlice(input, targets):
     plt.axis('off')
     plt.show()
 
-def projections(inp, msk):
+def projections(inp, msk, order,  type = "numpy"):
   cor, sag, axi = 0,1,2
-  proj_order = [1,2,0]
-  # if inp.type == torch.tensor:
-  #   inp = inp.cpu().detach().numpy()
-  #   msk = msk.cpu().detach().numpy()
-  def arrange(input, ax, order):
+  proj_order = order
+  if type == "tensor":
+     inp = inp.cpu().detach().numpy()
+     msk = msk.cpu().detach().numpy()
+
+  def arrange(input, ax):
+    #to return the projection in whatever order.
     av = np.average(input, axis = ax)
     mx = np.max(input, axis = ax)
     std = np.std(input, axis=ax)
     ord_list = [mx,av,std]
-    ord_list[:] = [ord_list[i] for i in order]
-    out = np.stack((ord_list),axis=2)
+    ord_list[:] = [ord_list[i] for i in proj_order]
+    out = np.stack((ord_list), axis=2)
     return out
-  coronal = arrange(inp, cor, order = proj_order)
-  sagital = arrange(inp, sag, order = proj_order)
-  axial = arrange(inp, axi, order = proj_order)
+
+  coronal = arrange(inp, cor)
+  sagital = arrange(inp, sag)
+  axial = arrange(inp, axi)
   #coronal = np.stack((np.average(inp, axis = cor), np.max(inp, axis = cor), np.std(inp, axis=cor)),axis=2)
   # holder = np.zeros((*(inp.shape), 3))
   # for i, img in enumerate(coronal):

@@ -275,7 +275,7 @@ def PrintSlice(input, targets, number):
 #     PrintSlice(CTs[i], masks[i], i)
 # plt.show()
 
-projections(CTs[0], masks[0])
+projections(CTs[0], masks[0], order=[1,2,0])
 #%%
 #save the preprocessed masks and cts for the dataset
 #save_preprocessed(CTs, masks, ids)
