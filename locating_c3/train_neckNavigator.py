@@ -22,6 +22,7 @@ from kornia import augmentation as K
 from kornia.augmentation import AugmentationSequential 
 from kornia.utils import image_to_tensor, tensor_to_image
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
 from neckNavigator import neckNavigator
@@ -51,7 +52,7 @@ def main():
     #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed(3).npz'
     #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8rs.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8square.npz'
     checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
     # Create main logger
@@ -117,7 +118,19 @@ def main():
     c3 = c3s[0][0]
     segment = segments[0][0]
     #PrintSlice(c3, segment)
-    projections(c3,segment)
+    #projections(c3,segment, order = [1,2,0])
+    fig  = plt.figure(figsize=(150,25))
+    ax = []
+    columns = 4
+    rows = 2
+    test_patients = 2
+    for i in range(0,test_patients):
+        ax.append(fig.add_subplot(rows, columns, i+1))
+        ax[-1].set_title(str(i+1))
+        #PrintSlice(c3s[0][i], segments[0][i])
+        projections(c3s[0][i], segments[0][i], order=[1,2,0])
+    plt.show()
+
     return
     
     
