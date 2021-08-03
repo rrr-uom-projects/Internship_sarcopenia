@@ -230,7 +230,7 @@ def save_preprocessed(inputs, targets, ids):
 
 #main
 #get the file names
-no_patients = 3
+no_patients = 1
 #skip = [24,25,37]
 skip = []
 PathList =  path_list(no_patients, skip)
