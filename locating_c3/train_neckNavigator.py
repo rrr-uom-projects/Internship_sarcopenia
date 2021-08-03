@@ -4,7 +4,6 @@
 # train_neckNavigator.py
 
 #imports
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -30,7 +29,7 @@ from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
 from neckNavigatorTester import neckNavigatorTest
-from utils import PrintSlice , GetSliceNumber
+from utils import PrintSlice , GetSliceNumber, projections
 
 def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
@@ -80,10 +79,9 @@ def main():
     
     validation_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = val_inds)
     validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
-    
-    test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
-    test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=True)
 
+    test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
+    test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     # create model
     model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
@@ -108,16 +106,18 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-    val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=4, patience=50, iters_to_accumulate=1)
-
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, patience=5, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()
-
     tester = neckNavigatorTest(model, test_dataloader)
     c3s, segments = tester[0], tester[1]
-    PrintSlice(c3s, segments)
-
+    print(segments[0].shape, len(segments))
+    print(c3s[0].shape)
+    c3 = c3s[0][0]
+    segment = segments[0][0]
+    #PrintSlice(c3, segment)
+    projections(c3,segment)
     return
     
     
