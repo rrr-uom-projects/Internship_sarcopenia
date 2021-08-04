@@ -7,6 +7,7 @@ import torch
 import numpy as np
 
 device='cuda:0'
+
 class neckNavigatorTest:
     def __init__(self, model, test_dataloader):
         self.model = model

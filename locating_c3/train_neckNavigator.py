@@ -25,7 +25,8 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-from neckNavigator import neckNavigator
+#from neckNavigator import neckNavigator
+from NeckNavigatorHotMess import neckNavigator, neckNavigator_multi_dsv
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
@@ -85,7 +86,8 @@ def main():
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     # create model
-    model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
+    #model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
+    model = neckNavigator_multi_dsv(filter_factor=2)
     for param in model.parameters():
         param.requires_grad = True
 
@@ -113,12 +115,13 @@ def main():
     trainer.fit()
     tester = neckNavigatorTest(model, test_dataloader)
     c3s, segments = tester[0], tester[1]
+    #gts = test_dataloader
     print(segments[0].shape, len(segments))
     print(c3s[0].shape)
     c3 = c3s[0][0]
     segment = segments[0][0]
     #PrintSlice(c3, segment)
-    #projections(c3,segment, order = [1,2,0])
+    projections(c3,segment, order = [1,2,0])
     fig  = plt.figure(figsize=(150,25))
     ax = []
     columns = 4
@@ -127,8 +130,8 @@ def main():
     for i in range(0,test_patients):
         ax.append(fig.add_subplot(rows, columns, i+1))
         ax[-1].set_title(str(i+1))
-        #PrintSlice(c3s[0][i], segments[0][i])
-        projections(c3s[0][i], segments[0][i], order=[1,2,0])
+        PrintSlice(c3s[0][i], segments[0][i])
+        #projections(c3s[0][i], segments[0][i], order=[1,2,0])
     plt.show()
 
     return

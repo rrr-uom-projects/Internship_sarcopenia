@@ -94,6 +94,7 @@ class neckNavigator(nn.Module):
         # Upsample 1
         x = F.relu(self.bn_r1(self.rc_1(F.interpolate(x, scale_factor=2, mode='trilinear', align_corners=False))))
         x = self.drop_r1(x)
+        #attention here
 
         # Up block 1
         x = F.relu(self.bn7(self.c7(x+skip2)))
