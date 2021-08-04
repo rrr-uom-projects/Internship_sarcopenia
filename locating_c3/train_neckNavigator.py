@@ -86,8 +86,8 @@ def main():
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     # create model
-    #model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
-    model = neckNavigator_multi_dsv(filter_factor=1)
+    model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
+    #model = neckNavigator_multi_dsv(filter_factor=1)
     #model = headHunter_multiHead_deeper(filter_factor=1)
     for param in model.parameters():
         param.requires_grad = True
