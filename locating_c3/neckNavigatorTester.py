@@ -7,6 +7,7 @@ import torch
 import numpy as np
 
 device='cuda:0'
+
 class neckNavigatorTest:
     def __init__(self, model, test_dataloader):
         self.model = model
@@ -25,7 +26,7 @@ class neckNavigatorTest:
            test_output = output.squeeze().cpu().detach().numpy()
            print(test_em.shape)
            sigmoid = 1/(1 + np.exp(-test_output))
-           segment = (sigmoid > 0.5).float()
+           segment = (sigmoid > 0.5).astype(np.float)
            print("np unique segment: ", np.unique(segment))
 
         #    if int == 0:
