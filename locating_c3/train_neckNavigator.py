@@ -8,24 +8,24 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import torch.utils.data as data
+#import torch.utils.data as data
 from torch.utils.data import DataLoader
 import numpy as np
 #from scipy.stats import norm
 #from scipy.ndimage import distance_transform_edt as dist_xfm
-import random
-import sys
-import os
+#import random
+#import sys
+#import os
 import argparse as ap
-from kornia.geometry import transform
-from kornia import augmentation as K
-from kornia.augmentation import AugmentationSequential 
-from kornia.utils import image_to_tensor, tensor_to_image
-import tensorflow as tf
+#from kornia.geometry import transform
+#from kornia import augmentation as K
+#from kornia.augmentation import AugmentationSequential 
+#from kornia.utils import image_to_tensor, tensor_to_image
+#import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-#from neckNavigator import neckNavigator
+#from neckNavigator import neckNavigator, headHunter_multiHead_deeper
 from NeckNavigatorHotMess import neckNavigator, neckNavigator_multi_dsv
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
@@ -87,7 +87,8 @@ def main():
 
     # create model
     #model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
-    model = neckNavigator_multi_dsv(filter_factor=2)
+    model = neckNavigator_multi_dsv(filter_factor=1)
+    #model = headHunter_multiHead_deeper(filter_factor=1)
     for param in model.parameters():
         param.requires_grad = True
 

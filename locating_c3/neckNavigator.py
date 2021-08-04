@@ -272,21 +272,22 @@ class headHunter_multiHead_deeper(nn.Module):
         ff = filter_factor # filter factor (easy net scaling)
         # Input --> (3, 48, 120, 120)
         # conv layers set 1 - down 1
-        self.c1 = nn.Conv3d(in_channels=3, out_channels=int(16*ff), kernel_size=3, padding=1)
+        in_chans = 1
+        self.c1 = nn.Conv3d(in_channels=in_chans, out_channels=int(16*ff), kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm3d(int(16*ff))
         self.drop1 = nn.Dropout3d(p=0.5)
         self.c2 = nn.Conv3d(in_channels=int(16*ff), out_channels=int(32*ff), kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm3d(int(32*ff))
         self.drop2 = nn.Dropout3d(p=0.5)
         # conv layers set 2 - down 2
-        self.c3 = nn.Conv3d(in_channels=int(32*ff)+3, out_channels=int(32*ff), kernel_size=3, padding=1)
+        self.c3 = nn.Conv3d(in_channels=int(32*ff)+in_chans, out_channels=int(32*ff), kernel_size=3, padding=1)
         self.bn3 = nn.BatchNorm3d(int(32*ff))
         self.drop3 = nn.Dropout3d(p=0.5)
         self.c4 = nn.Conv3d(in_channels=int(32*ff), out_channels=int(64*ff), kernel_size=3, padding=1)
         self.bn4 = nn.BatchNorm3d(int(64*ff))
         self.drop4 = nn.Dropout3d(p=0.5)
         # conv layers set 3 - base
-        self.c5 = nn.Conv3d(in_channels=int(64*ff)+3, out_channels=int(64*ff), kernel_size=3, padding=1)
+        self.c5 = nn.Conv3d(in_channels=int(64*ff)+in_chans, out_channels=int(64*ff), kernel_size=3, padding=1)
         self.bn5 = nn.BatchNorm3d(int(64*ff))
         self.drop5 = nn.Dropout3d(p=0.5)
         self.c6 = nn.Conv3d(in_channels=int(64*ff), out_channels=int(64*ff), kernel_size=3, padding=1)
@@ -388,7 +389,7 @@ class headHunter_multiHead_deeper(nn.Module):
         x_b = self.drop10_b(x_b)
 
         # Predictions
-        return torch.cat((self.pred_a(x_a), self.pred_b(x_b)), axis=1)
+        return torch.cat([self.pred_a(x_a), self.pred_b(x_b)], dim=1)
 
     def load_best(self, checkpoint_dir, logger):
         # load previous best weights

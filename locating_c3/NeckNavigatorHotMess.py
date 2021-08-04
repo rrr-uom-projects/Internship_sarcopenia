@@ -31,8 +31,8 @@ class neckNavigator(nn.Module):
     def __init__(self, filter_factor=2, targets=1, in_channels=3):
         super(neckNavigator, self).__init__()
         ff = filter_factor # filter factor (easy net scaling)
-        # Input --> (3, 48, 120, 120)
-        #inp --> (3,128,128,128)
+        #old Input --> (3, 48, 120, 120)
+        #new inp --> (1,128,128,128)
         # conv layers set 1 - down 1
         self.c1 = nn.Conv3d(in_channels=in_channels, out_channels=int(16*ff), kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm3d(int(16*ff))
@@ -164,26 +164,26 @@ class neckNavigator(nn.Module):
 
 class neckNavigator_multi_dsv(nn.Module):
     #make ed's multihead a layer deeper and add the deep supervision
-    def __init__(self, filter_factor=2): 
+    def __init__(self, in_channels =1, filter_factor=2): 
         super(neckNavigator_multi_dsv, self).__init__()
         ff = filter_factor # filter factor (easy net scaling)
         # Input --> (3, 48, 120, 120)
         # conv layers set 1 - down 1
-        self.c1 = nn.Conv3d(in_channels=3, out_channels=int(16*ff), kernel_size=3, padding=1)
+        self.c1 = nn.Conv3d(in_channels=in_channels, out_channels=int(16*ff), kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm3d(int(16*ff))
         self.drop1 = nn.Dropout3d(p=0.5)
         self.c2 = nn.Conv3d(in_channels=int(16*ff), out_channels=int(32*ff), kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm3d(int(32*ff))
         self.drop2 = nn.Dropout3d(p=0.5)
         # conv layers set 2 - down 2
-        self.c3 = nn.Conv3d(in_channels=int(32*ff)+3, out_channels=int(32*ff), kernel_size=3, padding=1)
+        self.c3 = nn.Conv3d(in_channels=int(32*ff)+in_channels, out_channels=int(32*ff), kernel_size=3, padding=1)
         self.bn3 = nn.BatchNorm3d(int(32*ff))
         self.drop3 = nn.Dropout3d(p=0.5)
         self.c4 = nn.Conv3d(in_channels=int(32*ff), out_channels=int(64*ff), kernel_size=3, padding=1)
         self.bn4 = nn.BatchNorm3d(int(64*ff))
         self.drop4 = nn.Dropout3d(p=0.5)
         # conv layers set 3 - base
-        self.c5 = nn.Conv3d(in_channels=int(64*ff)+3, out_channels=int(64*ff), kernel_size=3, padding=1)
+        self.c5 = nn.Conv3d(in_channels=int(64*ff)+in_channels, out_channels=int(64*ff), kernel_size=3, padding=1)
         self.bn5 = nn.BatchNorm3d(int(64*ff))
         self.drop5 = nn.Dropout3d(p=0.5)
         self.c6 = nn.Conv3d(in_channels=int(64*ff), out_channels=int(64*ff), kernel_size=3, padding=1)
@@ -229,9 +229,9 @@ class neckNavigator_multi_dsv(nn.Module):
         self.dsv1_a = nn.Conv3d(in_channels=int(16*ff), out_channels=1, kernel_size=1)
         self.dsv1_b = nn.Conv3d(in_channels=int(16*ff), out_channels=1, kernel_size=1)
         # final conv (without any concat)
-        self.pred_a = nn.Conv3d(in_channels=1*2, out_channels=1, kernel_size=1)
-        self.pred_b = nn.Conv3d(in_channels=1*2, out_channels=1, kernel_size=1)
-        # prediction convolutions
+        self.pred_a = nn.Conv3d(in_channels=2, out_channels=1, kernel_size=1)
+        self.pred_b = nn.Conv3d(in_channels=2, out_channels=1, kernel_size=1)
+        #prediction convolutions
         #self.pred_a = nn.Conv3d(in_channels=int(16*ff), out_channels=1, kernel_size=1)
         #self.pred_b = nn.Conv3d(in_channels=int(16*ff), out_channels=1, kernel_size=1)
 
