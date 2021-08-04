@@ -48,8 +48,8 @@ class neckNavigatorDataset(Dataset):
             return voxel_dim
         
         # Cropping and Typecasting
-        x = x[:32,:128,:128]
-        y = y[:32, :128, :128]
+        #x = x[:32,:128,:128]
+        #y = y[:32, :128, :128]
 
         x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
 

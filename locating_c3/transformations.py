@@ -6,18 +6,22 @@
 from kornia.augmentation.augmentation3d import CenterCrop3D
 import numpy as np
 import SimpleITK as sitk
-#import albumentations as A
 import random
-#from albumentations.pytorch import ToTensor
 from scipy.ndimage.measurements import center_of_mass
-from sklearn import preprocessing
+#from sklearn import preprocessing
 import torch
 from utils import GetSliceNumber, Guassian, projections, PrintSlice
 import cv2
+import os
 import matplotlib.pyplot as plt
-from mpl_toolkits import mplot3d
-from skimage import measure
-from scipy.ndimage import binary_fill_holes
+#from skimage import measure
+#from scipy.ndimage import binary_fill_holes
+from skimage.transform import rescale
+#import tarfile
+# path = '/data/sarcopenia/HnN/c3_location.tar'
+# tar = tarfile.open(path)
+# tar.extractall()
+# tar.close()
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
@@ -200,23 +204,39 @@ def path_list(no_patients, skip: list):
         if i not in skip:
             #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
             path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
-
             path_list_inputs.append(path + "/P" + str(i) + "_RT_sim_ct.nii.gz")
             path_list_targets.append(path + "/P" + str(i) + "_RT_sim_seg.nii.gz")
             id = "01-00" + str(i)
             ids.append(id)
     print("no read in: ", len(path_list_inputs))
+
     return np.array(path_list_inputs), np.array(path_list_targets), np.array(ids)
 
+def getFiles(targetdir):
+    ls = []
+    for fname in os.listdir(targetdir):
+        path = os.path.join(targetdir, fname)
+        if os.path.isdir(path):
+            continue    # skip directories
+        ls.append(path)
+    return ls
+
+def path_list2():
+    ids = []
+    im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
+    msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
+    path_list_inputs = sorted(getFiles(im_dir))
+    path_list_targets = sorted(getFiles(msk_dir))
+    return path_list_inputs, path_list_targets
+
 def save_preprocessed(inputs, targets, ids):
-    #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
-    path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed_8.npz'
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
+    #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
     for i in range(len(targets)):
         print("slice no: ",GetSliceNumber(targets[i]))
     np.savez(path, inputs = inputs, masks = targets, ids = ids)
     print("Saved preprocessed data")
-
 
 #main
 #get the file names
@@ -226,11 +246,13 @@ no_patients = 8
 
 
 skip = []
-PathList =  path_list(no_patients, skip)
+#PathList =  path_list(no_patients, skip)
+PathList =  path_list2()
 inputs = PathList[0]
 targets = PathList[1]
-ids = PathList[2]
+#ids = PathList[2]
 
+print("no of patients: ",len(inputs), inputs[0])
 #apply preprocessing
 preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= sphereMask)
 

@@ -8,23 +8,25 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import torch.utils.data as data
+#import torch.utils.data as data
 from torch.utils.data import DataLoader
 import numpy as np
 #from scipy.stats import norm
 #from scipy.ndimage import distance_transform_edt as dist_xfm
-import random
-import sys
-import os
+#import random
+#import sys
+#import os
 import argparse as ap
-from kornia.geometry import transform
-from kornia import augmentation as K
-from kornia.augmentation import AugmentationSequential 
-from kornia.utils import image_to_tensor, tensor_to_image
-import tensorflow as tf
+#from kornia.geometry import transform
+#from kornia import augmentation as K
+#from kornia.augmentation import AugmentationSequential 
+#from kornia.utils import image_to_tensor, tensor_to_image
+#import tensorflow as tf
+import matplotlib.pyplot as plt
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-from neckNavigator import neckNavigator
+#from neckNavigator import neckNavigator, headHunter_multiHead_deeper
+from NeckNavigatorHotMess import neckNavigator, neckNavigator_multi_dsv
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
@@ -51,8 +53,10 @@ def main():
     data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
     checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
-    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8rs.npz'
-    #checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8square.npz'
+    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+
 
     # Create main logger
     logger = get_logger('NeckNavigator_Training')
@@ -85,6 +89,8 @@ def main():
 
     # create model
     model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
+    #model = neckNavigator_multi_dsv(filter_factor=1)
+    #model = headHunter_multiHead_deeper(filter_factor=1)
     for param in model.parameters():
         param.requires_grad = True
 
@@ -118,7 +124,22 @@ def main():
     c3 = c3s[0][0]
     segment = segments[0][0]
     #PrintSlice(c3, segment)
-    projections(c3, segment, order=[2,1,0])
+
+
+    projections(c3,segment, order = [1,2,0])
+    fig  = plt.figure(figsize=(150,25))
+    ax = []
+    columns = 4
+    rows = 2
+    test_patients = 2
+    for i in range(0,test_patients):
+        ax.append(fig.add_subplot(rows, columns, i+1))
+        ax[-1].set_title(str(i+1))
+        PrintSlice(c3s[0][i], segments[0][i])
+        #projections(c3s[0][i], segments[0][i], order=[1,2,0])
+    plt.show()
+
+
 
     return
     
