@@ -2,7 +2,7 @@
 #created: 09/07/21
 #last updated: 19/07/2021
 #hermione 
-
+#%%
 from kornia.augmentation.augmentation3d import CenterCrop3D
 import numpy as np
 import SimpleITK as sitk
@@ -17,12 +17,13 @@ import matplotlib.pyplot as plt
 #from skimage import measure
 #from scipy.ndimage import binary_fill_holes
 from skimage.transform import rescale
-#import tarfile
+
+# import tarfile
 # path = '/data/sarcopenia/HnN/c3_location.tar'
 # tar = tarfile.open(path)
 # tar.extractall()
 # tar.close()
-
+#%%
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
     window = 350
@@ -114,14 +115,13 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         
     else:
         print("too small ffs: ", x.shape[0])
-        small_shape = np.shape(x)
         padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         inp, tar =padded_arr, padded_tar
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
         
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-    print(x.shape, y.shape)
+    #print(x.shape, y.shape)
 
     return x, y
 
@@ -176,15 +176,13 @@ class preprocessing():
         # Preprocessing
         if self.cropping is not None:
             x, y = self.cropping(x, y)
-            #data = self.cropping(data)
+           
         
         if self.heatmap is not None:
             y = self.heatmap(y)
-            print("adding sphere: ", y.shape)
 
         if self.transform is not None:
             x, y = self.transform(x), self.transform(y)
-            #data = self.transform(data)
 
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
@@ -193,8 +191,8 @@ class preprocessing():
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
        
-        print("shape: ", x.shape, y.shape)
-        #print("max, min: ", np.max(x), np.min(x))
+        #print("shape: ", x.shape, y.shape)
+        print("max, min: ", np.max(x), np.min(x))
 
         data = {'input': x, 'mask': y}  
         return data
@@ -218,30 +216,29 @@ def path_list(no_patients, skip: list):
 
 def getFiles(targetdir):
     ls = []
-    ids = []
     for fname in os.listdir(targetdir):
         path = os.path.join(targetdir, fname)
         if os.path.isdir(path):
             continue    # skip directories
         ls.append(path)
-        id = "P" + str(i)
-        ids.append(id)
-    return ls,ids
+    return ls
 
 def path_list2():
     im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
     msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
-    path_list_inputs,ids = sorted(getFiles(im_dir)[0]),
+    path_list_inputs = sorted(getFiles(im_dir))
     path_list_targets = sorted(getFiles(msk_dir))
-    return path_list_inputs, path_list_targets, ids
+    return path_list_inputs, path_list_targets
 
-def save_preprocessed(inputs, targets, ids):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
+def save_preprocessed(inputs, targets):
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz' 
+    ids = []   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
     for i in range(len(targets)):
         print("slice no: ",GetSliceNumber(targets[i]))
-    np.savez(path, inputs = inputs, masks = targets, ids = ids)
+        ids.append("P"+str(i))
+    np.savez(path, inputs = inputs, masks = targets, ids = np.array(ids))
     print("Saved preprocessed data")
 
 #main
@@ -288,8 +285,8 @@ CTs, masks = np.array(CTs), np.array(masks)
 
 
 projections(CTs[0], masks[0], order=[1,2,0])
-PrintSlice(CTs[0], masks[0])
+PrintSlice(CTs[0], masks[0], show = True)
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids)
+save_preprocessed(CTs, masks)
 
