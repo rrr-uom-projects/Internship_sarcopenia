@@ -112,12 +112,14 @@ def main():
     trainer.fit()
     tester = neckNavigatorTest(model, test_dataloader)
     c3s, segments = tester[0], tester[1]
+
     print(segments[0].shape, len(segments))
     print(c3s[0].shape)
     c3 = c3s[0][0]
     segment = segments[0][0]
     #PrintSlice(c3, segment)
     projections(c3,segment)
+
     return
     
     
