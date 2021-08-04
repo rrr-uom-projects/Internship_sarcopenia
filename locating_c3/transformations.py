@@ -274,7 +274,7 @@ for i in range(len(preprocessed_data)):
 
 CTs, masks = np.array(CTs), np.array(masks)   
 
-<<<<<<< HEAD
+
 # fig  = plt.figure(figsize=(150,25))
 # ax = []
 # columns = 4
@@ -285,28 +285,11 @@ CTs, masks = np.array(CTs), np.array(masks)
 #     PrintSlice(CTs[i], masks[i])
 #     #projections(CTs[i], masks[i], order=[1,2,0])
 # plt.show()
-=======
 
-fig  = plt.figure(figsize=(150,25))
-ax = []
-columns = 4
-rows = 2
-for i in range(0,no_patients):
-
-    ax.append(fig.add_subplot(rows, columns, i+1))
-    ax[-1].set_title(str(i+1))
-    PrintSlice(CTs[i], masks[i])
-    #projections(CTs[i], masks[i], order=[1,2,0])
-plt.show()
->>>>>>> 223595488a2ff3c3e6fbf990d1872a6acb9ce75f
 
 projections(CTs[0], masks[0], order=[1,2,0])
 PrintSlice(CTs[0], masks[0])
 #%%
 #save the preprocessed masks and cts for the dataset
-<<<<<<< HEAD
 save_preprocessed(CTs, masks, ids)
-=======
-#save_preprocessed(CTs, masks, ids)
 
->>>>>>> 223595488a2ff3c3e6fbf990d1872a6acb9ce75f
