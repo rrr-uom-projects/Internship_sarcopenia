@@ -1,9 +1,8 @@
 #transformations
 #created: 09/07/21
-#last updated: 28/07/2021
+#last updated: 19/07/2021
 #hermione 
-#%%
-#from SimpleITK.extra import Resample
+
 from kornia.augmentation.augmentation3d import CenterCrop3D
 import numpy as np
 import SimpleITK as sitk
@@ -92,20 +91,18 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
 def cropping(inp: np.ndarray, tar: np.ndarray ):
     #working one but z axis crop needs improving
     x, y= inp, tar
+    print("ct max: ", np.max(x))
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
-    coords = center_of_mass(threshold)
+    coords = center_of_mass(x)
     print("coords: ", coords)
-    size =126
+    size =130
     x_min = int(((coords[1] - size)+126)/2)
     x_max = int(((coords[1] + size)+386)/2)
     y_min = int(((coords[2] - size)+126)/2)
     y_max = int(((coords[2] + size)+386)/2)
-    #z crop
-    z_size = 112
-    z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
-    
-    if (z_size < x.shape[0] < 200):
+    if (x.shape[0]>=117):
         print("True", x.shape[0])
+
     elif (200 < x.shape[0]):
         print("big boi", x.shape[0])
         if(x.shape[0] > int(coords[0])+z_size):
@@ -121,6 +118,7 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
     print(x.shape, y.shape)
+
     return x, y
 
 def sphereMask(tar: np.ndarray):
@@ -134,16 +132,12 @@ def sphereMask(tar: np.ndarray):
     r=3
     sphere = create_bin_sphere(arr_size, sphere_center, r)
     print("sphere details", sphere.shape, np.unique(sphere))
-    skip = False
-    if (max(np.unique(sphere)) != 1):
-        print("problematic")
-        skip = True
     #Plot the result
     # fig =plt.figure(figsize=(6,6))
     # ax = plt.axes(projection='3d')
     # ax.voxels(sphere, edgecolor='red')
     # plt.show()
-    return sphere, skip
+    return sphere
 
 class preprocessing():
     def __init__(self,
@@ -169,6 +163,7 @@ class preprocessing():
         target_ID = self.targets[index]
 
         # Load input and target
+        #x, y = imread(input_ID), imread(target_ID)
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
@@ -177,21 +172,26 @@ class preprocessing():
         # Preprocessing
         if self.cropping is not None:
             x, y = self.cropping(x, y)
-            
+            #data = self.cropping(data)
+        
         if self.heatmap is not None:
-            y,_ = self.heatmap(y)
+            y = self.heatmap(y)
+            print("adding sphere: ", y.shape)
 
         if self.transform is not None:
             x, y = self.transform(x), self.transform(y)
-        
+            #data = self.transform(data)
+
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
+
         #downsampling #[32,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
        
         print("shape: ", x.shape, y.shape)
         #print("max, min: ", np.max(x), np.min(x))
+
         data = {'input': x, 'mask': y}  
         return data
 
@@ -200,12 +200,12 @@ def path_list(no_patients, skip: list):
     path_list_targets = []
     ids = []
 
-    for i in range(1,no_patients+len(skip)+1):
+    for i in range(1,no_patients+1):
         if i not in skip:
-            path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
-            #path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
-            path_list_inputs.append(path + "images/" + str(i) + "_RT_sim_ct.nii.gz")
-            path_list_targets.append(path + "masks/" + str(i) + "_RT_sim_seg.nii.gz")
+            #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
+            path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
+            path_list_inputs.append(path + "/P" + str(i) + "_RT_sim_ct.nii.gz")
+            path_list_targets.append(path + "/P" + str(i) + "_RT_sim_seg.nii.gz")
             id = "01-00" + str(i)
             ids.append(id)
     print("no read in: ", len(path_list_inputs))
@@ -240,8 +240,11 @@ def save_preprocessed(inputs, targets, ids):
 
 #main
 #get the file names
+
 no_patients = 8
 #skip = [24,25,37]
+
+
 skip = []
 #PathList =  path_list(no_patients, skip)
 PathList =  path_list2()
@@ -262,13 +265,16 @@ for i in range(len(preprocessed_data)):
     CTs.append(x)
     masks.append(y)
 
+
 CTs, masks = np.array(CTs), np.array(masks)   
+
 
 fig  = plt.figure(figsize=(150,25))
 ax = []
 columns = 4
 rows = 2
 for i in range(0,no_patients):
+
     ax.append(fig.add_subplot(rows, columns, i+1))
     ax[-1].set_title(str(i+1))
     PrintSlice(CTs[i], masks[i])
@@ -279,3 +285,4 @@ plt.show()
 #%%
 #save the preprocessed masks and cts for the dataset
 #save_preprocessed(CTs, masks, ids)
+

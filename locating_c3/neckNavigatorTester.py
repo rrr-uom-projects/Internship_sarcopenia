@@ -28,6 +28,7 @@ class neckNavigatorTest:
            sigmoid = 1/(1 + np.exp(-test_output))
            segment = (sigmoid > 0.5).astype(np.float)
            print("np unique segment: ", np.unique(segment))
+
         #    if int == 0:
         #       segments == segment
         #       c3s == test_em.cpu().detach().numpy()
@@ -40,6 +41,7 @@ class neckNavigatorTest:
 
         segments = np.asarray(segments)
         c3s = np.asarray(c3s)
+
         return c3s, segments
 
 
