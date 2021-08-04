@@ -93,14 +93,18 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     x, y= inp, tar
     print("ct max: ", np.max(x))
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
-    coords = center_of_mass(x)
+    coords = center_of_mass(threshold)
     print("coords: ", coords)
-    size =130
+    size =126
     x_min = int(((coords[1] - size)+126)/2)
     x_max = int(((coords[1] + size)+386)/2)
     y_min = int(((coords[2] - size)+126)/2)
     y_max = int(((coords[2] + size)+386)/2)
-    if (x.shape[0]>=117):
+    #z crop
+    z_size = 112
+    z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
+
+    if (z_size < x.shape[0] < 200):
         print("True", x.shape[0])
 
     elif (200 < x.shape[0]):
@@ -214,20 +218,22 @@ def path_list(no_patients, skip: list):
 
 def getFiles(targetdir):
     ls = []
+    ids = []
     for fname in os.listdir(targetdir):
         path = os.path.join(targetdir, fname)
         if os.path.isdir(path):
             continue    # skip directories
         ls.append(path)
-    return ls
+        id = "P" + str(i)
+        ids.append(id)
+    return ls,ids
 
 def path_list2():
-    ids = []
     im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
     msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
-    path_list_inputs = sorted(getFiles(im_dir))
+    path_list_inputs,ids = sorted(getFiles(im_dir)[0]),
     path_list_targets = sorted(getFiles(msk_dir))
-    return path_list_inputs, path_list_targets
+    return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids):
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
@@ -269,20 +275,21 @@ for i in range(len(preprocessed_data)):
 CTs, masks = np.array(CTs), np.array(masks)   
 
 
-fig  = plt.figure(figsize=(150,25))
-ax = []
-columns = 4
-rows = 2
-for i in range(0,no_patients):
+# fig  = plt.figure(figsize=(150,25))
+# ax = []
+# columns = 4
+# rows = 2
+# for i in range(0,no_patients):
+#     ax.append(fig.add_subplot(rows, columns, i+1))
+#     ax[-1].set_title(str(i+1))
+#     PrintSlice(CTs[i], masks[i])
+#     #projections(CTs[i], masks[i], order=[1,2,0])
+# plt.show()
 
-    ax.append(fig.add_subplot(rows, columns, i+1))
-    ax[-1].set_title(str(i+1))
-    PrintSlice(CTs[i], masks[i])
-    #projections(CTs[i], masks[i], order=[1,2,0])
-plt.show()
 
-#projections(CTs[0], masks[0], order=[1,2,0])
+projections(CTs[0], masks[0], order=[1,2,0])
+PrintSlice(CTs[0], masks[0])
 #%%
 #save the preprocessed masks and cts for the dataset
-#save_preprocessed(CTs, masks, ids)
+save_preprocessed(CTs, masks, ids)
 
