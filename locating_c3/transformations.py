@@ -214,20 +214,22 @@ def path_list(no_patients, skip: list):
 
 def getFiles(targetdir):
     ls = []
+    ids = []
     for fname in os.listdir(targetdir):
         path = os.path.join(targetdir, fname)
         if os.path.isdir(path):
             continue    # skip directories
         ls.append(path)
-    return ls
+        id = "P" + str(i)
+        ids.append(id)
+    return ls,ids
 
 def path_list2():
-    ids = []
     im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
     msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
-    path_list_inputs = sorted(getFiles(im_dir))
+    path_list_inputs,ids = sorted(getFiles(im_dir)[0]),
     path_list_targets = sorted(getFiles(msk_dir))
-    return path_list_inputs, path_list_targets
+    return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids):
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
@@ -264,18 +266,19 @@ for i in range(len(preprocessed_data)):
 
 CTs, masks = np.array(CTs), np.array(masks)   
 
-fig  = plt.figure(figsize=(150,25))
-ax = []
-columns = 4
-rows = 2
-for i in range(0,no_patients):
-    ax.append(fig.add_subplot(rows, columns, i+1))
-    ax[-1].set_title(str(i+1))
-    PrintSlice(CTs[i], masks[i])
-    #projections(CTs[i], masks[i], order=[1,2,0])
-plt.show()
+# fig  = plt.figure(figsize=(150,25))
+# ax = []
+# columns = 4
+# rows = 2
+# for i in range(0,no_patients):
+#     ax.append(fig.add_subplot(rows, columns, i+1))
+#     ax[-1].set_title(str(i+1))
+#     PrintSlice(CTs[i], masks[i])
+#     #projections(CTs[i], masks[i], order=[1,2,0])
+# plt.show()
 
-#projections(CTs[0], masks[0], order=[1,2,0])
+projections(CTs[0], masks[0], order=[1,2,0])
+PrintSlice(CTs[0], masks[0])
 #%%
 #save the preprocessed masks and cts for the dataset
-#save_preprocessed(CTs, masks, ids)
+save_preprocessed(CTs, masks, ids)
