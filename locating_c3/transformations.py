@@ -146,6 +146,16 @@ def sphereMask(tar: np.ndarray):
     # plt.show()
     return sphere
 
+def flip(im):
+    flipped = False
+    if im.GetDirection()[-1] == -1:
+        # print("Image upside down, CC flip required!")
+        im = np.flip(im, axis=0)        # flip CC
+        im = np.flip(im, axis=2)        # flip LR --> this works, should be made more robust though (with sitk cosine matrix)
+        flipped = True   
+        print("flipped") 
+    return im
+
 class preprocessing():
     def __init__(self,
                  inputs: list,
@@ -173,6 +183,8 @@ class preprocessing():
         #x, y = imread(input_ID), imread(target_ID)
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
+        # check if flip required
+        x,y = flip(x), flip(y)
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         

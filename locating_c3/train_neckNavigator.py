@@ -53,7 +53,7 @@ def main():
     #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed(3).npz'
     #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
     checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
     # Create main logger
