@@ -24,8 +24,7 @@ from skimage.transform import rescale
 # tar.extractall()
 # tar.close()
 #%%
-def normalize_01(inp: np.ndarray):
-    """Squash image input to the value range [0, 1] (plus clipping)"""
+def window_level(inp: np.array):
     window = 350
     level = 50
     vmax = level/2 + window
@@ -35,6 +34,10 @@ def normalize_01(inp: np.ndarray):
         inp[i][inp[i] > thresh] = 0
         inp[i][inp[i] > vmax] = vmax
         inp[i][inp[i] < vmin] = vmin
+    return inp
+
+def normalize_01(inp: np.ndarray):
+    """Squash image input to the value range [0, 1] (plus clipping)"""
     inp_out = (inp - np.min(inp)) / np.ptp(inp)
     return inp_out
 
@@ -147,7 +150,7 @@ class preprocessing():
     def __init__(self,
                  inputs: list,
                  targets: list,
-                 transform=None, cropping = None, normalise = None, heatmap = None
+                 transform=window_level, cropping = None, normalise = None, heatmap = None
                  ):
         self.inputs = inputs
         self.targets = targets
@@ -174,18 +177,18 @@ class preprocessing():
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         
         # Preprocessing
+        if self.transform is not None:
+            x,y = self.transform(x), self.transform(y)
+
         if self.cropping is not None:
             x, y = self.cropping(x, y)
            
-        
         if self.heatmap is not None:
             y = self.heatmap(y)
 
-        if self.transform is not None:
-            x, y = self.transform(x), self.transform(y)
-
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
+
 
         #downsampling #[32,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
@@ -216,29 +219,33 @@ def path_list(no_patients, skip: list):
 
 def getFiles(targetdir):
     ls = []
+    ids = []
     for fname in os.listdir(targetdir):
         path = os.path.join(targetdir, fname)
         if os.path.isdir(path):
             continue    # skip directories
         ls.append(path)
-    return ls
+        ids.append(fname)
+    return ls, ids
 
 def path_list2():
     im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
     msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
-    path_list_inputs = sorted(getFiles(im_dir))
-    path_list_targets = sorted(getFiles(msk_dir))
-    return path_list_inputs, path_list_targets
+    inputs = getFiles(im_dir)
+    path_list_inputs = inputs[0]
+    path_list_targets = getFiles(msk_dir)[0]
+    ids = inputs[1]
+    return path_list_inputs, path_list_targets, ids
 
-def save_preprocessed(inputs, targets):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz' 
-    ids = []   
+def save_preprocessed(inputs, targets, ids):
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_2.npz' 
+    ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
     for i in range(len(targets)):
         print("slice no: ",GetSliceNumber(targets[i]))
-        ids.append("P"+str(i))
-    np.savez(path, inputs = inputs, masks = targets, ids = np.array(ids))
+        #ids.append("P"+str(i))
+    np.savez(path, inputs = inputs, masks = targets, ids = ids)
     print("Saved preprocessed data")
 
 #main
@@ -253,9 +260,9 @@ skip = []
 PathList =  path_list2()
 inputs = PathList[0]
 targets = PathList[1]
-#ids = PathList[2]
+ids = PathList[2]
 
-print("no of patients: ",len(inputs), inputs[0])
+print("no of patients: ",len(inputs), inputs[0], len(ids), ids[0])
 #apply preprocessing
 preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= sphereMask)
 
@@ -288,5 +295,5 @@ projections(CTs[0], masks[0], order=[1,2,0])
 PrintSlice(CTs[0], masks[0], show = True)
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks)
+save_preprocessed(CTs, masks, ids)
 

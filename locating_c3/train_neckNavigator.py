@@ -53,7 +53,7 @@ def main():
     #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed(3).npz'
     #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8square.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
     checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
     # Create main logger
@@ -128,8 +128,7 @@ def main():
     ax = []
     columns = 4
     rows = 2
-    test_patients = 2
-    for i in range(0,test_patients):
+    for i in range(0,len(c3s[0])):
         ax.append(fig.add_subplot(rows, columns, i+1))
         ax[-1].set_title(str(i+1))
         PrintSlice(c3s[0][i], segments[0][i])
