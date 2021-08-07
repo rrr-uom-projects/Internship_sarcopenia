@@ -324,35 +324,39 @@ class neckNavigator_multi_dsv(nn.Module):
 #deep model with defs to make it a little shorter
 class downlayer(nn.Module):
     def __init__(self, filter_factor, in_size, out_size,):
+        super(downlayer, self).__init__()
         ff = filter_factor
-        self.conv1 = nn.Sequential(nn.Conv3d(in_channels=in_size, out_channels=int((out_size/2)*ff), kernel_size=3, padding=1),
-                                    nn.BatchNorm3d(int((out_size/2)*ff)),
-                                    F.relu(), 
-                                    nn.Dropout3d(p=0.5))
-        self.conv2 = nn.Sequential(nn.Conv3d(in_channels=int((out_size/2)*ff), out_channels=int(out_size*ff), kernel_size=3, padding=1),
+        self.layer = nn.Sequential(nn.Conv3d(in_channels=in_size, out_channels=int(out_size*ff), kernel_size=3, padding=1),
                                     nn.BatchNorm3d(int(out_size*ff)),
-                                    F.relu(),
-                                    nn.Dropout3d(p=0.5))   
+                                    nn.ReLU())  
     @torch.cuda.amp.autocast() 
     def forward(self, inputs):
-        outputs = self.conv1(inputs)
-        outputs = self.conv2(outputs)
+        outputs = self.layer(inputs)
         return outputs
 
 # class attention():
 #     def__init__():
 
-class neckNavigator(nn.Module):
-    def __init__(self, filter_factor=2, targets=1, in_channels=3):
-        super(neckNavigator, self).__init__()
+class neckNavigatorShrinkWrapped(nn.Module):
+    def __init__(self, filter_factor=2, targets=1, in_channels=1):
+        super(neckNavigatorShrinkWrapped, self).__init__()
         ff = filter_factor # filter factor (easy net scaling)
         #old Input --> (3, 48, 120, 120)
         #new inp --> (1,128,128,128)
+        out_channels = 16
         #downsampling
-        self.cov12 = downlayer()
-        self.cov34 = downlayer()
-        self.base = downlayer()
-
+        self.conv1 = downlayer(ff,in_size=in_channels, out_size=out_channels)
+        self.drop1 = nn.Dropout3d(p=0.5)
+        self.conv2 = downlayer(ff, in_size=out_channels, out_size=(out_channels*2))
+        self.drop2 = nn.Dropout3d(p=0.5)
+        self.cov3 = downlayer(ff, in_size=out_channels*2, out_size=(out_channels*2))
+        self.drop3 = nn.Dropout3d(p=0.5)
+        self.conv4 = downlayer(ff, in_size=out_channels*2, out_size=(out_channels*4))
+        self.drop4 = nn.Dropout3d(p=0.5)
+        self.base1 = downlayer(ff, in_size=(out_channels*4), out_size=(out_channels*4))
+        self.drop5 = nn.Dropout3d(p=0.5)
+        self.base2 = downlayer(ff, in_size=(out_channels*4), out_size=(out_channels*4))
+        self.drop5 = nn.Dropout3d(p=0.5)
         # conv layers set 1 - down 1
         self.c1 = nn.Conv3d(in_channels=in_channels, out_channels=int(16*ff), kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm3d(int(16*ff))
@@ -410,9 +414,12 @@ class neckNavigator(nn.Module):
     @torch.cuda.amp.autocast()
     def forward(self, im):
         # Down block 1
-        x = F.relu(self.bn1(self.c1(im)))
+        # x = F.relu(self.bn1(self.c1(im)))
+        # x = self.drop1(x)
+        # x = F.relu(self.bn2(self.c2(x)))
+        x = self.conv1(im)
         x = self.drop1(x)
-        x = F.relu(self.bn2(self.c2(x)))
+        x = self.conv2(x)
         skip1 = self.drop2(x)
         x = F.max_pool3d(skip1, (2,2,2))
         downscaled_im = F.interpolate(im, scale_factor=0.5, mode='trilinear', align_corners=False)

@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-#import torch.utils.data as data
 from torch.utils.data import DataLoader
 import numpy as np
 #from scipy.stats import norm
@@ -17,16 +16,12 @@ import numpy as np
 #import sys
 #import os
 import argparse as ap
-#from kornia.geometry import transform
-#from kornia import augmentation as K
-#from kornia.augmentation import AugmentationSequential 
-#from kornia.utils import image_to_tensor, tensor_to_image
 #import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
 #from neckNavigator import neckNavigator, headHunter_multiHead_deeper
-from NeckNavigatorHotMess import neckNavigator, neckNavigator_multi_dsv
+from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
@@ -86,8 +81,8 @@ def main():
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     # create model
-    model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
-    #model = neckNavigator_multi_dsv(filter_factor=1)
+    #model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
+    model = neckNavigatorShrinkWrapped()
     #model = headHunter_multiHead_deeper(filter_factor=1)
     for param in model.parameters():
         param.requires_grad = True
@@ -110,7 +105,7 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, patience=5, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1, patience=2, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()
