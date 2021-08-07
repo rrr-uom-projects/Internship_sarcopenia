@@ -323,19 +323,24 @@ class neckNavigator_multi_dsv(nn.Module):
 
 #deep model with defs to make it a little shorter
 class downlayer(nn.Module):
-    def __init__(self, filter_factor):
+    def __init__(self, filter_factor, in_size, out_size,):
         ff = filter_factor
-        self.c1 = nn.Conv3d(in_channels=in_channels, out_channels=int(16*ff), kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm3d(int(16*ff))
-        self.drop1 = nn.Dropout3d(p=0.5)
-        self.c2 = nn.Conv3d(in_channels=int(16*ff), out_channels=int(32*ff), kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm3d(int(32*ff))
-        self.drop2 = nn.Dropout3d(p=0.5)
+        self.conv1 = nn.Sequential(nn.Conv3d(in_channels=in_size, out_channels=int((out_size/2)*ff), kernel_size=3, padding=1),
+                                    nn.BatchNorm3d(int((out_size/2)*ff)),
+                                    F.relu(), 
+                                    nn.Dropout3d(p=0.5))
+        self.conv2 = nn.Sequential(nn.Conv3d(in_channels=int((out_size/2)*ff), out_channels=int(out_size*ff), kernel_size=3, padding=1),
+                                    nn.BatchNorm3d(int(out_size*ff)),
+                                    F.relu(),
+                                    nn.Dropout3d(p=0.5))   
+    @torch.cuda.amp.autocast() 
+    def forward(self, inputs):
+        outputs = self.conv1(inputs)
+        outputs = self.conv2(outputs)
+        return outputs
 
-    @torch.cuda.amp.autocast()   
-    def forward(self):
-        final = 1
-        return final
+# class attention():
+#     def__init__():
 
 class neckNavigator(nn.Module):
     def __init__(self, filter_factor=2, targets=1, in_channels=3):
@@ -343,6 +348,11 @@ class neckNavigator(nn.Module):
         ff = filter_factor # filter factor (easy net scaling)
         #old Input --> (3, 48, 120, 120)
         #new inp --> (1,128,128,128)
+        #downsampling
+        self.cov12 = downlayer()
+        self.cov34 = downlayer()
+        self.base = downlayer()
+
         # conv layers set 1 - down 1
         self.c1 = nn.Conv3d(in_channels=in_channels, out_channels=int(16*ff), kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm3d(int(16*ff))
