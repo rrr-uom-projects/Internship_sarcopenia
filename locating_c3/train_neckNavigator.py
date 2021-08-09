@@ -98,7 +98,7 @@ def main():
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.005)
 
     # Create learning rate adjustment strategy
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=175, verbose=True)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True)
 
     # Parallelize model
     model = nn.DataParallel(model)
@@ -116,18 +116,19 @@ def main():
     print(c3s[0].shape)
     c3 = c3s[0][0]
     segment = segments[0][0]
-    #PrintSlice(c3, segment)
+    PrintSlice(c3, segment, show=True)
 
     projections(c3,segment, order = [1,2,0])
     fig  = plt.figure(figsize=(150,25))
     ax = []
     columns = 4
     rows = 2
-    for i in range(0,len(c3s[0])):
+    for i in range(0,rows*columns):
         ax.append(fig.add_subplot(rows, columns, i+1))
         ax[-1].set_title(str(i+1))
         PrintSlice(c3s[0][i], segments[0][i])
         #projections(c3s[0][i], segments[0][i], order=[1,2,0])
+    plt.savefig("slices.png")
     plt.show()
 
     return

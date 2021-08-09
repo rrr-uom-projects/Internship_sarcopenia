@@ -41,6 +41,7 @@ def PrintSlice(input, targets, show = False):
     plt.axis('off')
     if show:
       plt.show()
+      plt.savefig("Slice.png")
 
 def projections(inp, msk, order,  type = "numpy"):
   cor, sag, axi = 0,1,2
@@ -86,6 +87,7 @@ def projections(inp, msk, order,  type = "numpy"):
         masks[i][j][masks[i][j] == 0] = np.nan
     plt.imshow(masks[i], cmap="autumn", alpha=0.5)
     plt.axis('off')
+  plt.savefig("projections.png")
   plt.show()
   return coronal, sagital, axial
 
