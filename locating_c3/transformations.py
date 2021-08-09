@@ -1,6 +1,6 @@
 #transformations
 #created: 09/07/21
-#last updated: 19/07/2021
+#last updated: 09/08/2021
 #hermione 
 #%%
 from kornia.augmentation.augmentation3d import CenterCrop3D
@@ -186,6 +186,7 @@ class preprocessing():
         # check if flip required
         x,y = flip(x), flip(y)
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
+        x-=1024
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         
         # Preprocessing

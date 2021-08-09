@@ -20,8 +20,8 @@ import argparse as ap
 import matplotlib.pyplot as plt
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-#from neckNavigator import neckNavigator, headHunter_multiHead_deeper
-from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
+from neckNavigator import neckNavigator, headHunter_multiHead_deeper
+#from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
@@ -81,8 +81,8 @@ def main():
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     # create model
-    #model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
-    model = neckNavigatorShrinkWrapped()
+    model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
+    #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
     for param in model.parameters():
         param.requires_grad = True

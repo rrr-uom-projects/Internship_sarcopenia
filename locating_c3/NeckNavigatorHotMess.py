@@ -85,7 +85,8 @@ class neckNavigator(nn.Module):
         
         # final conv (without any concat)
         self.final = nn.Conv3d(int(targets)*2, int(targets), 1)
-
+        #activation
+        self.act = nn.Sigmoid()
 
     @torch.cuda.amp.autocast()
     def forward(self, im):
@@ -138,8 +139,10 @@ class neckNavigator(nn.Module):
         dsv2 = self.dsv2(up2)
         dsv1 = self.dsv1(up1)
         final = self.final(torch.cat([dsv1,dsv2], dim=1))
+        #activation
+        act = self.act(final)
 
-        return final
+        return act
 
         # Predict
         #return self.pred(x)
@@ -406,9 +409,10 @@ class neckNavigatorShrinkWrapped(nn.Module):
         # prediction convolution
         self.pred = nn.Conv3d(in_channels=int(16*ff), out_channels=int(targets), kernel_size=1)
 
-        
         # final conv (without any concat)
         self.final = nn.Conv3d(int(targets)*2, int(targets), 1)
+        #activation
+        self.act = nn.Sigmoid()
 
 
     @torch.cuda.amp.autocast()
