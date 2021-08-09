@@ -64,6 +64,8 @@ class neckNavigator(nn.Module):
         self.drop10 = nn.Dropout3d(p=0.5)
         # prediction convolution
         self.pred = nn.Conv3d(in_channels=int(16*ff), out_channels=int(targets), kernel_size=1)
+        #activation
+        self.act = nn.Sigmoid()
 
     @torch.cuda.amp.autocast()
     def forward(self, im):
@@ -111,9 +113,10 @@ class neckNavigator(nn.Module):
         x = self.drop9(x)
         x = F.relu(self.bn10(self.c10(x)))
         x = self.drop10(x)
-
+        x = self.pred(x)
+        act = self.act(x)
         # Predict
-        return self.pred(x)
+        return act
 
     def load_best(self, checkpoint_dir, logger):
         # load previous best weights
