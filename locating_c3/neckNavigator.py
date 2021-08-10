@@ -6,7 +6,7 @@
 #imports
 import os
 from collections import OrderedDict
-
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -64,6 +64,8 @@ class neckNavigator(nn.Module):
         self.drop10 = nn.Dropout3d(p=0.5)
         # prediction convolution
         self.pred = nn.Conv3d(in_channels=int(16*ff), out_channels=int(targets), kernel_size=1)
+        #activation
+        self.act = nn.Sigmoid()
 
     @torch.cuda.amp.autocast()
     def forward(self, im):
@@ -111,9 +113,11 @@ class neckNavigator(nn.Module):
         x = self.drop9(x)
         x = F.relu(self.bn10(self.c10(x)))
         x = self.drop10(x)
-
+        x = self.pred(x)
+        x+=1e-9
+        #x = self.act(x)
         # Predict
-        return self.pred(x)
+        return x
 
     def load_best(self, checkpoint_dir, logger):
         # load previous best weights

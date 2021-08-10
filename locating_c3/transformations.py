@@ -1,13 +1,14 @@
 #transformations
 #created: 09/07/21
-#last updated: 19/07/2021
+#last updated: 09/08/2021
 #hermione 
-
+#%%
 from kornia.augmentation.augmentation3d import CenterCrop3D
 import numpy as np
 import SimpleITK as sitk
 import random
 from scipy.ndimage.measurements import center_of_mass
+from scipy.ndimage import gaussian_filter
 #from sklearn import preprocessing
 import torch
 from utils import GetSliceNumber, Guassian, projections, PrintSlice
@@ -17,23 +18,27 @@ import matplotlib.pyplot as plt
 #from skimage import measure
 #from scipy.ndimage import binary_fill_holes
 from skimage.transform import rescale
-#import tarfile
+
+# import tarfile
 # path = '/data/sarcopenia/HnN/c3_location.tar'
 # tar = tarfile.open(path)
 # tar.extractall()
 # tar.close()
-
-def normalize_01(inp: np.ndarray):
-    """Squash image input to the value range [0, 1] (plus clipping)"""
+#%%
+def window_level(inp: np.array):
     window = 350
     level = 50
     vmax = level/2 + window
     vmin = level/2-window
-    thresh = 1500
+    thresh = 1000
     for i in range(len(inp)):
         inp[i][inp[i] > thresh] = 0
         inp[i][inp[i] > vmax] = vmax
         inp[i][inp[i] < vmin] = vmin
+    return inp
+
+def normalize_01(inp: np.ndarray):
+    """Squash image input to the value range [0, 1] (plus clipping)"""
     inp_out = (inp - np.min(inp)) / np.ptp(inp)
     return inp_out
 
@@ -114,40 +119,63 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         
     else:
         print("too small ffs: ", x.shape[0])
-        small_shape = np.shape(x)
         padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         inp, tar =padded_arr, padded_tar
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
         
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-    print(x.shape, y.shape)
+    #print(x.shape, y.shape)
 
     return x, y
 
 def sphereMask(tar: np.ndarray):
     def create_bin_sphere(arr_size, center, r):
         coords = np.ogrid[:arr_size[0], :arr_size[1], :arr_size[2]]
-        distance = np.sqrt((coords[0] - center[0])**2 + (coords[1]-center[1])**2 + (coords[2]-center[2])**2) 
+        distance = np.sqrt(((coords[0] - center[0])/0.5)**2 + (coords[1]-center[1])**2 + (coords[2]-center[2])**2) 
         return 1*(distance <= r)
     
     arr_size = tar.shape
     sphere_center = center_of_mass(tar)
-    r=3
+    r=5
     sphere = create_bin_sphere(arr_size, sphere_center, r)
     print("sphere details", sphere.shape, np.unique(sphere))
     #Plot the result
+    fig =plt.figure(figsize=(6,6))
+    ax = plt.axes(projection='3d')
+    ax.voxels(sphere, edgecolor='red')
+    plt.show()
+    return sphere
+
+def gaussian(msk):
+    #its square which im not gassed about
+    gauss = gaussian_filter(msk.astype(np.float),3)
+    gauss[gauss != 0] =1
+    gauss = gauss.astype(np.int)
+    print("g: ",np.unique(gauss))
+    #Plot the result
     # fig =plt.figure(figsize=(6,6))
     # ax = plt.axes(projection='3d')
-    # ax.voxels(sphere, edgecolor='red')
+    # ax.voxels(gauss, cmap='cool')
     # plt.show()
-    return sphere
+    return gauss
+
+def flip(im):
+    flipped = False
+    if im.GetDirection()[-1] == -1:
+        # print("Image upside down, CC flip required!")
+        #im = np.flip(im, axis=0)        # flip CC
+        #im = np.flip(im, axis=2)        # flip LR --> this works, should be made more robust though (with sitk cosine matrix)
+        flipped = True   
+        print("flipped") 
+    return im
 
 class preprocessing():
     def __init__(self,
                  inputs: list,
                  targets: list,
-                 transform=None, cropping = None, normalise = None, heatmap = None
+                 transform = window_level, cropping = None, normalise = None, 
+                 heatmap = None, gauss = gaussian
                  ):
         self.inputs = inputs
         self.targets = targets
@@ -157,6 +185,7 @@ class preprocessing():
         self.cropping = cropping
         self.normalise = normalise
         self.heatmap = heatmap
+        self.gaussian = gauss
 
     def __len__(self):
         return len(self.inputs)
@@ -170,31 +199,33 @@ class preprocessing():
         #x, y = imread(input_ID), imread(target_ID)
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
+        # check if flip required
+        #x,y = flip(x), flip(y)
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
+        x-=1024
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         
         # Preprocessing
+        if self.transform is not None:
+            x,y = self.transform(x), self.transform(y)
+
         if self.cropping is not None:
             x, y = self.cropping(x, y)
-            #data = self.cropping(data)
-        
+           
         if self.heatmap is not None:
             y = self.heatmap(y)
-            print("adding sphere: ", y.shape)
-
-        if self.transform is not None:
-            x, y = self.transform(x), self.transform(y)
-            #data = self.transform(data)
+            #y = self.gaussian(y)
 
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
+
 
         #downsampling #[32,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
        
-        print("shape: ", x.shape, y.shape)
-        #print("max, min: ", np.max(x), np.min(x))
+        #print("shape: ", x.shape, y.shape)
+        print("max, min: ", np.max(x), np.min(x))
 
         data = {'input': x, 'mask': y}  
         return data
@@ -224,41 +255,44 @@ def getFiles(targetdir):
         if os.path.isdir(path):
             continue    # skip directories
         ls.append(path)
-        id = "P" + str(i)
-        ids.append(id)
-    return ls,ids
+        ids.append(fname)
+    return ls, ids
 
 def path_list2():
     im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
     msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
-    path_list_inputs,ids = sorted(getFiles(im_dir)[0]),
-    path_list_targets = sorted(getFiles(msk_dir))
+    inputs = getFiles(im_dir)
+    path_list_inputs = inputs[0]
+    path_list_targets = getFiles(msk_dir)[0]
+    ids = inputs[1]
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz' 
+    ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
     for i in range(len(targets)):
         print("slice no: ",GetSliceNumber(targets[i]))
+        #ids.append("P"+str(i))
     np.savez(path, inputs = inputs, masks = targets, ids = ids)
     print("Saved preprocessed data")
 
 #main
 #get the file names
 
-no_patients = 8
+no_patients = 1
 #skip = [24,25,37]
 
 
 skip = []
 #PathList =  path_list(no_patients, skip)
 PathList =  path_list2()
-inputs = PathList[0]
-targets = PathList[1]
-#ids = PathList[2]
+inputs = PathList[0][:no_patients]
+targets = PathList[1][:no_patients]
+ids = PathList[2][:no_patients]
 
-print("no of patients: ",len(inputs), inputs[0])
+print("no of patients: ",len(inputs), inputs[0], len(ids), ids[0])
 #apply preprocessing
 preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= sphereMask)
 
@@ -285,11 +319,24 @@ CTs, masks = np.array(CTs), np.array(masks)
 #     PrintSlice(CTs[i], masks[i])
 #     #projections(CTs[i], masks[i], order=[1,2,0])
 # plt.show()
-
+#classs inbalence
+#ratio of no of 1s over no of 0s. averaged
+def classRatio(masks):
+    ratio = []
+    for i in range(len(masks)):
+        no_of_0s = (masks[i] == 0).sum()
+        no_of_1s = (masks[i] == 1).sum()
+        #print(no_of_1s, no_of_0s)
+        ratio.append(no_of_1s/no_of_0s)
+    average_ratio = np.mean(ratio)
+    print(average_ratio)
+    weights = (1/average_ratio) #*10 to penalise the network more harshly for getting it wrong
+    print(weights)
 
 projections(CTs[0], masks[0], order=[1,2,0])
-PrintSlice(CTs[0], masks[0])
+PrintSlice(CTs[0], masks[0], show = True)
+w = classRatio(masks)
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids)
+#save_preprocessed(CTs, masks, ids)
 

@@ -3,7 +3,9 @@
 #hermione
 #oh lord heal my branch
 
+from SimpleITK.SimpleITK import Modulus
 import numpy as np
+from numpy.lib.function_base import average
 import scipy.ndimage as nd
 
 from scipy.ndimage.measurements import center_of_mass
@@ -27,7 +29,7 @@ def GetTargetCoords(target):
     return coords
 
 def Guassian(inp: np.ndarray):
-  gauss = nd.gaussian_filter(inp)
+  gauss = nd.gaussian_filter(inp,3)
   return gauss
 
 def PrintSlice(input, targets, show = False):
@@ -41,6 +43,7 @@ def PrintSlice(input, targets, show = False):
     plt.axis('off')
     if show:
       plt.show()
+      plt.savefig("Slice.png")
 
 def projections(inp, msk, order,  type = "numpy"):
   cor, sag, axi = 0,1,2
@@ -86,6 +89,15 @@ def projections(inp, msk, order,  type = "numpy"):
         masks[i][j][masks[i][j] == 0] = np.nan
     plt.imshow(masks[i], cmap="autumn", alpha=0.5)
     plt.axis('off')
+  plt.savefig("projections.png")
   plt.show()
   return coronal, sagital, axial
+
+def euclid_dis(gts, masks):
+  #quantifies how far of the network's predictions are
+  distances = []
+  distances.append(Modulus(GetSliceNumber(gts)-GetSliceNumber(masks)))
+  distances = np.array(distances)
+  print(np.average(distances))
+  return distances
 

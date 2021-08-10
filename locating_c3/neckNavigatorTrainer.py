@@ -9,11 +9,11 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
-from utils import projections
+from pytorch_toolbelt import losses as L
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
@@ -175,6 +175,10 @@ class neckNavigator_trainer:
             output = self.model(ct_im)
             # MSE loss contribution - unchanged for >1 targets
             loss = torch.nn.MSELoss()(output, h_target)
+            #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([10])).to(self.device)(output, h_target)
+            #loss = L.BinaryFocalLoss()(output, h_target)
+            #loss = torch.nn.KLDivLoss()(output, h_target)
+            #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10]).to(self.device)), 1.0, 0.5)(output, h_target)
             #loss = torch.nn.MSELoss().item()
             # L1 loss contribution
             output = output.cpu()

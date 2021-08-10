@@ -17,9 +17,10 @@ class neckNavigatorTest:
         self.model.eval()
         segments = []
         c3s = []
+        GTs =[]
         for batch_idx, test_data in enumerate(self.test_dataloader):
              
-           test_em, test_lab = test_data[0].to(device), test_data[1].to(device)
+           test_em, test_lab = test_data[0].to(device), test_data[1]
            test_em = test_em.type(torch.FloatTensor)
            output = self.model(test_em)
            print("output shape: ", output.shape)
@@ -28,21 +29,14 @@ class neckNavigatorTest:
            sigmoid = 1/(1 + np.exp(-test_output))
            segment = (sigmoid > 0.5).astype(np.float)
            print("np unique segment: ", np.unique(segment))
-
-        #    if int == 0:
-        #       segments == segment
-        #       c3s == test_em.cpu().detach().numpy()
-        #    else:
-        #        print("segments size :", np.array(segments).shape, "segment size: ", np.array(segment).shape)
-        #        segments = np.append(segments, np.array(segment))
-        #        c3s = np.append(c3s, np.array(test_em.cpu().detach().numpy())
+           GTs.append(test_lab.numpy())
            c3s.append(test_em.squeeze().cpu().detach().numpy())
            segments.append(segment)
 
         segments = np.asarray(segments)
         c3s = np.asarray(c3s)
-
-        return c3s, segments
+        GTs = np.asarray(GTs)
+        return c3s, segments, GTs
 
 
 

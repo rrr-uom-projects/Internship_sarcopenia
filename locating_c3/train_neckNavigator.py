@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-#import torch.utils.data as data
 from torch.utils.data import DataLoader
 import numpy as np
 #from scipy.stats import norm
@@ -17,16 +16,12 @@ import numpy as np
 #import sys
 #import os
 import argparse as ap
-#from kornia.geometry import transform
-#from kornia import augmentation as K
-#from kornia.augmentation import AugmentationSequential 
-#from kornia.utils import image_to_tensor, tensor_to_image
 #import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-#from neckNavigator import neckNavigator, headHunter_multiHead_deeper
-from NeckNavigatorHotMess import neckNavigator, neckNavigator_multi_dsv
+from neckNavigator import neckNavigator, headHunter_multiHead_deeper
+#from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
@@ -53,8 +48,7 @@ def main():
     data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
     checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
-
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8square.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
     checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
@@ -89,7 +83,7 @@ def main():
 
     # create model
     model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
-    #model = neckNavigator_multi_dsv(filter_factor=1)
+    #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
     for param in model.parameters():
         param.requires_grad = True
@@ -102,17 +96,17 @@ def main():
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
     # Create the optimizer
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.005)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.0001)
 
     # Create learning rate adjustment strategy
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=175, verbose=True)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True)
 
     # Parallelize model
     model = nn.DataParallel(model)
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, patience=5, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=2, patience=25, iters_to_accumulate=4)
     
     # Start training
     trainer.fit()
@@ -123,21 +117,21 @@ def main():
     print(c3s[0].shape)
     c3 = c3s[0][0]
     segment = segments[0][0]
-    #PrintSlice(c3, segment)
+    PrintSlice(c3, segment, show=True)
 
 
     projections(c3,segment, order = [1,2,0])
-    fig  = plt.figure(figsize=(150,25))
+    fig  = plt.figure(figsize=(100,25))
     ax = []
     columns = 4
     rows = 2
-    test_patients = 2
-    for i in range(0,test_patients):
+    for i in range(0,rows*columns):
         ax.append(fig.add_subplot(rows, columns, i+1))
         ax[-1].set_title(str(i+1))
         PrintSlice(c3s[0][i], segments[0][i])
         #projections(c3s[0][i], segments[0][i], order=[1,2,0])
-    plt.show()
+    plt.savefig("slices.png")
+    #plt.show()
 
 
 
