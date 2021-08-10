@@ -95,17 +95,17 @@ def main():
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
     # Create the optimizer
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.005)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.0001)
 
     # Create learning rate adjustment strategy
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=150, verbose=True)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True)
 
     # Parallelize model
     model = nn.DataParallel(model)
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1, patience=2, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=2, patience=25, iters_to_accumulate=4)
     
     # Start training
     trainer.fit()
@@ -119,7 +119,7 @@ def main():
     PrintSlice(c3, segment, show=True)
 
     projections(c3,segment, order = [1,2,0])
-    fig  = plt.figure(figsize=(150,25))
+    fig  = plt.figure(figsize=(100,25))
     ax = []
     columns = 4
     rows = 2
@@ -129,7 +129,7 @@ def main():
         PrintSlice(c3s[0][i], segments[0][i])
         #projections(c3s[0][i], segments[0][i], order=[1,2,0])
     plt.savefig("slices.png")
-    plt.show()
+    #plt.show()
 
     return
     

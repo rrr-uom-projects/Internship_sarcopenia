@@ -8,6 +8,7 @@ import numpy as np
 import SimpleITK as sitk
 import random
 from scipy.ndimage.measurements import center_of_mass
+from scipy.ndimage import gaussian_filter
 #from sklearn import preprocessing
 import torch
 from utils import GetSliceNumber, Guassian, projections, PrintSlice
@@ -29,7 +30,7 @@ def window_level(inp: np.array):
     level = 50
     vmax = level/2 + window
     vmin = level/2-window
-    thresh = 1500
+    thresh = 1000
     for i in range(len(inp)):
         inp[i][inp[i] > thresh] = 0
         inp[i][inp[i] > vmax] = vmax
@@ -131,20 +132,33 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
 def sphereMask(tar: np.ndarray):
     def create_bin_sphere(arr_size, center, r):
         coords = np.ogrid[:arr_size[0], :arr_size[1], :arr_size[2]]
-        distance = np.sqrt((coords[0] - center[0])**2 + (coords[1]-center[1])**2 + (coords[2]-center[2])**2) 
+        distance = np.sqrt(((coords[0] - center[0])/0.5)**2 + (coords[1]-center[1])**2 + (coords[2]-center[2])**2) 
         return 1*(distance <= r)
     
     arr_size = tar.shape
     sphere_center = center_of_mass(tar)
-    r=3
+    r=5
     sphere = create_bin_sphere(arr_size, sphere_center, r)
     print("sphere details", sphere.shape, np.unique(sphere))
     #Plot the result
+    fig =plt.figure(figsize=(6,6))
+    ax = plt.axes(projection='3d')
+    ax.voxels(sphere, edgecolor='red')
+    plt.show()
+    return sphere
+
+def gaussian(msk):
+    #its square which im not gassed about
+    gauss = gaussian_filter(msk.astype(np.float),3)
+    gauss[gauss != 0] =1
+    gauss = gauss.astype(np.int)
+    print("g: ",np.unique(gauss))
+    #Plot the result
     # fig =plt.figure(figsize=(6,6))
     # ax = plt.axes(projection='3d')
-    # ax.voxels(sphere, edgecolor='red')
+    # ax.voxels(gauss, cmap='cool')
     # plt.show()
-    return sphere
+    return gauss
 
 def flip(im):
     flipped = False
@@ -160,7 +174,8 @@ class preprocessing():
     def __init__(self,
                  inputs: list,
                  targets: list,
-                 transform=window_level, cropping = None, normalise = None, heatmap = None
+                 transform = window_level, cropping = None, normalise = None, 
+                 heatmap = None, gauss = gaussian
                  ):
         self.inputs = inputs
         self.targets = targets
@@ -170,6 +185,7 @@ class preprocessing():
         self.cropping = cropping
         self.normalise = normalise
         self.heatmap = heatmap
+        self.gaussian = gauss
 
     def __len__(self):
         return len(self.inputs)
@@ -198,6 +214,7 @@ class preprocessing():
            
         if self.heatmap is not None:
             y = self.heatmap(y)
+            #y = self.gaussian(y)
 
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
@@ -251,7 +268,7 @@ def path_list2():
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_2.npz' 
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz' 
     ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
@@ -264,16 +281,16 @@ def save_preprocessed(inputs, targets, ids):
 #main
 #get the file names
 
-no_patients = 8
+no_patients = 1
 #skip = [24,25,37]
 
 
 skip = []
 #PathList =  path_list(no_patients, skip)
 PathList =  path_list2()
-inputs = PathList[0]
-targets = PathList[1]
-ids = PathList[2]
+inputs = PathList[0][:no_patients]
+targets = PathList[1][:no_patients]
+ids = PathList[2][:no_patients]
 
 print("no of patients: ",len(inputs), inputs[0], len(ids), ids[0])
 #apply preprocessing
@@ -302,11 +319,24 @@ CTs, masks = np.array(CTs), np.array(masks)
 #     PrintSlice(CTs[i], masks[i])
 #     #projections(CTs[i], masks[i], order=[1,2,0])
 # plt.show()
-
+#classs inbalence
+#ratio of no of 1s over no of 0s. averaged
+def classRatio(masks):
+    ratio = []
+    for i in range(len(masks)):
+        no_of_0s = (masks[i] == 0).sum()
+        no_of_1s = (masks[i] == 1).sum()
+        #print(no_of_1s, no_of_0s)
+        ratio.append(no_of_1s/no_of_0s)
+    average_ratio = np.mean(ratio)
+    print(average_ratio)
+    weights = (1/average_ratio) #*10 to penalise the network more harshly for getting it wrong
+    print(weights)
 
 projections(CTs[0], masks[0], order=[1,2,0])
 PrintSlice(CTs[0], masks[0], show = True)
+w = classRatio(masks)
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids)
+#save_preprocessed(CTs, masks, ids)
 

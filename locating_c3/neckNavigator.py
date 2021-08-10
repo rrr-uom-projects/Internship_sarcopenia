@@ -6,7 +6,7 @@
 #imports
 import os
 from collections import OrderedDict
-
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -114,9 +114,10 @@ class neckNavigator(nn.Module):
         x = F.relu(self.bn10(self.c10(x)))
         x = self.drop10(x)
         x = self.pred(x)
-        act = self.act(x)
+        x+=1e-9
+        #x = self.act(x)
         # Predict
-        return act
+        return x
 
     def load_best(self, checkpoint_dir, logger):
         # load previous best weights
