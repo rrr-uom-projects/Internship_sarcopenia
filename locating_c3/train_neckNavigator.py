@@ -45,11 +45,12 @@ def main():
 
     # decide file paths
     #livs paths
-    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed(3).npz'
-    #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
+    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
     data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
     checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+
 
     # Create main logger
     logger = get_logger('NeckNavigator_Training')
@@ -118,6 +119,7 @@ def main():
     segment = segments[0][0]
     PrintSlice(c3, segment, show=True)
 
+
     projections(c3,segment, order = [1,2,0])
     fig  = plt.figure(figsize=(100,25))
     ax = []
@@ -130,6 +132,8 @@ def main():
         #projections(c3s[0][i], segments[0][i], order=[1,2,0])
     plt.savefig("slices.png")
     #plt.show()
+
+
 
     return
     
