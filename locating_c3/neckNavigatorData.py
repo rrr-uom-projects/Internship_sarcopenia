@@ -51,6 +51,7 @@ class neckNavigatorDataset(Dataset):
         #x = x[:32,:128,:128]
         #y = y[:32, :128, :128]
         assert np.sum(y) != 0
+        assert np.any(y) != np.nan
         x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
 
         # Preprocessing

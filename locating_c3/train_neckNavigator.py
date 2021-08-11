@@ -62,8 +62,8 @@ def main():
     ids = data[2]
 
     # decide batch sizes
-    train_BS = 1 #int(6 * args.GPUs)
-    val_BS = 1 #int(6 * args.GPUs)
+    train_BS = 4 #int(6 * args.GPUs)
+    val_BS = 4 #int(6 * args.GPUs)
     train_workers = int(8)
     val_workers = int(4)
 
@@ -96,17 +96,17 @@ def main():
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
     # Create the optimizer
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.0001)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.0005)
 
     # Create learning rate adjustment strategy
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
 
     # Parallelize model
     model = nn.DataParallel(model)
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=2, patience=25, iters_to_accumulate=4)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=2, patience=25, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()

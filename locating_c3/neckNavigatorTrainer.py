@@ -6,6 +6,7 @@
 import os
 import torch
 import numpy as np
+from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib
@@ -175,8 +176,11 @@ class neckNavigator_trainer:
             output = self.model(ct_im)
             print("network output",output.shape, torch.max(output), torch.min(output), torch.mean(output))
             # MSE loss contribution - unchanged for >1 targets
-            #loss = torch.nn.MSELoss()(output, h_target)#prob masks
-            loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([100])).to(self.device)(output, h_target)#masks 0s and 1s
+            loss = torch.nn.MSELoss()(output, h_target)#prob masks
+            for i, param_group in enumerate(self.optimizer.param_groups):
+                lr = float(param_group['lr'])
+                print("lr: ", lr)
+            #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([100])).to(self.device)(output, h_target)#masks 0s and 1s
             #loss = L.BinaryFocalLoss()(output, h_target)
             #loss = torch.nn.KLDivLoss()(output, h_target)
             #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10]).to(self.device)), 1.0, 0.5)(output, h_target)
