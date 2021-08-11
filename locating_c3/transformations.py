@@ -9,15 +9,15 @@ import SimpleITK as sitk
 import random
 from scipy.ndimage.measurements import center_of_mass
 from scipy.ndimage import gaussian_filter
-#from sklearn import preprocessing
 import torch
 from utils import GetSliceNumber, Guassian, projections, PrintSlice
 import cv2
 import os
 import matplotlib.pyplot as plt
-#from skimage import measure
 #from scipy.ndimage import binary_fill_holes
 from skimage.transform import rescale
+import sklearn
+from sklearn import preprocessing
 
 # import tarfile
 # path = '/data/sarcopenia/HnN/c3_location.tar'
@@ -31,15 +31,25 @@ def window_level(inp: np.array):
     vmax = level/2 + window
     vmin = level/2-window
     thresh = 1000
-    for i in range(len(inp)):
-        inp[i][inp[i] > thresh] = 0
-        inp[i][inp[i] > vmax] = vmax
-        inp[i][inp[i] < vmin] = vmin
+    inp[inp > thresh] = 0
+    inp[inp > vmax] = vmax
+    inp[inp < vmin] = vmin
+    print("wl: ", inp.shape, np.max(inp), np.min(inp))
     return inp
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
-    inp_out = (inp - np.min(inp)) / np.ptp(inp)
+    inp = (np.nan_to_num(inp)).astype(np.float64)
+    shape = inp.shape
+    inp_new = np.round(sklearn.preprocessing.minmax_scale(inp.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
+    print("wl: ", inp_new.shape, np.max(inp_new), np.min(inp_new))
+    #inp_out = (inp - np.min(inp)) / np.ptp(inp)
+    inp_out = inp_new
+    if np.min(inp_out) < 0:
+        print("problem here")
+        for i in range(len(inp_out)):
+            inp_out[i][inp_out[i] < 0] = 0
+    print("norm: ", np.max(inp_out), np.min(inp_out))
     return inp_out
 
 def normalize(inp: np.ndarray, mean: float, std: float):
@@ -47,59 +57,13 @@ def normalize(inp: np.ndarray, mean: float, std: float):
     inp_out = (inp - mean) / std
     return inp_out
 
-"""
-def cropping(inp: np.ndarray, tar: np.ndarray ):
-    #want to crop all CT scans to be [177,260,260]
-    x, y= inp, tar
-    print("ct max: ", np.max(x))
-    _,threshold = cv2.threshold(x,500,0,cv2.THRESH_TOZERO)
-    coords = center_of_mass(threshold)
-    print("coords: ", coords)
-    size =130
-    #x, y direction cropping
-    x_min = int(((coords[1] - size)+126)/2)
-    x_max = int(((coords[1] + size)+386)/2)
-    y_min = int(((coords[2] - size)+126)/2)
-    y_max = int(((coords[2] + size)+386)/2)
-    if (x.shape[0]>=117):
-        print("True", x.shape[0])
-    else:
-        print("too small ffs")
-    
-    #z axis cropping
-    inds = x < -500
-    im = x
-    im[...] = 1
-    im[inds] = 0
-    im = binary_fill_holes(im).astype(int)
-    filled_inds = np.nonzero(im)
-    print("im shape: ", im.shape, np.unique(im))
-    for z in range(len(im)-1,0, -1):
-        seg_slice = im[z,...]
-        val = np.sum(seg_slice)
-        if val != 0:
-            high_cc_cut = z
-            print(z)
-            break
-    high_cc_cut = filled_inds[0][-1]
-    im = x[(high_cc_cut-116):high_cc_cut,:,:]
-    #y = y[(high_cc_cut-116):high_cc_cut,:,:]
-
-    # Cuts complete
-    cutdown_shape = np.array(im.shape)
-    print("cropped shape: ", cutdown_shape)
-    x, y = x[(high_cc_cut-116):high_cc_cut,x_min:x_max,y_min:y_max], tar[(high_cc_cut-116):high_cc_cut,x_min:x_max,y_min:y_max]
-   
-    #x, y = im[(im.shape[0]-117):,x_min:x_max,y_min:y_max], tar[(im.shape[0]-117):,x_min:x_max,y_min:y_max]
-    return x, y"""
 
 def cropping(inp: np.ndarray, tar: np.ndarray ):
     #working one but z axis crop needs improving
     x, y= inp, tar
-    print("ct max: ", np.max(x))
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
     coords = center_of_mass(threshold)
-    print("coords: ", coords)
+    #print(coords)
     size =126
     x_min = int(((coords[1] - size)+126)/2)
     x_max = int(((coords[1] + size)+386)/2)
@@ -113,12 +77,12 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         print("True", x.shape[0])
 
     elif (200 < x.shape[0]):
-        print("big boi", x.shape[0])
+        print("bigger", x.shape[0])
         if(x.shape[0] > int(coords[0])+z_size):
             z_coords = {"z_min": int(coords[0]), "z_max": int(coords[0])+z_size}
         
     else:
-        print("too small ffs: ", x.shape[0])
+        print("too small: ", x.shape[0])
         padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         inp, tar =padded_arr, padded_tar
@@ -149,9 +113,10 @@ def sphereMask(tar: np.ndarray):
 
 def gaussian(msk):
     msk *= 100
-    gauss = gaussian_filter(msk, (1,2,2) ,truncate=100)
-    gauss = 1/(1 + np.exp(-gauss))
-    print("g: ",np.max(gauss), np.min(gauss), np.unique(gauss))
+    gauss = gaussian_filter(msk, (2,3,3) ,truncate=100)
+    print("g: ",np.max(gauss), np.min(gauss))
+    #gauss = 1/(1 + np.exp(-gauss))
+    #print("g sig: ",np.max(gauss), np.min(gauss), np.unique(gauss))
     return gauss
 
 def flip(im):
@@ -163,6 +128,51 @@ def flip(im):
         flipped = True   
         print("flipped") 
     return im
+
+def path_list(no_patients, skip: list):
+    path_list_inputs = []
+    path_list_targets = []
+    ids = []
+
+    for i in range(1,no_patients+1):
+        if i not in skip:
+            #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
+            path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
+            path_list_inputs.append(path + "/P" + str(i) + "_RT_sim_ct.nii.gz")
+            path_list_targets.append(path + "/P" + str(i) + "_RT_sim_seg.nii.gz")
+            id = "01-00" + str(i)
+            ids.append(id)
+    print("no read in: ", len(path_list_inputs))
+
+    return np.array(path_list_inputs), np.array(path_list_targets), np.array(ids)
+
+def getFiles(targetdir):
+    ls = []
+    ids = []
+    for fname in os.listdir(targetdir):
+        path = os.path.join(targetdir, fname)
+        if os.path.isdir(path):
+            continue    # skip directories
+        ls.append(path)
+        ids.append(fname)
+    return ls, ids
+
+def path_list2():
+    im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
+    msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
+    inputs = getFiles(im_dir)
+    path_list_inputs = inputs[0]
+    path_list_targets = getFiles(msk_dir)[0]
+    ids = inputs[1]
+    return path_list_inputs, path_list_targets, ids
+
+def save_preprocessed(inputs, targets, ids):
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz' 
+    ids = np.array(ids)   
+    #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
+    print("final shape: ", inputs.shape, targets.shape, ids.shape)
+    np.savez(path, inputs = inputs, masks = targets, ids = ids)
+    print("Saved preprocessed data")
 
 class preprocessing():
     def __init__(self,
@@ -211,69 +221,21 @@ class preprocessing():
 
         if self.heatmap is not None: #and self.sphere is None
             y = self.heatmap(y)
-            print(y.shape)
 
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
-
 
         #downsampling #[32,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
        
         #print("shape: ", x.shape, y.shape)
-        print("max, min: ", np.max(x), np.min(x))
-
+        #print("max, min: ", np.max(x), np.min(x))
+        print("y being a little shit: ", np.max(y), np.min(y))
+        assert np.min(y) >= 0
         data = {'input': x, 'mask': y}  
         return data
 
-def path_list(no_patients, skip: list):
-    path_list_inputs = []
-    path_list_targets = []
-    ids = []
-
-    for i in range(1,no_patients+1):
-        if i not in skip:
-            #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
-            path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
-            path_list_inputs.append(path + "/P" + str(i) + "_RT_sim_ct.nii.gz")
-            path_list_targets.append(path + "/P" + str(i) + "_RT_sim_seg.nii.gz")
-            id = "01-00" + str(i)
-            ids.append(id)
-    print("no read in: ", len(path_list_inputs))
-
-    return np.array(path_list_inputs), np.array(path_list_targets), np.array(ids)
-
-def getFiles(targetdir):
-    ls = []
-    ids = []
-    for fname in os.listdir(targetdir):
-        path = os.path.join(targetdir, fname)
-        if os.path.isdir(path):
-            continue    # skip directories
-        ls.append(path)
-        ids.append(fname)
-    return ls, ids
-
-def path_list2():
-    im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
-    msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
-    inputs = getFiles(im_dir)
-    path_list_inputs = inputs[0]
-    path_list_targets = getFiles(msk_dir)[0]
-    ids = inputs[1]
-    return path_list_inputs, path_list_targets, ids
-
-def save_preprocessed(inputs, targets, ids):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz' 
-    ids = np.array(ids)   
-    #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
-    print("final shape: ", inputs.shape, targets.shape, ids.shape)
-    for i in range(len(targets)):
-        print("slice no: ",GetSliceNumber(targets[i]))
-        #ids.append("P"+str(i))
-    np.savez(path, inputs = inputs, masks = targets, ids = ids)
-    print("Saved preprocessed data")
 
 #main
 #get the file names
@@ -281,9 +243,9 @@ PathList =  path_list2()
 no_patients = len(PathList[0])
 inputs = PathList[0]
 targets = PathList[1]
-ids = PathList[2] #[:no_patients]
+ids = PathList[2]#[:no_patients]
 
-print("no of patients: ",len(inputs), inputs[0], len(ids), ids[0])
+print("no of patients: ",len(inputs))
 #apply preprocessing
 preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= gaussian)
 
@@ -311,10 +273,56 @@ CTs, masks = np.array(CTs), np.array(masks)
 #     #projections(CTs[i], masks[i], order=[1,2,0])
 # plt.show()
 
-projections(CTs[0], masks[0], order=[1,2,0])
+projections(CTs[9], masks[9], order=[1,2,0])
 PrintSlice(CTs[0], masks[0], show = True)
 
 #%%
 #save the preprocessed masks and cts for the dataset
 save_preprocessed(CTs, masks, ids)
 
+
+"""
+def cropping(inp: np.ndarray, tar: np.ndarray ):
+    #want to crop all CT scans to be [177,260,260]
+    x, y= inp, tar
+    print("ct max: ", np.max(x))
+    _,threshold = cv2.threshold(x,500,0,cv2.THRESH_TOZERO)
+    coords = center_of_mass(threshold)
+    print("coords: ", coords)
+    size =130
+    #x, y direction cropping
+    x_min = int(((coords[1] - size)+126)/2)
+    x_max = int(((coords[1] + size)+386)/2)
+    y_min = int(((coords[2] - size)+126)/2)
+    y_max = int(((coords[2] + size)+386)/2)
+    if (x.shape[0]>=117):
+        print("True", x.shape[0])
+    else:
+        print("too small ffs")
+    
+    #z axis cropping
+    inds = x < -500
+    im = x
+    im[...] = 1
+    im[inds] = 0
+    im = binary_fill_holes(im).astype(int)
+    filled_inds = np.nonzero(im)
+    print("im shape: ", im.shape, np.unique(im))
+    for z in range(len(im)-1,0, -1):
+        seg_slice = im[z,...]
+        val = np.sum(seg_slice)
+        if val != 0:
+            high_cc_cut = z
+            print(z)
+            break
+    high_cc_cut = filled_inds[0][-1]
+    im = x[(high_cc_cut-116):high_cc_cut,:,:]
+    #y = y[(high_cc_cut-116):high_cc_cut,:,:]
+
+    # Cuts complete
+    cutdown_shape = np.array(im.shape)
+    print("cropped shape: ", cutdown_shape)
+    x, y = x[(high_cc_cut-116):high_cc_cut,x_min:x_max,y_min:y_max], tar[(high_cc_cut-116):high_cc_cut,x_min:x_max,y_min:y_max]
+   
+    #x, y = im[(im.shape[0]-117):,x_min:x_max,y_min:y_max], tar[(im.shape[0]-117):,x_min:x_max,y_min:y_max]
+    return x, y"""

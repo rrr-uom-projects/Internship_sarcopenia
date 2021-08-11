@@ -45,10 +45,10 @@ def main():
 
     # decide file paths
     #livs paths
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
-    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
+    #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz'
     checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
@@ -72,9 +72,13 @@ def main():
     train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num= 2)
 
     # dataloaders
-    training_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)
+    training_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = train_inds)#, transform = head_augmentations
     training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
-    
+    #testing inputs
+    for batch_idx, test_data in enumerate(training_dataloader):
+           test_em, test_lab = test_data[0], test_data[1]
+           print(torch.unique(test_lab))
+
     validation_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = val_inds)
     validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
@@ -82,7 +86,7 @@ def main():
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     # create model
-    model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
+    model = neckNavigator(filter_factor=2, targets = 1, in_channels = 1)
     #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
     for param in model.parameters():

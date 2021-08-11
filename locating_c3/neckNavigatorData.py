@@ -30,7 +30,7 @@ class neckNavigatorDataset(Dataset):
         self.targets = targets
         self.transform = transform
         self.inputs_dtype = torch.float32
-        self.targets_dtype = torch.float64
+        self.targets_dtype = torch.long
         self.availableInputs = [inputs[ind] for ind in image_inds]
         self.availableTargets = [targets[ind] for ind in image_inds]
 
@@ -52,7 +52,11 @@ class neckNavigatorDataset(Dataset):
         #y = y[:32, :128, :128]
         assert np.sum(y) != 0
         assert np.any(y) != np.nan
-        x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
+
+        if np.min(y) < 0:
+            print("shit on it")
+            y[y<0]=0
+        x, y = (torch.from_numpy(x)).type(self.inputs_dtype), (torch.from_numpy(y)).type(self.targets_dtype)
 
         # Preprocessing
         if self.transform is not None:

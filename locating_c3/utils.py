@@ -1,16 +1,11 @@
 #utils
 #created: 20/07/2021
 #hermione
-#oh lord heal my branch
 
 from SimpleITK.SimpleITK import Modulus
 import numpy as np
-from numpy.lib.function_base import average
 import scipy.ndimage as nd
-
 from scipy.ndimage.measurements import center_of_mass
-
-import torch
 import matplotlib.pyplot as plt
 
 
@@ -35,7 +30,7 @@ def Guassian(inp: np.ndarray):
 def PrintSlice(input, targets, show = False):
     slice_no = GetSliceNumber(targets)
     print("slice no: ", slice_no)
-    print("input shape: ", input.shape)
+    #print("input shape: ", input.shape)
     plt.imshow(input[slice_no,...], cmap = "gray")
     #for i in range(len(targets)):
         #targets[i,...,0][targets[i,...,0] == 0] = np.nan

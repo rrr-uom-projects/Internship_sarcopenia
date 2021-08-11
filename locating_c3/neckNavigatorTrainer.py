@@ -174,7 +174,7 @@ class neckNavigator_trainer:
         with torch.cuda.amp.autocast():
             # forward pass
             output = self.model(ct_im)
-            print("network output",output.shape, torch.max(output), torch.min(output), torch.mean(output))
+            print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for >1 targets
             loss = torch.nn.MSELoss()(output, h_target)#prob masks
             for i, param_group in enumerate(self.optimizer.param_groups):
@@ -187,11 +187,13 @@ class neckNavigator_trainer:
             #loss = torch.nn.MSELoss().item()
             # L1 loss contribution
             output = output.cpu()
+            h_target = h_target.cpu()
             if (output.shape[1] == 1):
                 # single target case
                 pred_vox = torch.tensor([np.unravel_index(torch.argmax(output[i, 0]), output.size()[2:]) for i in range(output.size(0))]).type(torch.FloatTensor)
-                
-            # DSNT here: loss += (torch.nn.L1Loss()(pred_vox) * 0.01) # scaling factor for the L1 supplementary term
+                gt_vox = torch.tensor([np.unravel_index(torch.argmax(h_target[i, 0]), h_target.size()[2:]) for i in range(h_target.size(0))]).type(torch.FloatTensor)
+            #DSNT here: 
+            #loss += (torch.nn.L1Loss()(pred_vox, gt_vox) * 0.01) # scaling factor for the L1 supplementary term
             return output, loss
 
     def _is_best_eval_score(self, eval_score):
