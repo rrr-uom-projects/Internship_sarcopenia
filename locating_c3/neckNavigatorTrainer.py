@@ -102,13 +102,13 @@ class neckNavigator_trainer:
             self.scaler.scale(loss).backward()
             
             # Every iters_to_accumulate, call step() and reset gradients:
-            if self.num_iterations%self.iters_to_accumulate == 0:
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                self.optimizer.zero_grad()
-                # log stats
-                self.logger.info(f'Training stats. Loss: {train_losses.avg}')
-                self._log_stats('train', train_losses.avg)
+            #if self.num_iterations%self.iters_to_accumulate == 0:
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+            self.optimizer.zero_grad()
+            # log stats
+            self.logger.info(f'Training stats. Loss: {train_losses.avg}')
+            self._log_stats('train', train_losses.avg)
             
             self.num_iterations += 1
 
@@ -173,9 +173,10 @@ class neckNavigator_trainer:
         with torch.cuda.amp.autocast():
             # forward pass
             output = self.model(ct_im)
+            print("network output",output.shape, torch.max(output), torch.min(output), torch.mean(output))
             # MSE loss contribution - unchanged for >1 targets
-            loss = torch.nn.MSELoss()(output, h_target)
-            #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([10])).to(self.device)(output, h_target)
+            #loss = torch.nn.MSELoss()(output, h_target)#prob masks
+            loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([100])).to(self.device)(output, h_target)#masks 0s and 1s
             #loss = L.BinaryFocalLoss()(output, h_target)
             #loss = torch.nn.KLDivLoss()(output, h_target)
             #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10]).to(self.device)), 1.0, 0.5)(output, h_target)

@@ -87,11 +87,24 @@ def projections(inp, msk, order,  type = "numpy"):
     plt.imshow(images[i])
     for j in range(len(masks[i])):
         masks[i][j][masks[i][j] == 0] = np.nan
-    plt.imshow(masks[i], cmap="autumn", alpha=0.5)
+    plt.imshow(masks[i], cmap="cool", alpha=0.5)
     plt.axis('off')
   plt.savefig("projections.png")
   plt.show()
   return coronal, sagital, axial
+
+#classs inbalence
+#ratio of no of 1s over no of 0s. averaged
+def classRatio(masks):
+    ratio = []
+    for i in range(len(masks)):
+        no_of_0s = (masks[i] == 0).sum()
+        no_of_1s = (masks[i] == 1).sum()
+        ratio.append(no_of_1s/no_of_0s)
+    average_ratio = np.mean(ratio)
+    print(average_ratio)
+    weights = (1/average_ratio) #penalise the network more harshly for getting it wrong
+    print(weights)
 
 def euclid_dis(gts, masks):
   #quantifies how far of the network's predictions are

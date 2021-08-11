@@ -30,7 +30,7 @@ class neckNavigatorDataset(Dataset):
         self.targets = targets
         self.transform = transform
         self.inputs_dtype = torch.float32
-        self.targets_dtype = torch.float32
+        self.targets_dtype = torch.float64
         self.availableInputs = [inputs[ind] for ind in image_inds]
         self.availableTargets = [targets[ind] for ind in image_inds]
 
@@ -50,7 +50,7 @@ class neckNavigatorDataset(Dataset):
         # Cropping and Typecasting
         #x = x[:32,:128,:128]
         #y = y[:32, :128, :128]
-
+        assert np.sum(y) != 0
         x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
 
         # Preprocessing

@@ -141,23 +141,17 @@ def sphereMask(tar: np.ndarray):
     sphere = create_bin_sphere(arr_size, sphere_center, r)
     print("sphere details", sphere.shape, np.unique(sphere))
     #Plot the result
-    fig =plt.figure(figsize=(6,6))
-    ax = plt.axes(projection='3d')
-    ax.voxels(sphere, edgecolor='red')
-    plt.show()
+    # fig =plt.figure(figsize=(6,6))
+    # ax = plt.axes(projection='3d')
+    # ax.voxels(sphere, edgecolor='red')
+    # plt.show()
     return sphere
 
 def gaussian(msk):
-    #its square which im not gassed about
-    gauss = gaussian_filter(msk.astype(np.float),3)
-    gauss[gauss != 0] =1
-    gauss = gauss.astype(np.int)
-    print("g: ",np.unique(gauss))
-    #Plot the result
-    # fig =plt.figure(figsize=(6,6))
-    # ax = plt.axes(projection='3d')
-    # ax.voxels(gauss, cmap='cool')
-    # plt.show()
+    msk *= 100
+    gauss = gaussian_filter(msk, (1,2,2) ,truncate=100)
+    gauss = 1/(1 + np.exp(-gauss))
+    print("g: ",np.max(gauss), np.min(gauss), np.unique(gauss))
     return gauss
 
 def flip(im):
@@ -175,7 +169,7 @@ class preprocessing():
                  inputs: list,
                  targets: list,
                  transform = window_level, cropping = None, normalise = None, 
-                 heatmap = None, gauss = gaussian
+                 heatmap = None, sphere = None
                  ):
         self.inputs = inputs
         self.targets = targets
@@ -185,7 +179,7 @@ class preprocessing():
         self.cropping = cropping
         self.normalise = normalise
         self.heatmap = heatmap
-        self.gaussian = gauss
+        self.sphere  =sphere
 
     def __len__(self):
         return len(self.inputs)
@@ -207,14 +201,17 @@ class preprocessing():
         
         # Preprocessing
         if self.transform is not None:
-            x,y = self.transform(x), self.transform(y)
+            x = self.transform(x)
 
         if self.cropping is not None:
             x, y = self.cropping(x, y)
-           
-        if self.heatmap is not None:
+
+        if self.sphere is not None:
+            y = self.sphere(y)
+
+        if self.heatmap is not None: #and self.sphere is None
             y = self.heatmap(y)
-            #y = self.gaussian(y)
+            print(y.shape)
 
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
@@ -280,21 +277,15 @@ def save_preprocessed(inputs, targets, ids):
 
 #main
 #get the file names
-
-no_patients = 1
-#skip = [24,25,37]
-
-
-skip = []
-#PathList =  path_list(no_patients, skip)
 PathList =  path_list2()
-inputs = PathList[0][:no_patients]
-targets = PathList[1][:no_patients]
-ids = PathList[2][:no_patients]
+no_patients = len(PathList[0])
+inputs = PathList[0]
+targets = PathList[1]
+ids = PathList[2] #[:no_patients]
 
 print("no of patients: ",len(inputs), inputs[0], len(ids), ids[0])
 #apply preprocessing
-preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= sphereMask)
+preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= gaussian)
 
 CTs = []
 masks = []
@@ -319,24 +310,11 @@ CTs, masks = np.array(CTs), np.array(masks)
 #     PrintSlice(CTs[i], masks[i])
 #     #projections(CTs[i], masks[i], order=[1,2,0])
 # plt.show()
-#classs inbalence
-#ratio of no of 1s over no of 0s. averaged
-def classRatio(masks):
-    ratio = []
-    for i in range(len(masks)):
-        no_of_0s = (masks[i] == 0).sum()
-        no_of_1s = (masks[i] == 1).sum()
-        #print(no_of_1s, no_of_0s)
-        ratio.append(no_of_1s/no_of_0s)
-    average_ratio = np.mean(ratio)
-    print(average_ratio)
-    weights = (1/average_ratio) #*10 to penalise the network more harshly for getting it wrong
-    print(weights)
 
 projections(CTs[0], masks[0], order=[1,2,0])
 PrintSlice(CTs[0], masks[0], show = True)
-w = classRatio(masks)
+
 #%%
 #save the preprocessed masks and cts for the dataset
-#save_preprocessed(CTs, masks, ids)
+save_preprocessed(CTs, masks, ids)
 
