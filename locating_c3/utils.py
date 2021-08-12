@@ -44,8 +44,8 @@ def projections(inp, msk, order, type = "numpy"):
   axi,cor,sag = 0,1,2
   proj_order = order
   if type == "tensor":
-     inp = inp.cpu().detach().numpy()
-     msk = msk.cpu().detach().numpy()
+     inp = inp.cpu().detach().squeeze().numpy()
+     msk = msk.cpu().detach().squeeze().numpy()
 
   def arrange(input, ax):
     #to return the projection in whatever order.
@@ -56,7 +56,7 @@ def projections(inp, msk, order, type = "numpy"):
     ord_list[:] = [ord_list[i] for i in proj_order]
     out = np.stack((ord_list), axis=2)
     return out
-
+  print(inp.shape)
   axial = arrange(inp, axi)
   coronal = arrange(inp, cor)
   sagital = arrange(inp, sag)

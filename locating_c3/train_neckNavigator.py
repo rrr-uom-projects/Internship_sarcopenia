@@ -89,7 +89,7 @@ def main():
         param.requires_grad = True
 
     # put the model on GPU(s)
-    device='cuda:1'
+    device='cuda:0'
     model.to(device)
 
     # Log the number of learnable parameters
@@ -133,12 +133,12 @@ def main():
 
     fig  = plt.figure(figsize=(100,25))
     ax = []
-    columns = 4
-    rows = 2
+    columns = 2
+    rows = 1
     for i in range(0,rows*columns):
         ax.append(fig.add_subplot(rows, columns, i+1))
         ax[-1].set_title(str(i+1))
-        PrintSlice(C3s[0][i], segments[0][i])
+        PrintSlice(C3s[i], segments[i])
         #projections(c3s[0][i], segments[0][i], order=[1,2,0])
     plt.savefig("slices.png")
     #plt.show()
