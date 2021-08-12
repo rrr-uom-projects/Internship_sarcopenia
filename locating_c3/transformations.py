@@ -66,7 +66,6 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     x, y= inp, tar
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
     coords = center_of_mass(threshold)
-    print(coords)
     size =126
     x_min = int(((coords[1] - size)+126)/2)
     x_max = int(((coords[1] + size)+386)/2)
@@ -93,11 +92,11 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         inp, tar =padded_arr, padded_tar
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
     
-    print("y pre chopped: ", np.max(y), np.min(y))   
-    print("z_coords: ",z_coords["z_min"], z_coords["z_max"] )
+    #print("y pre chopped: ", np.max(y), np.min(y))   
+    #print("z_coords: ",z_coords["z_min"], z_coords["z_max"] )
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-    print(x.shape, y.shape)
-    print("y chopped: ", np.max(y), np.min(y))
+    #print(x.shape, y.shape)
+    #print("y chopped: ", np.max(y), np.min(y))
     return x, y
 
 def sphereMask(tar: np.ndarray):
@@ -220,7 +219,7 @@ class preprocessing():
         #x,y = flip(x), flip(y)
         x-=1024
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
-        print("y start: ", np.max(y), np.min(y))
+        #print("y start: ", np.max(y), np.min(y))
         # Preprocessing
         if self.transform is not None:
             x = self.transform(x)
@@ -254,9 +253,9 @@ class preprocessing():
 #get the file names
 PathList =  path_list2()
 no_patients = len(PathList[0])
-inputs = PathList[0][:11]
-targets = PathList[1][:11]
-ids = PathList[2][:11]#[:no_patients]
+inputs = PathList[0][:2]
+targets = PathList[1][:2]
+ids = PathList[2][:2]#[:no_patients]
 
 print("no of patients: ",len(inputs))
 #apply preprocessing
@@ -288,8 +287,8 @@ CTs, masks = np.array(CTs), np.array(masks)
 
 #projections(CTs[8], masks[8], order=[1,2,0])
 #projections(CTs[9], masks[9], order=[1,2,0])
-projections(CTs[10], masks[10], order=[1,2,0])
-PrintSlice(CTs[10], masks[10], show = True)
+projections(CTs[1], masks[1], order=[1,2,0])
+#PrintSlice(CTs[10], masks[10], show = True)
 
 #%%
 #save the preprocessed masks and cts for the dataset

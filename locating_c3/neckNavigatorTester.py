@@ -25,9 +25,10 @@ class neckNavigatorTest:
            output = self.model(test_em)
            print("output shape: ", output.shape)
            test_output = output.squeeze().cpu().detach().numpy()
-           print(test_em.shape)
+           print("test em: ",test_em.shape, np.max(test_em), np.min(test_em))
            sigmoid = 1/(1 + np.exp(-test_output))
-           segment = (sigmoid > 0.5).astype(np.float)
+           segment = sigmoid
+           #segment = (sigmoid > 0.5).astype(np.float)
            print("np unique segment: ", np.unique(segment))
            GTs.append(test_lab.numpy())
            c3s.append(test_em.squeeze().cpu().detach().numpy())
