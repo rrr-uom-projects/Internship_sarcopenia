@@ -136,6 +136,8 @@ def flip(im):
         #im = im[::-1, :, :]
         flipped = True   
         #print("flipped") 
+    else:
+        im = sitk.GetArrayFromImage(im).astype(float)
     return im
 
 def path_list(no_patients, skip: list):
