@@ -25,7 +25,7 @@ from neckNavigator import neckNavigator, headHunter_multiHead_deeper
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
-from neckNavigatorTester import neckNavigatorTest
+from neckNavigatorTester import neckNavigatorTest1
 from utils import PrintSlice , GetSliceNumber, projections, euclid_dis
 
 def setup_argparse():
@@ -57,9 +57,9 @@ def main():
 
     # get data
     data = get_data(data_path)
-    inputs = data[0]
-    targets = data[1]
-    ids = data[2]
+    inputs = data[0][:20]
+    targets = data[1][:20]
+    ids = data[2][:20]
 
     # decide batch sizes
     train_BS = 4 #int(6 * args.GPUs)
@@ -74,11 +74,7 @@ def main():
     # dataloaders
     training_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)#, transform = head_augmentations
     training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
-    #testing inputs
-    # for batch_idx, train_data in enumerate(training_dataloader):
-    #     train_em, train_lab = train_data[0], train_data[1]
-    #     print(torch.unique(train_lab))
-
+    
     validation_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = val_inds)
     validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
@@ -93,7 +89,7 @@ def main():
         param.requires_grad = True
 
     # put the model on GPU(s)
-    device='cuda:0'
+    device='cuda:1'
     model.to(device)
 
     # Log the number of learnable parameters
@@ -116,18 +112,24 @@ def main():
     trainer.fit()
 
     #testing
-    tester = neckNavigatorTest(model, test_dataloader)
-    c3s, segments, gts = tester[0], tester[1], tester[2]
-    print("gt info: ", gts.shape, "\nsegs info: ", segments.shape)
-    print(segments[0].shape, len(segments))
-    print(c3s[0].shape)
-    c3 = c3s[0][0]
-    segment = segments[0][0]
+    tester = neckNavigatorTest1(model, test_dataloader, device)
+    #test_results = tester
+    C3s, segments, GTs = tester
+    
+    print("gt info: ", len(GTs))
+    print(GTs.shape,)
+    print("segs info: ", segments.shape)
+    #print(segments[0].shape, len(segments))
+    #print(C3s[0].shape)
+    #c3 = C3s[0][0]
+    #segment = segments[0][0]
 
-    PrintSlice(c3, segment, show=True)
-    projections(c3,segment, order = [1,2,0])
+    difference = euclid_dis(GTs, segments)
+    print(difference)
+    PrintSlice(C3s[0], segments[0], show=True)
+    projections(C3s[0],segments[0], order = [1,2,0])
 
-    difference = euclid_dis(gts, segments)
+    
 
     fig  = plt.figure(figsize=(100,25))
     ax = []
@@ -136,7 +138,7 @@ def main():
     for i in range(0,rows*columns):
         ax.append(fig.add_subplot(rows, columns, i+1))
         ax[-1].set_title(str(i+1))
-        PrintSlice(c3s[0][i], segments[0][i])
+        PrintSlice(C3s[0][i], segments[0][i])
         #projections(c3s[0][i], segments[0][i], order=[1,2,0])
     plt.savefig("slices.png")
     #plt.show()

@@ -106,7 +106,7 @@ def euclid_dis(gts, masks):
   #quantifies how far of the network's predictions are
   distances = []
   for i in range(len(gts)):
-    distances.append(Modulus(GetSliceNumber(gts[i])-GetSliceNumber(masks[i])))
+    distances.append(np.abs(GetSliceNumber(gts[i])-GetSliceNumber(masks[i])))
   distances = np.array(distances)
   print(np.average(distances))
   return distances
