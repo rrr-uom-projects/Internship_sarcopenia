@@ -51,8 +51,7 @@ class neckNavigatorDataset(Dataset):
         #x = x[:32,:128,:128]
         #y = y[:32, :128, :128]
         assert np.sum(y) != 0
-        assert np.any(y) != np.nan
-
+        #assert np.any(y) != np.nan
         if np.min(y) < 0:
             print("shit on it")
             y[y<0]=0

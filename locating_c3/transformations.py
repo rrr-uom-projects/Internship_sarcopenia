@@ -34,7 +34,7 @@ def window_level(inp: np.array):
     inp[inp > thresh] = 0
     inp[inp > vmax] = vmax
     inp[inp < vmin] = vmin
-    print("wl: ", inp.shape, np.max(inp), np.min(inp))
+    #print("wl: ", inp.shape, np.max(inp), np.min(inp))
     return inp
 
 def normalize_01(inp: np.ndarray):
@@ -42,14 +42,17 @@ def normalize_01(inp: np.ndarray):
     inp = (np.nan_to_num(inp)).astype(np.float64)
     shape = inp.shape
     inp_new = np.round(sklearn.preprocessing.minmax_scale(inp.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
-    print("wl: ", inp_new.shape, np.max(inp_new), np.min(inp_new))
+    print("norm: ", inp_new.shape, np.max(inp_new), np.min(inp_new))
     #inp_out = (inp - np.min(inp)) / np.ptp(inp)
+    #inp_out =(inp-np.min(inp)) / np.max(inp)
     inp_out = inp_new
     if np.min(inp_out) < 0:
-        print("problem here")
-        for i in range(len(inp_out)):
-            inp_out[i][inp_out[i] < 0] = 0
-    print("norm: ", np.max(inp_out), np.min(inp_out))
+        print("problem here\n")
+        inp_out[inp_out < 0] = 0
+    if np.max(inp_out) == 0:
+        print("another problem here\n")
+        print("HELP\n")
+    #print("norm: ", np.max(inp_out), np.min(inp_out))
     return inp_out
 
 def normalize(inp: np.ndarray, mean: float, std: float):
@@ -63,7 +66,7 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     x, y= inp, tar
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
     coords = center_of_mass(threshold)
-    #print(coords)
+    print(coords)
     size =126
     x_min = int(((coords[1] - size)+126)/2)
     x_max = int(((coords[1] + size)+386)/2)
@@ -72,25 +75,29 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     #z crop
     z_size = 112
     z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
-
-    if (z_size < x.shape[0] < 200):
+    #z_coords = {"z_min":0,"z_max":z_size}
+    
+    if (z_size < x.shape[0] < z_size):
         print("True", x.shape[0])
-
-    elif (200 < x.shape[0]):
-        print("bigger", x.shape[0])
-        if(x.shape[0] > int(coords[0])+z_size):
-            z_coords = {"z_min": int(coords[0]), "z_max": int(coords[0])+z_size}
         
+    elif (z_size < x.shape[0]):
+        print("bigger", x.shape[0])
+        if(x.shape[0] > int(coords[0])+z_size): #190>87+112=199
+            print("crop")
+            z_coords = {"z_min": int(coords[0]), "z_max": int(coords[0])+z_size}
+
     else:
         print("too small: ", x.shape[0])
         padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         inp, tar =padded_arr, padded_tar
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
-        
+    
+    print("y pre chopped: ", np.max(y), np.min(y))   
+    print("z_coords: ",z_coords["z_min"], z_coords["z_max"] )
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-    #print(x.shape, y.shape)
-
+    print(x.shape, y.shape)
+    print("y chopped: ", np.max(y), np.min(y))
     return x, y
 
 def sphereMask(tar: np.ndarray):
@@ -122,11 +129,13 @@ def gaussian(msk):
 def flip(im):
     flipped = False
     if im.GetDirection()[-1] == -1:
-        # print("Image upside down, CC flip required!")
-        #im = np.flip(im, axis=0)        # flip CC
-        #im = np.flip(im, axis=2)        # flip LR --> this works, should be made more robust though (with sitk cosine matrix)
+        print("Image upside down, CC flip required!")
+        im = sitk.GetArrayFromImage(im).astype(float)
+        im = np.flip(im, axis=0)        # flip CC
+        im = np.flip(im, axis=2)        # flip LR --> this works, should be made more robust though (with sitk cosine matrix)
+        #im = im[::-1, :, :]
         flipped = True   
-        print("flipped") 
+        #print("flipped") 
     return im
 
 def path_list(no_patients, skip: list):
@@ -204,15 +213,16 @@ class preprocessing():
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         # check if flip required
+        x,y = flip(x), flip(y)
+        #x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         #x,y = flip(x), flip(y)
-        x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         x-=1024
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
-        
+        print("y start: ", np.max(y), np.min(y))
         # Preprocessing
         if self.transform is not None:
             x = self.transform(x)
-
+    
         if self.cropping is not None:
             x, y = self.cropping(x, y)
 
@@ -233,6 +243,7 @@ class preprocessing():
         #print("max, min: ", np.max(x), np.min(x))
         print("y being a little shit: ", np.max(y), np.min(y))
         assert np.min(y) >= 0
+        #assert np.max(y) > 0
         data = {'input': x, 'mask': y}  
         return data
 
@@ -241,9 +252,9 @@ class preprocessing():
 #get the file names
 PathList =  path_list2()
 no_patients = len(PathList[0])
-inputs = PathList[0]
-targets = PathList[1]
-ids = PathList[2]#[:no_patients]
+inputs = PathList[0][:11]
+targets = PathList[1][:11]
+ids = PathList[2][:11]#[:no_patients]
 
 print("no of patients: ",len(inputs))
 #apply preprocessing
@@ -273,12 +284,14 @@ CTs, masks = np.array(CTs), np.array(masks)
 #     #projections(CTs[i], masks[i], order=[1,2,0])
 # plt.show()
 
-projections(CTs[9], masks[9], order=[1,2,0])
-PrintSlice(CTs[0], masks[0], show = True)
+#projections(CTs[8], masks[8], order=[1,2,0])
+#projections(CTs[9], masks[9], order=[1,2,0])
+projections(CTs[10], masks[10], order=[1,2,0])
+PrintSlice(CTs[10], masks[10], show = True)
 
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids)
+#save_preprocessed(CTs, masks, ids)
 
 
 """
