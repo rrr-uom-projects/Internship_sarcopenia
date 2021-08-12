@@ -25,11 +25,11 @@ class neckNavigatorTest:
            output = self.model(test_em)
            print("output shape: ", output.shape)
            test_output = output.squeeze().cpu().detach().numpy()
-           print("test out: ",test_output.shape, np.max(test_output), np.min(test_output))
+           #print("test out: ",test_output.shape, np.max(test_output), np.min(test_output))
            sigmoid = 1/(1 + np.exp(-test_output))
            segment = sigmoid.astype(np.float) #for heatmaps
            #segment = (sigmoid > 0.5).astype(np.float)
-           print("np unique segment: ", np.unique(segment))
+           
            GTs.append(test_lab.numpy())
            c3s.append(test_em.squeeze().cpu().detach().numpy())
            segments.append(segment)
@@ -37,6 +37,9 @@ class neckNavigatorTest:
         segments = np.asarray(segments)
         c3s = np.asarray(c3s)
         GTs = np.asarray(GTs)
+        print("segments: ", segments.shape)
+        print("c3s: ", c3s.shape)
+        print("gts: ", GTs.shape)
         return c3s, segments, GTs
 
 
