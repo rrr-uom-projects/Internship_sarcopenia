@@ -174,12 +174,12 @@ class neckNavigator_trainer:
         with torch.cuda.amp.autocast():
             # forward pass
             output = self.model(ct_im)
-            print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
+            #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for >1 targets
             loss = torch.nn.MSELoss()(output, h_target)#prob masks
-            for i, param_group in enumerate(self.optimizer.param_groups):
-                lr = float(param_group['lr'])
-                print("lr: ", lr)
+            # for i, param_group in enumerate(self.optimizer.param_groups):
+            #     lr = float(param_group['lr'])
+            #     print("lr: ", lr)
             #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([100])).to(self.device)(output, h_target)#masks 0s and 1s
             #loss = L.BinaryFocalLoss()(output, h_target)
             #loss = torch.nn.KLDivLoss()(output, h_target)

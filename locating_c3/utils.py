@@ -40,8 +40,8 @@ def PrintSlice(input, targets, show = False):
       plt.show()
       plt.savefig("Slice.png")
 
-def projections(inp, msk, order,  type = "numpy"):
-  cor, sag, axi = 0,1,2
+def projections(inp, msk, order, type = "numpy"):
+  axi,cor,sag = 0,1,2
   proj_order = order
   if type == "tensor":
      inp = inp.cpu().detach().numpy()
@@ -57,24 +57,25 @@ def projections(inp, msk, order,  type = "numpy"):
     out = np.stack((ord_list), axis=2)
     return out
 
+  axial = arrange(inp, axi)
   coronal = arrange(inp, cor)
   sagital = arrange(inp, sag)
-  axial = arrange(inp, axi)
-  # holder = np.zeros((*(inp.shape), 3))
-  # for i, img in enumerate(coronal):
-  #       holder[..., i] = coronal
+
+  ax_mask = np.max(msk, axis = axi)
   cor_mask = np.max(msk, axis = cor)
   sag_mask = np.max(msk, axis = sag)
-  ax_mask = np.max(msk, axis = axi)
-  
+  #flip right way up
+  coronal = coronal[::-1]
+  sagital = sagital[::-1]
+  cor_mask = cor_mask[::-1]
+  sag_mask = sag_mask[::-1]
+  images = (axial,coronal,sagital)
+  masks = (ax_mask,cor_mask, sag_mask)
+  print(coronal.shape)
   fig = plt.figure(figsize=(8, 8))
   ax = []
   columns = 3
   rows = 1
-  images = (coronal,sagital,axial)
-  masks = (cor_mask, sag_mask, ax_mask)
-  print(coronal.shape)
-
   for i in range(columns*rows):
     # create subplot and append to ax
     ax.append(fig.add_subplot(rows, columns, i+1) )
@@ -104,7 +105,8 @@ def classRatio(masks):
 def euclid_dis(gts, masks):
   #quantifies how far of the network's predictions are
   distances = []
-  distances.append(Modulus(GetSliceNumber(gts)-GetSliceNumber(masks)))
+  for i in range(len(gts)):
+    distances.append(Modulus(GetSliceNumber(gts[i])-GetSliceNumber(masks[i])))
   distances = np.array(distances)
   print(np.average(distances))
   return distances

@@ -30,7 +30,7 @@ class neckNavigatorDataset(Dataset):
         self.targets = targets
         self.transform = transform
         self.inputs_dtype = torch.float32
-        self.targets_dtype = torch.long
+        self.targets_dtype = torch.float32
         self.availableInputs = [inputs[ind] for ind in image_inds]
         self.availableTargets = [targets[ind] for ind in image_inds]
 
@@ -47,16 +47,12 @@ class neckNavigatorDataset(Dataset):
             voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
             return voxel_dim
         
-        # Cropping and Typecasting
-        #x = x[:32,:128,:128]
-        #y = y[:32, :128, :128]
-        assert np.sum(y) != 0
-        #assert np.any(y) != np.nan
-        if np.min(y) < 0:
-            print("shit on it")
-            y[y<0]=0
-        x, y = (torch.from_numpy(x)).type(self.inputs_dtype), (torch.from_numpy(y)).type(self.targets_dtype)
-
+        #Typecasting
+        #print(np.unique(y), y.dtype )
+        x = (torch.from_numpy(x)).type(self.inputs_dtype)
+        y = (torch.from_numpy(y)).type(self.targets_dtype)
+        #print("tensor type", y.dtype)
+        #print(torch.unique(y))
         # Preprocessing
         if self.transform is not None:
             augs = self.transform(x,y, data_keys=["input","input"])
@@ -64,7 +60,7 @@ class neckNavigatorDataset(Dataset):
             y = augs[1] 
                     
         # creating channel dimension            
-        return x.unsqueeze(0), y.unsqueeze(0).long()
+        return x.unsqueeze(0), y.unsqueeze(0)
 
 
 # functions and definitions

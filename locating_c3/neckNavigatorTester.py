@@ -25,9 +25,9 @@ class neckNavigatorTest:
            output = self.model(test_em)
            print("output shape: ", output.shape)
            test_output = output.squeeze().cpu().detach().numpy()
-           print("test em: ",test_em.shape, np.max(test_em), np.min(test_em))
+           print("test out: ",test_output.shape, np.max(test_output), np.min(test_output))
            sigmoid = 1/(1 + np.exp(-test_output))
-           segment = sigmoid
+           segment = sigmoid.astype(np.float) #for heatmaps
            #segment = (sigmoid > 0.5).astype(np.float)
            print("np unique segment: ", np.unique(segment))
            GTs.append(test_lab.numpy())
