@@ -20,8 +20,8 @@ import argparse as ap
 import matplotlib.pyplot as plt
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-from neckNavigator import neckNavigator, headHunter_multiHead_deeper
-#from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
+#from neckNavigator import neckNavigator, headHunter_multiHead_deeper
+from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
@@ -99,14 +99,14 @@ def main():
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.0005)
 
     # Create learning rate adjustment strategy
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 
     # Parallelize model
     model = nn.DataParallel(model)
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, patience=25, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, patience=25, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()
@@ -127,20 +127,21 @@ def main():
     difference = euclid_dis(GTs, segments)
     print(difference)
     PrintSlice(C3s[0], segments[0], show=True)
-    projections(C3s[0],segments[0], order = [1,2,0])
+    for j in range(0,4):
+        projections(C3s[j],segments[j], order = [1,2,0])
 
     
 
-    fig  = plt.figure(figsize=(100,25))
-    ax = []
-    columns = 2
-    rows = 1
-    for i in range(0,rows*columns):
-        ax.append(fig.add_subplot(rows, columns, i+1))
-        ax[-1].set_title(str(i+1))
-        PrintSlice(C3s[i], segments[i])
-        #projections(c3s[0][i], segments[0][i], order=[1,2,0])
-    plt.savefig("slices.png")
+    # fig  = plt.figure(figsize=(100,25))
+    # ax = []
+    # columns = 2
+    # rows = 1
+    # for i in range(0,rows*columns):
+    #     ax.append(fig.add_subplot(rows, columns, i+1))
+    #     ax[-1].set_title(str(i+1))
+    #     PrintSlice(C3s[i], segments[i])
+    #     #projections(c3s[0][i], segments[0][i], order=[1,2,0])
+    # plt.savefig("slices.png")
     #plt.show()
 
 

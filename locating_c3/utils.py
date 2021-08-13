@@ -87,7 +87,7 @@ def projections(inp, msk, order, type = "numpy"):
     plt.imshow(masks[i], cmap="cool", alpha=0.5)
     plt.axis('off')
   plt.savefig("projectionsX.png")
-  #plt.show()
+  plt.show()
   return coronal, sagital, axial
 
 #classs inbalence

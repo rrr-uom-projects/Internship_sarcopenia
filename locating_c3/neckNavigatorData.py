@@ -55,10 +55,11 @@ class neckNavigatorDataset(Dataset):
         #print(torch.unique(y))
         # Preprocessing
         if self.transform is not None:
+            y = K.RandomAffine3D(0,[0,1,1],p=0.5,keepdim = True)(y)#random mask shifts side to side
             augs = self.transform(x,y, data_keys=["input","input"])
             x = augs[0]
             y = augs[1] 
-            y = K.RandomAffine3D(0,[0,0.05,0.05],p=0.5,keepdim = True)(y)   
+     
         # creating channel dimension            
         return x.unsqueeze(0), y.unsqueeze(0)
 
