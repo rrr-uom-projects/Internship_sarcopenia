@@ -6,6 +6,7 @@
 import os
 import torch
 import numpy as np
+from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib
@@ -102,13 +103,13 @@ class neckNavigator_trainer:
             self.scaler.scale(loss).backward()
             
             # Every iters_to_accumulate, call step() and reset gradients:
-            if self.num_iterations%self.iters_to_accumulate == 0:
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                self.optimizer.zero_grad()
-                # log stats
-                self.logger.info(f'Training stats. Loss: {train_losses.avg}')
-                self._log_stats('train', train_losses.avg)
+            #if self.num_iterations%self.iters_to_accumulate == 0:
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+            self.optimizer.zero_grad()
+            # log stats
+            self.logger.info(f'Training stats. Loss: {train_losses.avg}')
+            self._log_stats('train', train_losses.avg)
             
             self.num_iterations += 1
 
@@ -173,20 +174,26 @@ class neckNavigator_trainer:
         with torch.cuda.amp.autocast():
             # forward pass
             output = self.model(ct_im)
+            #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for >1 targets
-            loss = torch.nn.MSELoss()(output, h_target)
-            #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([10])).to(self.device)(output, h_target)
+            loss = torch.nn.MSELoss()(output, h_target)#prob masks
+            # for i, param_group in enumerate(self.optimizer.param_groups):
+            #     lr = float(param_group['lr'])
+            #     print("lr: ", lr)
+            #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([100])).to(self.device)(output, h_target)#masks 0s and 1s
             #loss = L.BinaryFocalLoss()(output, h_target)
             #loss = torch.nn.KLDivLoss()(output, h_target)
             #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10]).to(self.device)), 1.0, 0.5)(output, h_target)
             #loss = torch.nn.MSELoss().item()
             # L1 loss contribution
             output = output.cpu()
+            h_target = h_target.cpu()
             if (output.shape[1] == 1):
                 # single target case
                 pred_vox = torch.tensor([np.unravel_index(torch.argmax(output[i, 0]), output.size()[2:]) for i in range(output.size(0))]).type(torch.FloatTensor)
-                
-            # DSNT here: loss += (torch.nn.L1Loss()(pred_vox) * 0.01) # scaling factor for the L1 supplementary term
+                gt_vox = torch.tensor([np.unravel_index(torch.argmax(h_target[i, 0]), h_target.size()[2:]) for i in range(h_target.size(0))]).type(torch.FloatTensor)
+            #DSNT here: 
+            #loss += (torch.nn.L1Loss()(pred_vox, gt_vox) * 0.01) # scaling factor for the L1 supplementary term
             return output, loss
 
     def _is_best_eval_score(self, eval_score):

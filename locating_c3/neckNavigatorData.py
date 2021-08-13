@@ -47,12 +47,12 @@ class neckNavigatorDataset(Dataset):
             voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
             return voxel_dim
         
-        # Cropping and Typecasting
-        #x = x[:32,:128,:128]
-        #y = y[:32, :128, :128]
-
-        x, y = torch.from_numpy(x).type(self.inputs_dtype), torch.from_numpy(y).type(self.targets_dtype)
-
+        #Typecasting
+        #print(np.unique(y), y.dtype )
+        x = (torch.from_numpy(x)).type(self.inputs_dtype)
+        y = (torch.from_numpy(y)).type(self.targets_dtype)
+        #print("tensor type", y.dtype)
+        #print(torch.unique(y))
         # Preprocessing
         if self.transform is not None:
             augs = self.transform(x,y, data_keys=["input","input"])
@@ -60,7 +60,7 @@ class neckNavigatorDataset(Dataset):
             y = augs[1] 
                     
         # creating channel dimension            
-        return x.unsqueeze(0), y.unsqueeze(0).long()
+        return x.unsqueeze(0), y.unsqueeze(0)
 
 
 # functions and definitions

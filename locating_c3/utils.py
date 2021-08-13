@@ -1,16 +1,11 @@
 #utils
 #created: 20/07/2021
 #hermione
-#oh lord heal my branch
 
 from SimpleITK.SimpleITK import Modulus
 import numpy as np
-from numpy.lib.function_base import average
 import scipy.ndimage as nd
-
 from scipy.ndimage.measurements import center_of_mass
-
-import torch
 import matplotlib.pyplot as plt
 
 
@@ -35,7 +30,7 @@ def Guassian(inp: np.ndarray):
 def PrintSlice(input, targets, show = False):
     slice_no = GetSliceNumber(targets)
     print("slice no: ", slice_no)
-    print("input shape: ", input.shape)
+    #print("input shape: ", input.shape)
     plt.imshow(input[slice_no,...], cmap = "gray")
     #for i in range(len(targets)):
         #targets[i,...,0][targets[i,...,0] == 0] = np.nan
@@ -45,12 +40,12 @@ def PrintSlice(input, targets, show = False):
       plt.show()
       plt.savefig("Slice.png")
 
-def projections(inp, msk, order,  type = "numpy"):
-  cor, sag, axi = 0,1,2
+def projections(inp, msk, order, type = "numpy"):
+  axi,cor,sag = 0,1,2
   proj_order = order
   if type == "tensor":
-     inp = inp.cpu().detach().numpy()
-     msk = msk.cpu().detach().numpy()
+     inp = inp.cpu().detach().squeeze().numpy()
+     msk = msk.cpu().detach().squeeze().numpy()
 
   def arrange(input, ax):
     #to return the projection in whatever order.
@@ -61,25 +56,26 @@ def projections(inp, msk, order,  type = "numpy"):
     ord_list[:] = [ord_list[i] for i in proj_order]
     out = np.stack((ord_list), axis=2)
     return out
-
+  print(inp.shape)
+  axial = arrange(inp, axi)
   coronal = arrange(inp, cor)
   sagital = arrange(inp, sag)
-  axial = arrange(inp, axi)
-  # holder = np.zeros((*(inp.shape), 3))
-  # for i, img in enumerate(coronal):
-  #       holder[..., i] = coronal
+
+  ax_mask = np.max(msk, axis = axi)
   cor_mask = np.max(msk, axis = cor)
   sag_mask = np.max(msk, axis = sag)
-  ax_mask = np.max(msk, axis = axi)
-  
+  #flip right way up
+  coronal = coronal[::-1]
+  sagital = sagital[::-1]
+  cor_mask = cor_mask[::-1]
+  sag_mask = sag_mask[::-1]
+  images = (axial,coronal,sagital)
+  masks = (ax_mask,cor_mask, sag_mask)
+  print(coronal.shape)
   fig = plt.figure(figsize=(8, 8))
   ax = []
   columns = 3
   rows = 1
-  images = (coronal,sagital,axial)
-  masks = (cor_mask, sag_mask, ax_mask)
-  print(coronal.shape)
-
   for i in range(columns*rows):
     # create subplot and append to ax
     ax.append(fig.add_subplot(rows, columns, i+1) )
@@ -87,16 +83,30 @@ def projections(inp, msk, order,  type = "numpy"):
     plt.imshow(images[i])
     for j in range(len(masks[i])):
         masks[i][j][masks[i][j] == 0] = np.nan
-    plt.imshow(masks[i], cmap="autumn", alpha=0.5)
+    plt.imshow(masks[i], cmap="cool", alpha=0.5)
     plt.axis('off')
   plt.savefig("projections.png")
   plt.show()
   return coronal, sagital, axial
 
+#classs inbalence
+#ratio of no of 1s over no of 0s. averaged
+def classRatio(masks):
+    ratio = []
+    for i in range(len(masks)):
+        no_of_0s = (masks[i] == 0).sum()
+        no_of_1s = (masks[i] == 1).sum()
+        ratio.append(no_of_1s/no_of_0s)
+    average_ratio = np.mean(ratio)
+    print(average_ratio)
+    weights = (1/average_ratio) #penalise the network more harshly for getting it wrong
+    print(weights)
+
 def euclid_dis(gts, masks):
   #quantifies how far of the network's predictions are
   distances = []
-  distances.append(Modulus(GetSliceNumber(gts)-GetSliceNumber(masks)))
+  for i in range(len(gts)):
+    distances.append(np.abs(GetSliceNumber(gts[i])-GetSliceNumber(masks[i])))
   distances = np.array(distances)
   print(np.average(distances))
   return distances

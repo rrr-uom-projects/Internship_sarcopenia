@@ -25,8 +25,8 @@ from neckNavigator import neckNavigator, headHunter_multiHead_deeper
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
-from neckNavigatorTester import neckNavigatorTest
-from utils import PrintSlice , GetSliceNumber, projections
+from neckNavigatorTester import neckNavigatorTest1
+from utils import PrintSlice , GetSliceNumber, projections, euclid_dis
 
 def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
@@ -45,10 +45,10 @@ def main():
 
     # decide file paths
     #livs paths
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
-    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
+    #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz'
     checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
@@ -57,13 +57,13 @@ def main():
 
     # get data
     data = get_data(data_path)
-    inputs = data[0]
-    targets = data[1]
-    ids = data[2]
+    inputs = data[0][:20]
+    targets = data[1][:20]
+    ids = data[2][:20]
 
     # decide batch sizes
-    train_BS = 1 #int(6 * args.GPUs)
-    val_BS = 1 #int(6 * args.GPUs)
+    train_BS = 4 #int(6 * args.GPUs)
+    val_BS = 4 #int(6 * args.GPUs)
     train_workers = int(8)
     val_workers = int(4)
 
@@ -72,7 +72,7 @@ def main():
     train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num= 2)
 
     # dataloaders
-    training_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)
+    training_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)#, transform = head_augmentations
     training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     
     validation_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = val_inds)
@@ -82,7 +82,7 @@ def main():
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     # create model
-    model = neckNavigator(filter_factor=2, targets= 1, in_channels=1)
+    model = neckNavigator(filter_factor=2, targets = 1, in_channels = 1)
     #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
     for param in model.parameters():
@@ -96,39 +96,49 @@ def main():
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
     # Create the optimizer
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.0001)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.0005)
 
     # Create learning rate adjustment strategy
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
 
     # Parallelize model
     model = nn.DataParallel(model)
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=2, patience=25, iters_to_accumulate=4)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1, patience=25, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()
-    tester = neckNavigatorTest(model, test_dataloader)
-    c3s, segments = tester[0], tester[1]
 
-    print(segments[0].shape, len(segments))
-    print(c3s[0].shape)
-    c3 = c3s[0][0]
-    segment = segments[0][0]
-    PrintSlice(c3, segment, show=True)
+    #testing
+    tester = neckNavigatorTest1(model, test_dataloader, device)
+    #test_results = tester
+    C3s, segments, GTs = tester
+    
+    print("gt info: ", len(GTs))
+    print(GTs.shape,)
+    print("segs info: ", segments.shape)
+    #print(segments[0].shape, len(segments))
+    #print(C3s[0].shape)
+    #c3 = C3s[0][0]
+    #segment = segments[0][0]
 
+    difference = euclid_dis(GTs, segments)
+    print(difference)
+    PrintSlice(C3s[0], segments[0], show=True)
+    projections(C3s[0],segments[0], order = [1,2,0])
 
-    projections(c3,segment, order = [1,2,0])
+    
+
     fig  = plt.figure(figsize=(100,25))
     ax = []
-    columns = 4
-    rows = 2
+    columns = 2
+    rows = 1
     for i in range(0,rows*columns):
         ax.append(fig.add_subplot(rows, columns, i+1))
         ax[-1].set_title(str(i+1))
-        PrintSlice(c3s[0][i], segments[0][i])
+        PrintSlice(C3s[i], segments[i])
         #projections(c3s[0][i], segments[0][i], order=[1,2,0])
     plt.savefig("slices.png")
     #plt.show()

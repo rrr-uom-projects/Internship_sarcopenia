@@ -114,8 +114,8 @@ class neckNavigator(nn.Module):
         x = F.relu(self.bn10(self.c10(x)))
         x = self.drop10(x)
         x = self.pred(x)
-        x+=1e-9
-        #x = self.act(x)
+        #x+=1e-6
+        x = self.act(x)
         # Predict
         return x
 
