@@ -6,7 +6,6 @@
 import torch
 import numpy as np
 
-
 def neckNavigatorTest1(model, test_dataloader, device):
   model.eval()
   segments = []
