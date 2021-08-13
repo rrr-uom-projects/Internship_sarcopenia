@@ -36,17 +36,18 @@ def neckNavigatorTest1(model, test_dataloader, device):
   return c3s, segments, GTs
 
 class neckNavigatorTest:
-    def __init__(self, model, test_dataloader):
+    def __init__(self, model, test_dataloader, device):
         self.model = model
         self.test_dataloader = test_dataloader
+        self.device = device
         
-    def __getitem__(self, idx):
+    def test(self, idx):
         self.model.eval()
         segments = []
         c3s = []
         GTs =[]
         for batch_idx, test_data in enumerate(self.test_dataloader):
-           test_em, test_lab = test_data[0].to(device), test_data[1]
+           test_em, test_lab = test_data[0].to(self.device), test_data[1]
            test_em = test_em.type(torch.FloatTensor)
            output = self.model(test_em)
            #print("output shape: ", output.shape)
