@@ -115,7 +115,7 @@ class neckNavigator(nn.Module):
         x = self.drop10(x)
         x = self.pred(x)
         #x+=1e-6
-        x = self.act(x)
+        #x = self.act(x)
         # Predict
         return x
 

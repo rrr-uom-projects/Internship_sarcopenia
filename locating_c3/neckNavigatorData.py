@@ -15,7 +15,7 @@ from kornia.augmentation import AugmentationSequential
 from kornia.utils import image_to_tensor, tensor_to_image
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from utils import GetSliceNumber
+from utils import GetSliceNumber, projections
 
 
 # Neck Navigator Dataset
@@ -58,7 +58,7 @@ class neckNavigatorDataset(Dataset):
             augs = self.transform(x,y, data_keys=["input","input"])
             x = augs[0]
             y = augs[1] 
-                    
+            y = K.RandomAffine3D(0,[0,0.05,0.05],p=0.5,keepdim = True)(y)   
         # creating channel dimension            
         return x.unsqueeze(0), y.unsqueeze(0)
 
@@ -74,9 +74,16 @@ def get_data(path):
 
 #augmentation
 head_augmentations = AugmentationSequential(K.RandomHorizontalFlip3D(p = 0.5),
-                            K.RandomRotation3D([0, 0, 30], p = 0.5),
+                            K.RandomRotation3D([0, 5, 20], p = 0.5),
                             data_keys=["input" ,"input"],
                             keepdim = True,
                             )
 
-
+def mask_aug(msk, p):
+    #want an aug to shift masks on x and y axis randomly.
+    shift = np.random.choice(np.arange(-6, 5), p=[p/10,p/10,p/10,p/10,p/10,1-p,p/10,p/10,p/10,p/10,p/10])
+    shift_mask = np.roll(msk, (shift,shift),axis=(1,2))
+    plt.imshow(msk, cmap = 'cool')
+    plt.axis('off')
+    plt.show()
+    return shift_mask

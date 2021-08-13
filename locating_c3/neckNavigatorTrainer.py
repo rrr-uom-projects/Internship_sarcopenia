@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
 from pytorch_toolbelt import losses as L
+from utils import projections
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
@@ -176,12 +177,13 @@ class neckNavigator_trainer:
             output = self.model(ct_im)
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for >1 targets
-            loss = torch.nn.MSELoss()(output, h_target)#prob masks
+            #loss = torch.nn.MSELoss()(output, h_target)#prob masks
             # for i, param_group in enumerate(self.optimizer.param_groups):
             #     lr = float(param_group['lr'])
             #     print("lr: ", lr)
+            projections(ct_im,h_target,order=[2,1,0], type="tensor")
             #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([100])).to(self.device)(output, h_target)#masks 0s and 1s
-            #loss = L.BinaryFocalLoss()(output, h_target)
+            loss = L.BinaryFocalLoss()(output, h_target)
             #loss = torch.nn.KLDivLoss()(output, h_target)
             #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10]).to(self.device)), 1.0, 0.5)(output, h_target)
             #loss = torch.nn.MSELoss().item()

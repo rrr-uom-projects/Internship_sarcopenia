@@ -44,8 +44,9 @@ def projections(inp, msk, order, type = "numpy"):
   axi,cor,sag = 0,1,2
   proj_order = order
   if type == "tensor":
-     inp = inp.cpu().detach().squeeze().numpy()
-     msk = msk.cpu().detach().squeeze().numpy()
+     inp = inp.cpu().detach().squeeze().numpy()[0]
+     msk = msk.cpu().detach().squeeze().numpy()[0]
+     #print(inp.shape)
 
   def arrange(input, ax):
     #to return the projection in whatever order.
@@ -56,7 +57,7 @@ def projections(inp, msk, order, type = "numpy"):
     ord_list[:] = [ord_list[i] for i in proj_order]
     out = np.stack((ord_list), axis=2)
     return out
-  print(inp.shape)
+  #print(inp.shape)
   axial = arrange(inp, axi)
   coronal = arrange(inp, cor)
   sagital = arrange(inp, sag)
@@ -71,7 +72,7 @@ def projections(inp, msk, order, type = "numpy"):
   sag_mask = sag_mask[::-1]
   images = (axial,coronal,sagital)
   masks = (ax_mask,cor_mask, sag_mask)
-  print(coronal.shape)
+  #print(coronal.shape)
   fig = plt.figure(figsize=(8, 8))
   ax = []
   columns = 3
@@ -85,8 +86,8 @@ def projections(inp, msk, order, type = "numpy"):
         masks[i][j][masks[i][j] == 0] = np.nan
     plt.imshow(masks[i], cmap="cool", alpha=0.5)
     plt.axis('off')
-  plt.savefig("projections.png")
-  plt.show()
+  plt.savefig("projectionsX.png")
+  #plt.show()
   return coronal, sagital, axial
 
 #classs inbalence
