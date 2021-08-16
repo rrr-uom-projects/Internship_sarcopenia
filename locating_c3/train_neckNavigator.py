@@ -21,19 +21,19 @@ import argparse as ap
 import matplotlib.pyplot as plt
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-#from neckNavigator import neckNavigator, headHunter_multiHead_deeper
-from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
+from neckNavigator import neckNavigator
+#from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
-from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
+from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters
 from neckNavigatorTester import neckNavigatorTest1
-from utils import setup_model, PrintSlice , GetSliceNumber, projections, euclid_dis
+from utils import setup_model, PrintSlice , projections, euclid_dis
 
 def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
     parser.add_argument("--targets", default=1, type=int, help="The number of targets")
     parser.add_argument("--fold_num", choices=[1,2,3,4,5], type=int, help="The fold number for the kfold cross validation")
-    parser.add_argument("--GPUs", choices=[1,2], type=int, default=1, help="Number of GPUs to use")
+    #parser.add_argument("--GPUs", choices=[1,2], type=int, default=1, help="Number of GPUs to use")
     global args
     args = parser.parse_args()
 
@@ -41,8 +41,8 @@ def main():
     #main
 
     # get args
-    setup_argparse()
-    global args
+    #setup_argparse()
+    #global args
 
     # decide file paths
     #livs paths
@@ -92,8 +92,8 @@ def main():
     # put the model on GPU(s)
     device='cuda:0'
     # model.to(device)
-    model=setup_model(model, checkpoint_dir, device, load_prev=True)
-    
+    load_prev=False
+    model=setup_model(model, checkpoint_dir, device, load_prev=load_prev)
     # Log the number of learnable parameters
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
@@ -105,17 +105,23 @@ def main():
 
     # Parallelize model
     model = nn.DataParallel(model)
+    epoch = 0 
+    iteration = 0
 
-    state = torch.load(os.path.join(checkpoint_dir, 'best_checkpoint.pytorch'))
-    epoch = state['epoch']
-    print(epoch)
+    if load_prev ==True:
+        state = torch.load(os.path.join(checkpoint_dir, 'best_checkpoint.pytorch'))
+        epoch = state['epoch']
+        interation = state['num_iterations']
+        print("starting epoch: ", epoch)
+    
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_epoch = epoch ,patience=20, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
+                                 num_epoch = epoch ,patience=20, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()
-
+#%%
     #testing
     tester = neckNavigatorTest1(model, test_dataloader, device)
     #test_results = tester

@@ -28,16 +28,16 @@ def Guassian(inp: np.ndarray):
   return gauss
 
 def setup_model(model, checkpoint_dir, device, load_prev = False, eval_mode = False):
-  for param in model.parameters():
-    if load_prev:
-      param.requires_grad = False
-    else:
-      param.requires_grad = True
+  # for param in model.parameters():
+  #   if load_prev:
+  #     param.requires_grad = False
+  #   else:
+  #     param.requires_grad = True
   model.to(device)
-  if load_prev:
+  if load_prev == True:
     model.load_best(checkpoint_dir, logger=None)
-    for param in model.parameters():
-        param.requires_grad = True
+  for param in model.parameters():
+      param.requires_grad = True
   if eval_mode:
     model.eval()
   return model
@@ -55,7 +55,7 @@ def PrintSlice(input, targets, show = False):
       plt.show()
       plt.savefig("Slice.png")
 
-def projections(inp, msk, order, type = "numpy"):
+def projections(inp, msk, order, type = "numpy", show = False, save_name = None):
   axi,cor,sag = 0,1,2
   proj_order = order
   if type == "tensor":
@@ -101,8 +101,9 @@ def projections(inp, msk, order, type = "numpy"):
         masks[i][j][masks[i][j] == 0] = np.nan
     plt.imshow(masks[i], cmap="cool", alpha=0.5)
     plt.axis('off')
-  plt.savefig("projectionsX.png")
-  plt.show()
+  plt.savefig("projections"+ save_name +".png")
+  if show: 
+    plt.show()
   return coronal, sagital, axial
 
 #classs inbalence

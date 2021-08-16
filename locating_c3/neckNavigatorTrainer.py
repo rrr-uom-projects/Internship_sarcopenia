@@ -46,8 +46,11 @@ class neckNavigator_trainer:
         self.epochs_since_improvement = 0
         #tensorboard 
         runs = os.listdir(os.path.join(checkpoint_dir, 'logs'))
-        log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)))
-        os.makedirs(log_dir)
+        if num_epoch == 0:
+            log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)))
+            os.makedirs(log_dir)
+        else: 
+            log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)-1))
         self.writer = SummaryWriter(log_dir = log_dir)
         self.fig_dir = os.path.join(checkpoint_dir, 'figs')
         try:
@@ -160,13 +163,11 @@ class neckNavigator_trainer:
                 output, loss = self._forward_pass(ct_im, h_target)
                 val_losses.update(loss.item(), self._batch_size(ct_im))
                 
-                #if (batch_idx == 0) and ((self.num_epoch < 100) or (self.num_epoch < 500 and not self.num_epoch%10) or (not self.num_epoch%100)):
-                    # plot im
-                    #h_target = h_target.cpu().numpy()[which_to_show]
-                    #output = output.cpu().numpy()[which_to_show]
-                    #print(f'target: {h_target}')
-                    
+                if (batch_idx == 0):
+                    projections(ct_im,h_target,order=[2,1,0], type="tensor", save_name=self.num_epoch)
+                #write the slice difference between gts and preds
                 difference = euclid_dis(h_target, output, is_tensor=True)  
+
             self._log_dist(difference)      
             self._log_stats('val', val_losses.avg)
             self.logger.info(f'Validation finished. Loss: {val_losses.avg}')
