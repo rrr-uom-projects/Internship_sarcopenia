@@ -118,8 +118,11 @@ def classRatio(masks):
     weights = (1/average_ratio) #penalise the network more harshly for getting it wrong
     print(weights)
 
-def euclid_dis(gts, masks):
+def euclid_dis(gts, masks, is_tensor = False):
   #quantifies how far of the network's predictions are
+  if is_tensor:
+    gts = gts.cpu().detach().squeeze().numpy()
+    masks = masks.cpu().detach().squeeze().numpy()
   distances = []
   for i in range(len(gts)):
     distances.append(np.abs(GetSliceNumber(gts[i])-GetSliceNumber(masks[i])))

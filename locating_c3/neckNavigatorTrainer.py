@@ -15,14 +15,14 @@ import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
 from pytorch_toolbelt import losses as L
-from utils import projections
+from utils import projections, euclid_dis
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
 #####################################################################################################
 class neckNavigator_trainer:
     def __init__(self, model, optimizer, lr_scheduler, device, train_loader, val_loader, logger, checkpoint_dir, max_num_epochs=100,
-                num_iterations=1, num_epoch=0, patience=10, iters_to_accumulate=4, best_eval_score=None, eval_score_higher_is_better=False):
+                num_iterations=1, num_epoch=0, patience=10, iters_to_accumulate=4, best_eval_score=None, load_prev_weights = False, eval_score_higher_is_better=False):
         self.logger = logger
         self.logger.info(model)
         self.model = model
@@ -56,6 +56,7 @@ class neckNavigator_trainer:
             pass
         self.num_iterations = num_iterations
         self.iters_to_accumulate = iters_to_accumulate
+        self.load_prev_weights = load_prev_weights
         self.num_epoch = num_epoch
         self.epsilon = 1e-6
         self.scaler = torch.cuda.amp.GradScaler()
@@ -165,7 +166,8 @@ class neckNavigator_trainer:
                     #output = output.cpu().numpy()[which_to_show]
                     #print(f'target: {h_target}')
                     
-                    
+                difference = euclid_dis(h_target, output, is_tensor=True)  
+            self._log_dist(difference)      
             self._log_stats('val', val_losses.avg)
             self.logger.info(f'Validation finished. Loss: {val_losses.avg}')
             return val_losses.avg
@@ -245,6 +247,8 @@ class neckNavigator_trainer:
         for tag, value in tag_value.items():
             self.writer.add_scalar(tag, value, self.num_iterations)
 
+    def _log_dist(self, dist):
+        self.writer.add_scalar('Slice difference', np.average(dist), self.num_iterations)
     # def _log_images(self, ):
     #     images = projections(inp, mask)
     #     tf.summary.image("predictions", images[0], step=self.epoch)
