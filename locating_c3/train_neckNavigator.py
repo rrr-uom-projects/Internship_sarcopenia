@@ -4,17 +4,18 @@
 # train_neckNavigator.py
 
 #imports
+from numpy.lib.function_base import _diff_dispatcher
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 import numpy as np
+import os
 #from scipy.stats import norm
 #from scipy.ndimage import distance_transform_edt as dist_xfm
 #import random
 #import sys
-#import os
 import argparse as ap
 #import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -26,7 +27,7 @@ from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, getFiles, windowLevelNormalize
 from neckNavigatorTester import neckNavigatorTest1
-from utils import PrintSlice , GetSliceNumber, projections, euclid_dis
+from utils import setup_model, PrintSlice , GetSliceNumber, projections, euclid_dis
 
 def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
@@ -85,13 +86,14 @@ def main():
     model = neckNavigator(filter_factor=2, targets = 1, in_channels = 1)
     #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
-    for param in model.parameters():
-        param.requires_grad = True
+    # for param in model.parameters():
+    #     param.requires_grad = True
 
     # put the model on GPU(s)
     device='cuda:0'
-    model.to(device)
-
+    # model.to(device)
+    model=setup_model(model, checkpoint_dir, device, load_prev=True)
+    
     # Log the number of learnable parameters
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
@@ -103,10 +105,13 @@ def main():
 
     # Parallelize model
     model = nn.DataParallel(model)
-    
+
+    state = torch.load(os.path.join(checkpoint_dir, 'best_checkpoint.pytorch'))
+    epoch = state['epoch']
+    print(epoch)
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, patience=25, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_epoch = epoch ,patience=20, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()

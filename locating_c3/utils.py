@@ -27,6 +27,21 @@ def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
   return gauss
 
+def setup_model(model, checkpoint_dir, device, load_prev = False, eval_mode = False):
+  for param in model.parameters():
+    if load_prev:
+      param.requires_grad = False
+    else:
+      param.requires_grad = True
+  model.to(device)
+  if load_prev:
+    model.load_best(checkpoint_dir, logger=None)
+    for param in model.parameters():
+        param.requires_grad = True
+  if eval_mode:
+    model.eval()
+  return model
+
 def PrintSlice(input, targets, show = False):
     slice_no = GetSliceNumber(targets)
     print("slice no: ", slice_no)
