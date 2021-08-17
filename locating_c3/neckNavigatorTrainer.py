@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
 from pytorch_toolbelt import losses as L
-from utils import projections, euclid_dis
+from utils import projections, euclid_dis, plot_to_image
+import tensorflow as tf
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
@@ -163,6 +164,7 @@ class neckNavigator_trainer:
                 output, loss = self._forward_pass(ct_im, h_target)
                 val_losses.update(loss.item(), self._batch_size(ct_im))
                 
+                self._log_images(ct_im, output)
                 projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
                 #write the slice difference between gts and preds
                 difference = euclid_dis(h_target, output, is_tensor=True)  
@@ -170,6 +172,7 @@ class neckNavigator_trainer:
             self._log_dist(difference)      
             self._log_stats('val', val_losses.avg)
             self.logger.info(f'Validation finished. Loss: {val_losses.avg}')
+            
             return val_losses.avg
 
     # functions
@@ -249,9 +252,12 @@ class neckNavigator_trainer:
 
     def _log_dist(self, dist):
         self.writer.add_scalar('Slice difference', np.average(dist), self.num_iterations)
-    # def _log_images(self, ):
-    #     images = projections(inp, mask)
-    #     tf.summary.image("predictions", images[0], step=self.epoch)
+    
+    def _log_images(self, inp, pred):
+        file_writer = tf.summary.create_file_writer(self.fig_dir)
+        images = projections(inp, pred, order=[2,1,0], type="tensor")
+        with file_writer.as_default():
+            tf.summary.image("Training data", plot_to_image(images), step = 0)
 
     def _log_params(self):
         self.logger.info('Logging model parameters and gradients')
