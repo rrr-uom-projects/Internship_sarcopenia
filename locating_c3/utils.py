@@ -28,11 +28,6 @@ def Guassian(inp: np.ndarray):
   return gauss
 
 def setup_model(model, checkpoint_dir, device, load_prev = False, eval_mode = False):
-  # for param in model.parameters():
-  #   if load_prev:
-  #     param.requires_grad = False
-  #   else:
-  #     param.requires_grad = True
   model.to(device)
   if load_prev == True:
     model.load_best(checkpoint_dir, logger=None)
@@ -59,9 +54,9 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None)
   axi,cor,sag = 0,1,2
   proj_order = order
   if type == "tensor":
-     inp = inp.cpu().detach().squeeze().numpy()[0]
-     msk = msk.cpu().detach().squeeze().numpy()[0]
-     #print(inp.shape)
+     inp = inp.cpu().detach().squeeze().numpy()
+     msk = msk.cpu().detach().squeeze().numpy().astype(float)
+     print(msk.shape)
 
   def arrange(input, ax):
     #to return the projection in whatever order.
@@ -97,11 +92,11 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None)
     ax.append(fig.add_subplot(rows, columns, i+1) )
     ax[-1].set_title("ax:"+str(i))
     plt.imshow(images[i])
-    for j in range(len(masks[i])):
-        masks[i][j][masks[i][j] == 0] = np.nan
+    #for j in range(len(masks[i])):
+        #masks[i][j][masks[i][j] == 0] = np.nan
     plt.imshow(masks[i], cmap="cool", alpha=0.5)
     plt.axis('off')
-  plt.savefig("projections"+ save_name +".png")
+  plt.savefig("projections" + str(save_name) + ".png")
   if show: 
     plt.show()
   return coronal, sagital, axial
@@ -126,7 +121,10 @@ def euclid_dis(gts, masks, is_tensor = False):
     masks = masks.cpu().detach().squeeze().numpy()
   distances = []
   for i in range(len(gts)):
-    distances.append(np.abs(GetSliceNumber(gts[i])-GetSliceNumber(masks[i])))
+    #gts[i][gts[i] == np.nan] = 0
+    #masks[i][masks[i] == np.nan] = 0
+    #print(np.unique(masks[i]))
+    distances.append(np.abs(GetTargetCoords(gts[i])[0]-GetTargetCoords(masks[i])[0]))
   distances = np.array(distances)
   print(np.average(distances))
   return distances

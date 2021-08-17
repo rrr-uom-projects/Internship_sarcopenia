@@ -33,7 +33,7 @@ def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
     parser.add_argument("--targets", default=1, type=int, help="The number of targets")
     parser.add_argument("--fold_num", choices=[1,2,3,4,5], type=int, help="The fold number for the kfold cross validation")
-    #parser.add_argument("--GPUs", choices=[1,2], type=int, default=1, help="Number of GPUs to use")
+    parser.add_argument("--GPUs", choices=[1,2], type=int, default=1, help="Number of GPUs to use")
     global args
     args = parser.parse_args()
 
@@ -41,8 +41,8 @@ def main():
     #main
 
     # get args
-    #setup_argparse()
-    #global args
+    setup_argparse()
+    global args
 
     # decide file paths
     #livs paths
@@ -63,8 +63,8 @@ def main():
     ids = data[2]
 
     # decide batch sizes
-    train_BS = 4 #int(6 * args.GPUs)
-    val_BS = 4 #int(6 * args.GPUs)
+    train_BS = 1 #int(6 * args.GPUs)
+    val_BS = 1 #int(6 * args.GPUs)
     train_workers = int(8)
     val_workers = int(4)
 
@@ -104,7 +104,7 @@ def main():
     lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 
     # Parallelize model
-    model = nn.DataParallel(model)
+    #model = nn.DataParallel(model) #runs on multiple gpus if we want a larger batch size
     epoch = 0 
     iteration = 0
 
@@ -117,7 +117,7 @@ def main():
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
                                  val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
-                                 num_epoch = epoch ,patience=20, iters_to_accumulate=1)
+                                 num_epoch = epoch ,patience=20, iters_to_accumulate=4)
     
     # Start training
     trainer.fit()
