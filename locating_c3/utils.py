@@ -125,8 +125,10 @@ def classRatio(masks):
 def euclid_dis(gts, masks, is_tensor = False):
   #quantifies how far of the network's predictions are
   if is_tensor:
-    gts = gts.cpu().detach().numpy()[0]
-    masks = masks.cpu().detach().numpy()[0]
+    gt = gts
+    msk = masks
+    gts = gt.cpu().detach().numpy()[0]
+    masks = msk.cpu().detach().numpy()[0]
   distances = []
   for i in range(len(gts)):
     #gts[i][gts[i] == np.nan] = 0
