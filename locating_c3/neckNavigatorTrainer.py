@@ -46,6 +46,7 @@ class neckNavigator_trainer:
         self.patience = patience
         self.epochs_since_improvement = 0
         #tensorboard 
+        #scalars
         runs = os.listdir(os.path.join(checkpoint_dir, 'logs'))
         if num_epoch == 0:
             log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)))
@@ -53,11 +54,14 @@ class neckNavigator_trainer:
         else: 
             log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)-1))
         self.writer = SummaryWriter(log_dir = log_dir)
+        #fig directory
         self.fig_dir = os.path.join(checkpoint_dir, 'figs')
         try:
             os.mkdir(self.fig_dir)
         except OSError:
             pass
+        #self.fig_writer = SummaryWriter(log_dir = self.fig_dir)
+        self.fig_writer = tf.summary.create_file_writer(self.fig_dir)
         self.num_iterations = num_iterations
         self.iters_to_accumulate = iters_to_accumulate
         self.load_prev_weights = load_prev_weights
@@ -116,6 +120,9 @@ class neckNavigator_trainer:
                 # log stats
                 self.logger.info(f'Training stats. Loss: {train_losses.avg}')
                 self._log_stats('train', train_losses.avg)
+
+            if self.num_iterations%(10*self.iters_to_accumulate) == 0:
+                self._log_images(ct_im, output, name = "Training Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
             
             self.num_iterations += 1
@@ -164,10 +171,11 @@ class neckNavigator_trainer:
                 output, loss = self._forward_pass(ct_im, h_target)
                 val_losses.update(loss.item(), self._batch_size(ct_im))
                 
-                self._log_images(ct_im, output)
-                projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
                 #write the slice difference between gts and preds
                 difference = euclid_dis(h_target, output, is_tensor=True)  
+                self._log_images(ct_im, output, name = "Validation Data")
+                #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
+                
 
             self._log_dist(difference)      
             self._log_stats('val', val_losses.avg)
@@ -182,7 +190,7 @@ class neckNavigator_trainer:
             output = self.model(ct_im)
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for >1 targets
-            loss = torch.nn.MSELoss()(output, h_target)#prob masks
+            loss = torch.nn.MSELoss()(100*output, 100*h_target)#prob masks
             # for i, param_group in enumerate(self.optimizer.param_groups):
             #     lr = float(param_group['lr'])
             #     print("lr: ", lr)
@@ -253,11 +261,10 @@ class neckNavigator_trainer:
     def _log_dist(self, dist):
         self.writer.add_scalar('Slice difference', np.average(dist), self.num_iterations)
     
-    def _log_images(self, inp, pred):
-        file_writer = tf.summary.create_file_writer(self.fig_dir)
+    def _log_images(self, inp, pred, name):
         images = projections(inp, pred, order=[2,1,0], type="tensor")
-        with file_writer.as_default():
-            tf.summary.image("Training data", plot_to_image(images), step = 0)
+        with self.fig_writer.as_default():
+            tf.summary.image(name, plot_to_image(images), self.num_iterations)
 
     def _log_params(self):
         self.logger.info('Logging model parameters and gradients')

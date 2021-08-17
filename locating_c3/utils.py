@@ -9,6 +9,9 @@ from scipy.ndimage.measurements import center_of_mass
 import matplotlib.pyplot as plt
 import io
 import tensorflow as tf
+import torch
+import torchvision.transforms as T
+import torchvision.io.image as tim
 
 def GetSliceNumber(segment):
   slice_number = []
@@ -57,7 +60,10 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None)
   if type == "tensor":
      inp = inp.cpu().detach().squeeze().numpy()
      msk = msk.cpu().detach().squeeze().numpy().astype(float)
-     print(msk.shape)
+     if len(inp.shape) == 4:
+       inp = inp[0]
+       msk = msk[0]
+     #print(msk.shape)
 
   def arrange(input, ax):
     #to return the projection in whatever order.
@@ -84,7 +90,7 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None)
   images = (axial,coronal,sagital)
   masks = (ax_mask,cor_mask, sag_mask)
   #print(coronal.shape)
-  fig = plt.figure(figsize=(8, 8))
+  fig = plt.figure(figsize=(48, 16))
   ax = []
   columns = 3
   rows = 1
@@ -119,14 +125,19 @@ def classRatio(masks):
 def euclid_dis(gts, masks, is_tensor = False):
   #quantifies how far of the network's predictions are
   if is_tensor:
-    gts = gts.cpu().detach().squeeze().numpy()
-    masks = masks.cpu().detach().squeeze().numpy().astype(float)
+    gts = gts.cpu().detach().numpy()[0]
+    masks = masks.cpu().detach().numpy()[0]
   distances = []
   for i in range(len(gts)):
     #gts[i][gts[i] == np.nan] = 0
     #masks[i][masks[i] == np.nan] = 0
     #print(np.unique(masks[i]))
-    distances.append(np.abs(GetTargetCoords(gts[i])[0]-GetTargetCoords(masks[i])[0]))
+    #print(np.unique(gts[i]))
+    gt_coords = GetTargetCoords(gts[i])
+    msk_coords = GetTargetCoords(masks[i])
+    print(gt_coords)
+    print(msk_coords)
+    distances.append(np.abs(gt_coords[0]-msk_coords[0]))
   distances = np.array(distances)
   print(np.average(distances))
   return distances
@@ -142,7 +153,7 @@ def plot_to_image(figure):
   plt.close(figure)
   buf.seek(0)
   # Convert PNG buffer to TF image
-  image = tf.image.decode_png(buf.getvalue(), channels=4)
+  image = tf.image.decode_png(buf.getvalue())
   # Add the batch dimension
   image = tf.expand_dims(image, 0)
   return image
