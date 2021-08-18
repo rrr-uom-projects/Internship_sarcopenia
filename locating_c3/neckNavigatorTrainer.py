@@ -5,6 +5,7 @@
 #imports
 import os
 import torch
+import torch.nn.functional as F
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -13,7 +14,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
-from utils import projections
+from utils import tb_projections
+import tensorflow as tf
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
@@ -166,6 +168,8 @@ class neckNavigator_trainer:
                     
             self._log_stats('val', val_losses.avg)
             self.logger.info(f'Validation finished. Loss: {val_losses.avg}')
+            # tensorboard log images per validation
+            # self._log_images(ct_im, output)
             return val_losses.avg
 
     # functions
@@ -173,7 +177,13 @@ class neckNavigator_trainer:
         with torch.cuda.amp.autocast():
             # forward pass
             output = self.model(ct_im)
+            #output = F.softmax(output)
+            print("Network output: ", output.shape, output.dtype)
+            print("Network output unique: ", np.unique(output.detach().cpu().numpy()) )
+            #assert(output.any() == 1)
+            print("h_target: ", h_target.shape)
             # MSE loss contribution - unchanged for >1 targets
+            #loss = torch.nn.BCEWithLogitsLoss()(output, h_target)
             loss = torch.nn.MSELoss()(output, h_target)
             #loss = torch.nn.MSELoss().item()
             # L1 loss contribution
@@ -181,8 +191,10 @@ class neckNavigator_trainer:
             if (output.shape[1] == 1):
                 # single target case
                 pred_vox = torch.tensor([np.unravel_index(torch.argmax(output[i, 0]), output.size()[2:]) for i in range(output.size(0))]).type(torch.FloatTensor)
-                
+   
             # DSNT here: loss += (torch.nn.L1Loss()(pred_vox) * 0.01) # scaling factor for the L1 supplementary term
+            #tensorboard log images per forward pass
+            #self._log_images(ct_im, output)
             return output, loss
 
     def _is_best_eval_score(self, eval_score):
@@ -221,6 +233,18 @@ class neckNavigator_trainer:
     def _log_lr(self):
         lr = self.optimizer.param_groups[0]['lr']
         self.writer.add_scalar('learning_rate', lr, self.num_iterations)
+    def _log_images(self, images, masks):
+            images_buf = tb_projections(images, masks, order = [0,2,1], type= "tensor")
+            
+
+            # Convert PNG buffer to TF image
+            image = tf.image.decode_png(images_buf.getvalue(), channels=4)
+
+            # Add the batch dimension
+            image = tf.expand_dims(image, 0)
+            
+            self.writer.add_image("predictions", image[0]) 
+
 
     def _log_new_best(self, eval_score):
         self.writer.add_scalar('best_val_loss', eval_score, self.num_iterations)
@@ -232,8 +256,8 @@ class neckNavigator_trainer:
         for tag, value in tag_value.items():
             self.writer.add_scalar(tag, value, self.num_iterations)
     #def _log_images(self, ):
-        #images = projections(inp, mask)
-        #tf.summary.image("predictions", images[0], step=epoch)
+    #    images = projections(input[0], output[0])
+    #    self.writer.add_image("predictions", images[0], step=epoch)
 
     def _log_params(self):
         self.logger.info('Logging model parameters and gradients')

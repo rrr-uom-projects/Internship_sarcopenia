@@ -50,12 +50,12 @@ def main():
 
     # decide file paths
     #livs paths
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
+    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'
     checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
 
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8square.npz'
-    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_8square.npz'
+    #checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
     # Create main logger
@@ -65,7 +65,7 @@ def main():
     data = get_data(data_path)
     inputs = data[0]
     targets = data[1]
-    ids = data[2]
+    #ids = data[2]
 
     # decide batch sizes
     train_BS = 1 #int(6 * args.GPUs)
@@ -112,7 +112,7 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, patience=5, iters_to_accumulate=1)
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=5, patience=5, iters_to_accumulate=1)
     
     # Start training
     trainer.fit()

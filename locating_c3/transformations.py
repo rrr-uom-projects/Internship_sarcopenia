@@ -23,6 +23,8 @@ from skimage.transform import rescale
 # tar.extractall()
 # tar.close()
 
+
+
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
     window = 350
@@ -218,31 +220,27 @@ def path_list(no_patients, skip: list):
 
 def getFiles(targetdir):
     ls = []
-    ids = []
     for fname in os.listdir(targetdir):
         path = os.path.join(targetdir, fname)
         if os.path.isdir(path):
             continue    # skip directories
         ls.append(path)
-        id = "P" + str(i)
-        ids.append(id)
-    return ls,ids
+    return ls
 
 def path_list2():
-    im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
-    msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
-    path_list_inputs,ids = sorted(getFiles(im_dir)[0]),
+    im_dir = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/images'
+    msk_dir = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/masks'
+    path_list_inputs = sorted(getFiles(im_dir))
     path_list_targets = sorted(getFiles(msk_dir))
-    return path_list_inputs, path_list_targets, ids
+    return path_list_inputs, path_list_targets
 
-def save_preprocessed(inputs, targets, ids):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed.npz'    
+def save_preprocessed(inputs, targets):
+    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed2.npz'    
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
-    print("final shape: ", inputs.shape, targets.shape, ids.shape)
+    print("final shape: ", inputs.shape, targets.shape)
     for i in range(len(targets)):
         print("slice no: ",GetSliceNumber(targets[i]))
-    np.savez(path, inputs = inputs, masks = targets, ids = ids)
-    print("Saved preprocessed data")
+    np.savez(path, inputs = inputs, masks = targets)
 
 #main
 #get the file names
@@ -289,7 +287,7 @@ CTs, masks = np.array(CTs), np.array(masks)
 
 projections(CTs[0], masks[0], order=[1,2,0])
 PrintSlice(CTs[0], masks[0])
-#%%
+
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids)
+save_preprocessed(CTs, masks)
 

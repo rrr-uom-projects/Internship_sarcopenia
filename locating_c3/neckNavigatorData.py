@@ -16,6 +16,7 @@ from kornia.utils import image_to_tensor, tensor_to_image
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from utils import GetSliceNumber
+import unittest
 
 
 # Neck Navigator Dataset
@@ -41,6 +42,7 @@ class neckNavigatorDataset(Dataset):
 
         x = self.availableInputs[index]
         y = self.availableTargets[index]
+        assert(y.any() == 1)
 
         # Calculating voxel spacing
         def voxeldim():
@@ -68,8 +70,8 @@ def get_data(path):
     data = np.load(path)
     inputs = data['inputs']
     targets = data['masks']
-    ids = data['ids']
-    return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
+    #ids = data['ids']
+    return np.asarray(inputs), np.asarray(targets) #, np.asarray(ids)
 
 
 #augmentation

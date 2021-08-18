@@ -16,7 +16,7 @@ def k_fold_split_train_val_test(dataset_size, fold_num):
     k = int(fold_num-1)
     #train_ims, val_ims, test_ims = 192, 24, 22
 
-    train_ims, val_ims, test_ims = 4, 2, 2
+    train_ims, val_ims, test_ims = 215, 27, 27
 
 
     assert(train_ims+val_ims+test_ims == dataset_size)
