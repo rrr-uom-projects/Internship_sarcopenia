@@ -15,13 +15,15 @@ import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
 from pytorch_toolbelt import losses as L
+from utils import projections, euclid_dis, plot_to_image
+import tensorflow as tf
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
 #####################################################################################################
 class neckNavigator_trainer:
     def __init__(self, model, optimizer, lr_scheduler, device, train_loader, val_loader, logger, checkpoint_dir, max_num_epochs=100,
-                num_iterations=1, num_epoch=0, patience=10, iters_to_accumulate=4, best_eval_score=None, eval_score_higher_is_better=False):
+                num_iterations=1, num_epoch=0, patience=10, iters_to_accumulate=4, best_eval_score=None, load_prev_weights = False, eval_score_higher_is_better=False):
         self.logger = logger
         self.logger.info(model)
         self.model = model
@@ -44,17 +46,25 @@ class neckNavigator_trainer:
         self.patience = patience
         self.epochs_since_improvement = 0
         #tensorboard 
+        #scalars
         runs = os.listdir(os.path.join(checkpoint_dir, 'logs'))
-        log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)))
-        os.makedirs(log_dir)
+        if num_epoch == 0:
+            log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)))
+            os.makedirs(log_dir)
+        else: 
+            log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)-1))
         self.writer = SummaryWriter(log_dir = log_dir)
+        #fig directory
         self.fig_dir = os.path.join(checkpoint_dir, 'figs')
         try:
             os.mkdir(self.fig_dir)
         except OSError:
             pass
+        #self.fig_writer = SummaryWriter(log_dir = self.fig_dir)
+        self.fig_writer = tf.summary.create_file_writer(self.fig_dir)
         self.num_iterations = num_iterations
         self.iters_to_accumulate = iters_to_accumulate
+        self.load_prev_weights = load_prev_weights
         self.num_epoch = num_epoch
         self.epsilon = 1e-6
         self.scaler = torch.cuda.amp.GradScaler()
@@ -94,7 +104,7 @@ class neckNavigator_trainer:
             # forward
             output, loss = self._forward_pass(ct_im, h_target)
             train_losses.update(loss.item(), self._batch_size(ct_im))
-            
+               
             # compute gradients and update parameters
             # simulate larger batch sizes using gradient accumulation
             loss = loss/self.iters_to_accumulate
@@ -103,13 +113,21 @@ class neckNavigator_trainer:
             self.scaler.scale(loss).backward()
             
             # Every iters_to_accumulate, call step() and reset gradients:
-            #if self.num_iterations%self.iters_to_accumulate == 0:
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
-            self.optimizer.zero_grad()
-            # log stats
-            self.logger.info(f'Training stats. Loss: {train_losses.avg}')
-            self._log_stats('train', train_losses.avg)
+            if self.num_iterations%self.iters_to_accumulate == 0:
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+                self.optimizer.zero_grad()
+                # log stats
+                self.logger.info(f'Training stats. Loss: {train_losses.avg}')
+                self._log_stats('train', train_losses.avg)
+
+            if (self.num_iterations%(3*self.iters_to_accumulate) == 0) and (self.num_iterations != 0):
+                #write the slice difference between gts and preds
+                difference = euclid_dis(h_target, output, is_tensor=True)
+                self._log_dist(difference)
+
+                self._log_images(ct_im, output, name = "Training Data")
+                #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
             
             self.num_iterations += 1
 
@@ -145,7 +163,6 @@ class neckNavigator_trainer:
         self.logger.info('Validating...')
         val_losses = utils.RunningAverage()
         with torch.no_grad():
-            which_to_show = np.random.randint(0, self.val_loader.batch_size)
             for batch_idx, sample in enumerate(self.val_loader):
                 self.logger.info(f'Validation iteration {batch_idx + 1}')
                 ct_im = sample[0].type(torch.FloatTensor) 
@@ -158,15 +175,16 @@ class neckNavigator_trainer:
                 output, loss = self._forward_pass(ct_im, h_target)
                 val_losses.update(loss.item(), self._batch_size(ct_im))
                 
-                #if (batch_idx == 0) and ((self.num_epoch < 100) or (self.num_epoch < 500 and not self.num_epoch%10) or (not self.num_epoch%100)):
-                    # plot im
-                    #h_target = h_target.cpu().numpy()[which_to_show]
-                    #output = output.cpu().numpy()[which_to_show]
-                    #print(f'target: {h_target}')
-                    
-                    
+                #write the slice difference between gts and preds
+                difference = euclid_dis(h_target, output, is_tensor=True)  
+                self._log_images(ct_im, output, name = "Validation Data")
+                #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
+                
+
+            self._log_dist(difference)      
             self._log_stats('val', val_losses.avg)
             self.logger.info(f'Validation finished. Loss: {val_losses.avg}')
+            
             return val_losses.avg
 
     # functions
@@ -176,22 +194,23 @@ class neckNavigator_trainer:
             output = self.model(ct_im)
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for >1 targets
-            loss = torch.nn.MSELoss()(output, h_target)#prob masks
+            #loss = torch.nn.MSELoss()(100*output, 100*h_target)#prob masks
             # for i, param_group in enumerate(self.optimizer.param_groups):
             #     lr = float(param_group['lr'])
             #     print("lr: ", lr)
-            #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([100])).to(self.device)(output, h_target)#masks 0s and 1s
+            #projections(ct_im,h_target,order=[2,1,0], type="tensor")
+            #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([10000])).to(self.device)(output, h_target)#masks 0s and 1s
             #loss = L.BinaryFocalLoss()(output, h_target)
-            #loss = torch.nn.KLDivLoss()(output, h_target)
-            #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10]).to(self.device)), 1.0, 0.5)(output, h_target)
+            loss = torch.nn.KLDivLoss(reduction = 'batchmean')(output, h_target)
+            #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10000]).to(self.device)), 1.0, 0.5)(output, h_target)
             #loss = torch.nn.MSELoss().item()
             # L1 loss contribution
-            output = output.cpu()
-            h_target = h_target.cpu()
-            if (output.shape[1] == 1):
-                # single target case
-                pred_vox = torch.tensor([np.unravel_index(torch.argmax(output[i, 0]), output.size()[2:]) for i in range(output.size(0))]).type(torch.FloatTensor)
-                gt_vox = torch.tensor([np.unravel_index(torch.argmax(h_target[i, 0]), h_target.size()[2:]) for i in range(h_target.size(0))]).type(torch.FloatTensor)
+            #output = output.cpu()
+            #h_target = h_target.cpu()
+            # if (output.shape[1] == 1):
+            #     # single target case
+            #     pred_vox = torch.tensor([np.unravel_index(torch.argmax(output[i, 0]), output.size()[2:]) for i in range(output.size(0))]).type(torch.FloatTensor)
+            #     gt_vox = torch.tensor([np.unravel_index(torch.argmax(h_target[i, 0]), h_target.size()[2:]) for i in range(h_target.size(0))]).type(torch.FloatTensor)
             #DSNT here: 
             #loss += (torch.nn.L1Loss()(pred_vox, gt_vox) * 0.01) # scaling factor for the L1 supplementary term
             return output, loss
@@ -242,9 +261,14 @@ class neckNavigator_trainer:
         }
         for tag, value in tag_value.items():
             self.writer.add_scalar(tag, value, self.num_iterations)
-    #def _log_images(self, ):
-        #images = projections(inp, mask)
-        #tf.summary.image("predictions", images[0], step=epoch)
+
+    def _log_dist(self, dist):
+        self.writer.add_scalar('Slice difference', np.average(dist), self.num_iterations)
+    
+    def _log_images(self, inp, pred, name):
+        images = projections(inp, pred, order=[2,1,0], type="tensor")
+        with self.fig_writer.as_default():
+            tf.summary.image(name, plot_to_image(images), self.num_iterations)
 
     def _log_params(self):
         self.logger.info('Logging model parameters and gradients')

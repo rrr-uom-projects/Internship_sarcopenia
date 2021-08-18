@@ -15,7 +15,6 @@ from kornia.augmentation import AugmentationSequential
 from kornia.utils import image_to_tensor, tensor_to_image
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from utils import GetSliceNumber
 
 
 # Neck Navigator Dataset
@@ -48,17 +47,15 @@ class neckNavigatorDataset(Dataset):
             return voxel_dim
         
         #Typecasting
-        #print(np.unique(y), y.dtype )
         x = (torch.from_numpy(x)).type(self.inputs_dtype)
         y = (torch.from_numpy(y)).type(self.targets_dtype)
-        #print("tensor type", y.dtype)
-        #print(torch.unique(y))
         # Preprocessing
         if self.transform is not None:
+            y = K.RandomAffine3D(0,[0,1,1],p=0.5,keepdim = True)(y)#random mask shifts side to side
             augs = self.transform(x,y, data_keys=["input","input"])
             x = augs[0]
             y = augs[1] 
-                    
+     
         # creating channel dimension            
         return x.unsqueeze(0), y.unsqueeze(0)
 
@@ -74,9 +71,8 @@ def get_data(path):
 
 #augmentation
 head_augmentations = AugmentationSequential(K.RandomHorizontalFlip3D(p = 0.5),
-                            K.RandomRotation3D([0, 0, 30], p = 0.5),
+                            K.RandomRotation3D([0, 5, 20], p = 0.5),
                             data_keys=["input" ,"input"],
                             keepdim = True,
                             )
-
 

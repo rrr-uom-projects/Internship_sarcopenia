@@ -138,11 +138,11 @@ class neckNavigator(nn.Module):
         up1 = x
         dsv2 = self.dsv2(up2)
         dsv1 = self.dsv1(up1)
-        final = self.final(torch.cat([dsv1,dsv2], dim=1))
+        x = self.final(torch.cat([dsv1,dsv2], dim=1))
         #activation
-        act = self.act(final)
+        x = self.act(x)
 
-        return act
+        return x
 
         # Predict
         #return self.pred(x)

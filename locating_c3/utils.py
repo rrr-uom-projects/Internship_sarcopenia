@@ -7,7 +7,11 @@ import numpy as np
 import scipy.ndimage as nd
 from scipy.ndimage.measurements import center_of_mass
 import matplotlib.pyplot as plt
-
+import io
+import tensorflow as tf
+import torch
+import torchvision.transforms as T
+import torchvision.io.image as tim
 
 def GetSliceNumber(segment):
   slice_number = []
@@ -27,6 +31,16 @@ def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
   return gauss
 
+def setup_model(model, checkpoint_dir, device, load_prev = False, eval_mode = False):
+  model.to(device)
+  if load_prev == True:
+    model.load_best(checkpoint_dir, logger=None)
+  for param in model.parameters():
+      param.requires_grad = True
+  if eval_mode:
+    model.eval()
+  return model
+
 def PrintSlice(input, targets, show = False):
     slice_no = GetSliceNumber(targets)
     print("slice no: ", slice_no)
@@ -40,12 +54,16 @@ def PrintSlice(input, targets, show = False):
       plt.show()
       plt.savefig("Slice.png")
 
-def projections(inp, msk, order, type = "numpy"):
+def projections(inp, msk, order, type = "numpy", show = False, save_name = None):
   axi,cor,sag = 0,1,2
   proj_order = order
   if type == "tensor":
      inp = inp.cpu().detach().squeeze().numpy()
-     msk = msk.cpu().detach().squeeze().numpy()
+     msk = msk.cpu().detach().squeeze().numpy().astype(float)
+     if len(inp.shape) == 4:
+       inp = inp[0]
+       msk = msk[0]
+     #print(msk.shape)
 
   def arrange(input, ax):
     #to return the projection in whatever order.
@@ -56,7 +74,7 @@ def projections(inp, msk, order, type = "numpy"):
     ord_list[:] = [ord_list[i] for i in proj_order]
     out = np.stack((ord_list), axis=2)
     return out
-  print(inp.shape)
+  #print(inp.shape)
   axial = arrange(inp, axi)
   coronal = arrange(inp, cor)
   sagital = arrange(inp, sag)
@@ -71,8 +89,8 @@ def projections(inp, msk, order, type = "numpy"):
   sag_mask = sag_mask[::-1]
   images = (axial,coronal,sagital)
   masks = (ax_mask,cor_mask, sag_mask)
-  print(coronal.shape)
-  fig = plt.figure(figsize=(8, 8))
+  #print(coronal.shape)
+  fig = plt.figure(figsize=(48, 16))
   ax = []
   columns = 3
   rows = 1
@@ -81,13 +99,15 @@ def projections(inp, msk, order, type = "numpy"):
     ax.append(fig.add_subplot(rows, columns, i+1) )
     ax[-1].set_title("ax:"+str(i))
     plt.imshow(images[i])
-    for j in range(len(masks[i])):
-        masks[i][j][masks[i][j] == 0] = np.nan
+    #for j in range(len(masks[i])):
+        #masks[i][j][masks[i][j] == 0] = np.nan
     plt.imshow(masks[i], cmap="cool", alpha=0.5)
     plt.axis('off')
-  plt.savefig("projections.png")
-  plt.show()
-  return coronal, sagital, axial
+  if save_name is not None:
+    plt.savefig("projections" + str(save_name) + ".png")
+  if show: 
+    plt.show()
+  return fig
 
 #classs inbalence
 #ratio of no of 1s over no of 0s. averaged
@@ -102,12 +122,52 @@ def classRatio(masks):
     weights = (1/average_ratio) #penalise the network more harshly for getting it wrong
     print(weights)
 
-def euclid_dis(gts, masks):
+def euclid_dis(gts, masks, is_tensor = False):
   #quantifies how far of the network's predictions are
+  if is_tensor:
+    gt = gts
+    msk = masks
+    gts = gt.cpu().detach().numpy()[0]
+    masks = msk.cpu().detach().numpy()[0]
   distances = []
   for i in range(len(gts)):
-    distances.append(np.abs(GetSliceNumber(gts[i])-GetSliceNumber(masks[i])))
+    #gts[i][gts[i] == np.nan] = 0
+    #masks[i][masks[i] == np.nan] = 0
+    print(np.max(masks[i]))
+    print(np.max(gts[i]))
+    gt_coords = GetTargetCoords(gts[i])
+    msk_coords = GetTargetCoords(masks[i])
+    print(gt_coords)
+    print(msk_coords)
+    distances.append(np.abs(gt_coords[0]-msk_coords[0]))
   distances = np.array(distances)
   print(np.average(distances))
   return distances
+
+def plot_to_image(figure):
+  """Converts the matplotlib plot specified by 'figure' to a PNG image and
+  returns it. The supplied figure is closed and inaccessible after this call."""
+  # Save the plot to a PNG in memory.
+  buf = io.BytesIO()
+  plt.savefig(buf, format='png')
+  # Closing the figure prevents it from being displayed directly inside
+  # the notebook.
+  plt.close(figure)
+  buf.seek(0)
+  # Convert PNG buffer to TF image
+  image = tf.image.decode_png(buf.getvalue())
+  # Add the batch dimension
+  image = tf.expand_dims(image, 0)
+  return image
+
+def get_data(path): 
+    data = np.load(path)
+    inputs = data['inputs']
+    targets = data['masks']
+    ids = data['ids']
+    return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
+
+def display_input_data(path):
+  inputs,targets,ids = get_data(path)
+  projections(inputs, targets, order = [2,1,0], save_name=ids)
 
