@@ -46,11 +46,11 @@ def main():
 
     # decide file paths
     #livs paths
-    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
-    #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
+    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
-    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
+    #checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
     # Create main logger
@@ -88,7 +88,7 @@ def main():
     #model = headHunter_multiHead_deeper(filter_factor=1)
 
     # put the model on GPU(s)
-    device='cuda:0'
+    device='cuda:1'
     # model.to(device)
     load_prev=False
     model=setup_model(model, checkpoint_dir, device, load_prev=load_prev)
@@ -109,12 +109,12 @@ def main():
     if load_prev ==True:
         state = torch.load(os.path.join(checkpoint_dir, 'best_checkpoint.pytorch'))
         epoch = state['epoch']
-        interation = state['num_iterations']
+        iteration = state['num_iterations']
         print("starting epoch: ", epoch)
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=2, num_iterations = iteration, 
                                  num_epoch = epoch ,patience=20, iters_to_accumulate=4)
     
     # Start training

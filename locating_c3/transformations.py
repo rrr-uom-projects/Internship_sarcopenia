@@ -168,8 +168,8 @@ def getFiles(targetdir):
     return ls, ids
 
 def path_list2():
-    im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
-    msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
+    im_dir = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/images'
+    msk_dir = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/masks'
     inputs = getFiles(im_dir)
     path_list_inputs = inputs[0]
     path_list_targets = getFiles(msk_dir)[0]
@@ -177,7 +177,7 @@ def path_list2():
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz' 
+    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz' 
     ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
