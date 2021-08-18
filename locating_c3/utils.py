@@ -133,8 +133,8 @@ def euclid_dis(gts, masks, is_tensor = False):
   for i in range(len(gts)):
     #gts[i][gts[i] == np.nan] = 0
     #masks[i][masks[i] == np.nan] = 0
-    #print(np.unique(masks[i]))
-    #print(np.unique(gts[i]))
+    print(np.max(masks[i]))
+    print(np.max(gts[i]))
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(masks[i])
     print(gt_coords)
@@ -159,3 +159,15 @@ def plot_to_image(figure):
   # Add the batch dimension
   image = tf.expand_dims(image, 0)
   return image
+
+def get_data(path): 
+    data = np.load(path)
+    inputs = data['inputs']
+    targets = data['masks']
+    ids = data['ids']
+    return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
+
+def display_input_data(path):
+  inputs,targets,ids = get_data(path)
+  projections(inputs, targets, order = [2,1,0], save_name=ids)
+

@@ -86,8 +86,6 @@ def main():
     model = neckNavigator(filter_factor=2, targets = 1, in_channels = 1)
     #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
-    # for param in model.parameters():
-    #     param.requires_grad = True
 
     # put the model on GPU(s)
     device='cuda:0'

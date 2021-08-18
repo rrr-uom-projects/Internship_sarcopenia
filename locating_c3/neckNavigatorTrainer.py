@@ -121,7 +121,7 @@ class neckNavigator_trainer:
                 self.logger.info(f'Training stats. Loss: {train_losses.avg}')
                 self._log_stats('train', train_losses.avg)
 
-            if self.num_iterations%(3*self.iters_to_accumulate) == 0 and self.num_iterations != 0:
+            if (self.num_iterations%(3*self.iters_to_accumulate) == 0) and (self.num_iterations != 0):
                 #write the slice difference between gts and preds
                 difference = euclid_dis(h_target, output, is_tensor=True)
                 self._log_dist(difference)
@@ -194,15 +194,15 @@ class neckNavigator_trainer:
             output = self.model(ct_im)
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for >1 targets
-            loss = torch.nn.MSELoss()(100*output, 100*h_target)#prob masks
+            #loss = torch.nn.MSELoss()(100*output, 100*h_target)#prob masks
             # for i, param_group in enumerate(self.optimizer.param_groups):
             #     lr = float(param_group['lr'])
             #     print("lr: ", lr)
             #projections(ct_im,h_target,order=[2,1,0], type="tensor")
-            #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([100])).to(self.device)(output, h_target)#masks 0s and 1s
+            #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([10000])).to(self.device)(output, h_target)#masks 0s and 1s
             #loss = L.BinaryFocalLoss()(output, h_target)
-            #loss = torch.nn.KLDivLoss()(output, h_target)
-            #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10]).to(self.device)), 1.0, 0.5)(output, h_target)
+            loss = torch.nn.KLDivLoss(reduction = 'batchmean')(output, h_target)
+            #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10000]).to(self.device)), 1.0, 0.5)(output, h_target)
             #loss = torch.nn.MSELoss().item()
             # L1 loss contribution
             #output = output.cpu()
