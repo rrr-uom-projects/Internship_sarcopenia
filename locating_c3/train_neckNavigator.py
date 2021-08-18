@@ -19,6 +19,7 @@ import os
 import argparse as ap
 #import tensorflow as tf
 import matplotlib.pyplot as plt
+import pickle
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
 from neckNavigator import neckNavigator
@@ -48,6 +49,7 @@ def main():
     #livs paths
     data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
     checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    dataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
     #herms paths
     #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
     #checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
@@ -71,6 +73,7 @@ def main():
     # allocate ims to train, val and test
     dataset_size = len(inputs)
     train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num= 2)
+    
 
     # dataloaders
     training_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)#, transform = head_augmentations
@@ -81,14 +84,14 @@ def main():
 
     test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
-
+    #torch.save(test_dataloader, dataloader_dir, pickle_protocol= pickle.HIGHEST_PROTOCOL)
     # create model
     model = neckNavigator(filter_factor=2, targets = 1, in_channels = 1)
     #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
 
     # put the model on GPU(s)
-    device='cuda:1'
+    device = 'cuda:1'
     # model.to(device)
     load_prev=False
     model=setup_model(model, checkpoint_dir, device, load_prev=load_prev)
@@ -114,7 +117,7 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=2, num_iterations = iteration, 
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
                                  num_epoch = epoch ,patience=20, iters_to_accumulate=4)
     
     # Start training
