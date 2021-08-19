@@ -47,7 +47,7 @@ def main():
 
     # decide file paths
     #livs paths
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
+    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
     checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     dataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
     #herms paths
@@ -94,7 +94,7 @@ def main():
     device = 'cuda:1'
     # model.to(device)
     load_prev=False
-    model=setup_model(model, checkpoint_dir, device, load_prev=load_prev)
+    model=setup_model(model, checkpoint_dir, device, load_prev= False)
     # Log the number of learnable parameters
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
@@ -122,39 +122,8 @@ def main():
     
     # Start training
     trainer.fit()
-#%%
-    #testing
-    tester = neckNavigatorTest1(model, test_dataloader, device)
-    #test_results = tester
-    C3s, segments, GTs = tester
-    
-    print("gt info: ", len(GTs))
-    print(GTs.shape,)
-    print("segs info: ", segments.shape)
-    #print(segments[0].shape, len(segments))
-    #print(C3s[0].shape)
-    #c3 = C3s[0][0]
-    #segment = segments[0][0]
-
-    difference = euclid_dis(GTs, segments)
-    print(difference)
-    PrintSlice(C3s[0], segments[0], show=True)
-    for j in range(0,4):
-        projections(C3s[j],segments[j], order = [1,2,0])
-
     
 
-    # fig  = plt.figure(figsize=(100,25))
-    # ax = []
-    # columns = 2
-    # rows = 1
-    # for i in range(0,rows*columns):
-    #     ax.append(fig.add_subplot(rows, columns, i+1))
-    #     ax[-1].set_title(str(i+1))
-    #     PrintSlice(C3s[i], segments[i])
-    #     #projections(c3s[0][i], segments[0][i], order=[1,2,0])
-    # plt.savefig("slices.png")
-    #plt.show()
 
 
 
