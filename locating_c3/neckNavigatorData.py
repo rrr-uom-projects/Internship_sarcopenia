@@ -64,6 +64,7 @@ class neckNavigatorDataset(Dataset):
 def get_data(path): 
     data = np.load(path)
     inputs = data['inputs']
+    print(len(inputs))
     targets = data['masks']
     ids = data['ids']
     return np.asarray(inputs), np.asarray(targets), np.asarray(ids)

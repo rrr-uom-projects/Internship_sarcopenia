@@ -119,7 +119,7 @@ def sphereMask(tar: np.ndarray):
 
 def gaussian(msk):
     msk *= 100
-    gauss = gaussian_filter(msk, (0.5,3,3) ,truncate=100)
+    gauss = gaussian_filter(msk, (1,3,3) ,truncate=100)
     print("g: ",np.max(gauss), np.min(gauss))
     #gauss = 1/(1 + np.exp(-gauss))
     #print("g sig: ",np.max(gauss), np.min(gauss), np.unique(gauss))
@@ -177,7 +177,7 @@ def path_list2():
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids):
-    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz' 
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_guass2.npz' 
     ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
@@ -259,7 +259,7 @@ ids = PathList[2]#[:no_patients]
 
 print("no of patients: ",len(inputs))
 #apply preprocessing
-preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping,sphere=sphereMask)
+preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= gaussian)#sphere = sphereMask
 
 CTs = []
 masks = []

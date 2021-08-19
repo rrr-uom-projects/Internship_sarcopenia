@@ -2,9 +2,14 @@
 #to test the model at various stages
 
 
+
 from numpy.lib.function_base import average
-from utils import PrintSlice, projections, setup_model
+
 from neckNavigatorTester import neckNavigatorTest2
+
+from utils import PrintSlice, projections, setup_model, euclid_dis
+from neckNavigatorTester import neckNavigatorTest1
+
 from neckNavigator import neckNavigator
 from neckNavigatorData import neckNavigatorDataset
 from utils import get_data
@@ -14,6 +19,7 @@ import torch
 from utils import euclid_dis
 from neckNavigatorUtils import k_fold_split_train_val_test
 def main():
+
     # get data
     
     data_path = data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
@@ -30,9 +36,11 @@ def main():
     
     model_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/"
     testdataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
-    device = 'cuda:1'
+    device = 'cuda:0'
 
     tester = neckNavigatorTest2(model_dir, test_dataloader, device)
+    #tester = neckNavigatorTest1(model, test_dataloader, device)
+
     #test_results = tester
     C3s, segments, GTs = tester
     
