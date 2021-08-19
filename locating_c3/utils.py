@@ -167,7 +167,66 @@ def get_data(path):
     ids = data['ids']
     return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
 
-def display_input_data(path):
-  inputs,targets,ids = get_data(path)
-  projections(inputs, targets, order = [2,1,0], save_name=ids)
+def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = False):
+  inps,msks,ids = get_data(path)
+  data_size = len(inps)
+  axi,cor,sag = 0,1,2
+  proj_order = [2,1,0]
+  if type == "tensor":
+     inp = inps.cpu().detach().squeeze().numpy()
+     msk = msks.cpu().detach().squeeze().numpy().astype(float)
+     
+  def arrange(input, ax):
+    #to return the projection in whatever order.
+    av = np.average(input, axis = ax)
+    mx = np.max(input, axis = ax)
+    std = np.std(input, axis=ax)
+    ord_list = [mx,av,std]
+    ord_list[:] = [ord_list[i] for i in proj_order]
+    out = np.stack((ord_list), axis=2)
+    return out
+  #print(inp.shape)
+  images = []
+  targets = []
+  for j in range(data_size):
+    inp = inps[j]
+    msk = msks[j]
+    axial = arrange(inp, axi)
+    coronal = arrange(inp, cor)
+    sagital = arrange(inp, sag)
+
+    ax_mask = np.max(msk, axis = axi)
+    cor_mask = np.max(msk, axis = cor)
+    sag_mask = np.max(msk, axis = sag)
+    #flip right way up
+    coronal = coronal[::-1]
+    sagital = sagital[::-1]
+    cor_mask = cor_mask[::-1]
+    sag_mask = sag_mask[::-1]
+    image = (axial,coronal,sagital)
+    mask = (ax_mask,cor_mask, sag_mask)
+    images.append(image)
+    targets.append(mask)
+  #print(coronal.shape)
+  fig = plt.figure(figsize=(2700, 16))
+  ax = []
+  columns = 3
+  rows = data_size
+  for l in range(data_size):
+    image = images[l]
+    target =  targets[l]
+    for i in range(columns):
+      # create subplot and append to ax
+      ax.append(fig.add_subplot(rows, columns, l*i+1) )
+      ax[-1].set_title("ax:"+str(l*i))
+      plt.imshow(image[i])
+      #for j in range(len(masks[i])):
+          #masks[i][j][masks[i][j] == 0] = np.nan
+      plt.imshow(target[i], cmap="cool", alpha=0.5)
+      plt.axis('off')
+  if save_name is not None:
+    plt.savefig("pics_" + str(save_name) + ".png")
+  if show: 
+    plt.show()
+  return fig
 
