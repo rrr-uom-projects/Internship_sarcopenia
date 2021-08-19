@@ -49,7 +49,7 @@ def main():
     #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_8.npz'
     #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz'
     checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
@@ -106,7 +106,7 @@ def main():
     epoch = 0 
     iteration = 0
 
-    if load_prev ==True:
+    if load_prev == True:
         state = torch.load(os.path.join(checkpoint_dir, 'best_checkpoint.pytorch'))
         epoch = state['epoch']
         interation = state['num_iterations']
@@ -114,7 +114,7 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, num_iterations = iteration, 
                                  num_epoch = epoch ,patience=20, iters_to_accumulate=4)
     
     # Start training

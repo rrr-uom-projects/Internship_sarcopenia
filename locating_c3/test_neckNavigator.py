@@ -2,11 +2,12 @@
 #to test the model at various stages
 
 
-from utils import PrintSlice, projections, setup_model
+from utils import PrintSlice, projections, setup_model, euclid_dis
 from neckNavigatorTester import neckNavigatorTest1
 from neckNavigator import neckNavigator
 
 def main():
+    
     tester = neckNavigatorTest1(model, test_dataloader, device)
     #test_results = tester
     C3s, segments, GTs = tester

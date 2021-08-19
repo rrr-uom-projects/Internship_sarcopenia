@@ -123,8 +123,8 @@ class neckNavigator_trainer:
 
             if (self.num_iterations%(3*self.iters_to_accumulate) == 0) and (self.num_iterations != 0):
                 #write the slice difference between gts and preds
-                difference = euclid_dis(h_target, output, is_tensor=True)
-                self._log_dist(difference)
+                #difference = euclid_dis(h_target, output, is_tensor=True)
+                #self._log_dist(difference)
 
                 self._log_images(ct_im, output, name = "Training Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
