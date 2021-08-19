@@ -168,8 +168,8 @@ def getFiles(targetdir):
     return ls, ids
 
 def path_list2():
-    im_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
-    msk_dir = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/masks'
+    im_dir = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/images'
+    msk_dir = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/masks'
     inputs = getFiles(im_dir)
     path_list_inputs = inputs[0]
     path_list_targets = getFiles(msk_dir)[0]
