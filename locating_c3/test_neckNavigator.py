@@ -1,8 +1,15 @@
 #created by hermione on 16/08/2021
 #to test the model at various stages
 
+
+
+from numpy.lib.function_base import average
+
+from neckNavigatorTester import neckNavigatorTest2
+
 from utils import PrintSlice, projections, setup_model, euclid_dis
 from neckNavigatorTester import neckNavigatorTest1
+
 from neckNavigator import neckNavigator
 from neckNavigatorData import neckNavigatorDataset
 from utils import get_data
@@ -46,7 +53,9 @@ def main():
     #segment = segments[0][0]
 
     difference = euclid_dis(GTs, segments)
-    print(difference)
+    average_distance = np.average(difference)
+    print("average difference: ",average_distance)
+    print("distance: ", difference)
     PrintSlice(C3s[0], segments[0], show=True)
     for j in range(0,4):
         projections(C3s[j],segments[j], order = [1,2,0])

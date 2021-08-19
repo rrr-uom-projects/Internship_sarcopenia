@@ -263,7 +263,8 @@ class neckNavigator_trainer:
             self.writer.add_scalar(tag, value, self.num_iterations)
 
     def _log_dist(self, dist):
-        self.writer.add_scalar('Slice difference', np.average(dist), self.num_iterations)
+        avgdist = np.average(dist)
+        self.writer.add_scalar('Slice difference', avgdist, self.num_iterations)
     
     def _log_images(self, inp, pred, name):
         images = projections(inp, pred, order=[2,1,0], type="tensor")

@@ -13,6 +13,7 @@ import torch
 import torchvision.transforms as T
 import torchvision.io.image as tim
 
+
 def GetSliceNumber(segment):
   slice_number = []
   max_range = len(segment)
@@ -31,10 +32,12 @@ def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
   return gauss
 
-def setup_model(model, checkpoint_dir, device, load_prev = False, eval_mode = False):
+def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = False, eval_mode = False):
   model.to(device)
   if load_prev == True:
-    model.load_best(checkpoint_dir, logger=None)
+    model.load_previous(checkpoint_dir, logger=None)
+  if load_best == True:
+    model.load_best(checkpoint_dir, logger = None)
   for param in model.parameters():
       param.requires_grad = True
   if eval_mode:
@@ -133,13 +136,13 @@ def euclid_dis(gts, masks, is_tensor = False):
   for i in range(len(gts)):
     #gts[i][gts[i] == np.nan] = 0
     #masks[i][masks[i] == np.nan] = 0
-    print(np.max(masks[i]))
-    print(np.max(gts[i]))
+    #print(np.max(masks[i]))
+    #print(np.max(gts[i]))
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(masks[i])
-    print(gt_coords)
-    print(msk_coords)
-    distances.append(np.abs(gt_coords[0]-msk_coords[0]))
+    #print(gt_coords)
+    #print(msk_coords)
+    distances.append(np.abs(gt_coords[2]-msk_coords[2]))
   distances = np.array(distances)
   print(np.average(distances))
   return distances
