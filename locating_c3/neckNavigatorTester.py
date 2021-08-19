@@ -17,6 +17,7 @@ def neckNavigatorTest2(model_dir, test_dataloader, device):
   for batch_idx, test_data in enumerate(test_dataloader):
     test_em, test_lab = test_data[0].to(device), test_data[1]
     test_em = test_em.type(torch.FloatTensor)
+    test_em = test_em.to(device)
     output = model(test_em)
     #print("output shape: ", output.shape)
     test_output = output.squeeze().cpu().detach().numpy()

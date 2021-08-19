@@ -259,7 +259,7 @@ ids = PathList[2]#[:no_patients]
 
 print("no of patients: ",len(inputs))
 #apply preprocessing
-preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, sphere = sphereMask)#heatmap= gaussian
+preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping,sphere=sphereMask)
 
 CTs = []
 masks = []
