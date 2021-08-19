@@ -13,6 +13,7 @@ import torch
 import torchvision.transforms as T
 import torchvision.io.image as tim
 
+
 def GetSliceNumber(segment):
   slice_number = []
   max_range = len(segment)
@@ -31,10 +32,12 @@ def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
   return gauss
 
-def setup_model(model, checkpoint_dir, device, load_prev = False, eval_mode = False):
+def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = False, eval_mode = False):
   model.to(device)
   if load_prev == True:
-    model.load_best(checkpoint_dir, logger=None)
+    model.load_previous(checkpoint_dir, logger=None)
+  if load_best == True:
+    model.load_best(checkpoint_dir, logger = None)
   for param in model.parameters():
       param.requires_grad = True
   if eval_mode:
