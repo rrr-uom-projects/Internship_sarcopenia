@@ -7,6 +7,7 @@ import torch
 import numpy as np
 from utils import setup_model
 from neckNavigator import neckNavigator
+
 def neckNavigatorTest2(model_dir, test_dataloader, device):
   model = setup_model(neckNavigator(filter_factor=2, targets = 1, in_channels = 1), model_dir, device, load_prev= True)
   #test_dataloader = torch.load(test_dataloader_dir)
@@ -38,14 +39,14 @@ def neckNavigatorTest2(model_dir, test_dataloader, device):
 
   return c3s, segments, GTs
 
-def neckNavigatorTest1(model, test_dataloader, device):
-  model.eval()
+def neckNavigatorTest1(model, model_dir, test_dataloader, device):
+  model = setup_model(model, model_dir, device, load_prev=True, eval_mode=True)
   segments = []
   c3s = []
   GTs =[]
   for batch_idx, test_data in enumerate(test_dataloader):
-    test_em, test_lab = test_data[0].to(device), test_data[1]
-    test_em = test_em.type(torch.FloatTensor)
+    test_em, test_lab = test_data[0].type(torch.FloatTensor).to(device), test_data[1]
+    #test_em = test_em.type(torch.FloatTensor)
     output = model(test_em)
     #print("output shape: ", output.shape)
     test_output = output.squeeze().cpu().detach().numpy()
@@ -99,38 +100,3 @@ class neckNavigatorTest:
         print("gts: ", GTs.shape)
 
         return c3s, segments, GTs
-
-
-
-
-
-         
-
-
-    """
-    model.eval()
-    segments = []
-    c3s = []
-
-    for int, data in enumerate(test_dataloader):
-        slices_test = data[0].to(device)
-        slices_test = slices_test.type(torch.float32)
-        output = model(slices_test)["out"]
-        print("output shape: ", output.shape)
-        test_ouput = output.detach().cpu()
-        slices_test = slices_test.detach().cpu()
-        sigmoid = 1/(1 + np.exp(-test_ouput))
-        segment = (sigmoid > 0.5).float()
-        print(np.unique(segment))
-        #print(int)
-        if int == 0:
-          segments = segment
-          c3s = slices_test
-        else:
-          segments = np.append(segments, np.array(segment), axis = 0)
-          c3s = np.append(c3s, np.array(slices_test), axis = 0)
-  
-    segments = np.array(segments)
-    c3s = np.array(c3s)
-    return c3s, segments
-    """

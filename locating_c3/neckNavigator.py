@@ -15,7 +15,7 @@ import torch.nn.functional as F
 ############################  Neck Navigator model ##################################
 #####################################################################################
 class neckNavigator(nn.Module):
-    def __init__(self, filter_factor=2, targets=1, in_channels=3):
+    def __init__(self, filter_factor=2, targets=1, in_channels=1):
         super(neckNavigator, self).__init__()
         ff = filter_factor # filter factor (easy net scaling)
         # Input --> (3, 48, 120, 120)

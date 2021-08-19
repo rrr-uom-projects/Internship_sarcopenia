@@ -54,17 +54,9 @@ def PrintSlice(input, targets, show = False):
       plt.show()
       plt.savefig("Slice.png")
 
-def projections(inp, msk, order, type = "numpy", show = False, save_name = None):
+def base_projections(inp, msk):
   axi,cor,sag = 0,1,2
-  proj_order = order
-  if type == "tensor":
-     inp = inp.cpu().detach().squeeze().numpy()
-     msk = msk.cpu().detach().squeeze().numpy().astype(float)
-     if len(inp.shape) == 4:
-       inp = inp[0]
-       msk = msk[0]
-     #print(msk.shape)
-
+  proj_order = [2,1,0]
   def arrange(input, ax):
     #to return the projection in whatever order.
     av = np.average(input, axis = ax)
@@ -74,7 +66,7 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None)
     ord_list[:] = [ord_list[i] for i in proj_order]
     out = np.stack((ord_list), axis=2)
     return out
-  #print(inp.shape)
+
   axial = arrange(inp, axi)
   coronal = arrange(inp, cor)
   sagital = arrange(inp, sag)
@@ -87,9 +79,21 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None)
   sagital = sagital[::-1]
   cor_mask = cor_mask[::-1]
   sag_mask = sag_mask[::-1]
-  images = (axial,coronal,sagital)
-  masks = (ax_mask,cor_mask, sag_mask)
-  #print(coronal.shape)
+  image = (axial,coronal,sagital)
+  mask = (ax_mask,cor_mask, sag_mask)
+  return image, mask
+
+def projections(inp, msk, order, type = "numpy", show = False, save_name = None):
+  axi,cor,sag = 0,1,2
+  proj_order = order
+  if type == "tensor":
+     inp = inp.cpu().detach().squeeze().numpy()
+     msk = msk.cpu().detach().squeeze().numpy().astype(float)
+     if len(inp.shape) == 4:
+       inp = inp[0]
+       msk = msk[0]
+     #print(msk.shape)
+  images, masks = base_projections(inp, msk)
   fig = plt.figure(figsize=(48, 16))
   ax = []
   columns = 3
@@ -131,15 +135,13 @@ def euclid_dis(gts, masks, is_tensor = False):
     masks = msk.cpu().detach().numpy()[0]
   distances = []
   for i in range(len(gts)):
-    #gts[i][gts[i] == np.nan] = 0
-    #masks[i][masks[i] == np.nan] = 0
     print(np.max(masks[i]))
     print(np.max(gts[i]))
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(masks[i])
     print(gt_coords)
     print(msk_coords)
-    distances.append(np.abs(gt_coords[0]-msk_coords[0]))
+    distances.append(np.abs(gt_coords[2]-msk_coords[2]))
   distances = np.array(distances)
   print(np.average(distances))
   return distances
@@ -166,6 +168,7 @@ def get_data(path):
     targets = data['masks']
     ids = data['ids']
     return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
+
 
 def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = False):
   inps,msks,ids = get_data(path)
@@ -208,25 +211,65 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
     images.append(image)
     targets.append(mask)
   #print(coronal.shape)
-  fig = plt.figure(figsize=(2700, 16))
+  fig = plt.figure(figsize=(200, 400))
   ax = []
-  columns = 3
-  rows = data_size
-  for l in range(data_size):
-    image = images[l]
-    target =  targets[l]
-    for i in range(columns):
+  columns = 9
+  rows = 1 + data_size/3
+  for l in range(1, data_size +1):
+    image = images[l-1]
+    target =  targets[l-1]
+    for i in range(1,4):
       # create subplot and append to ax
-      ax.append(fig.add_subplot(rows, columns, l*i+1) )
-      ax[-1].set_title("ax:"+str(l*i))
-      plt.imshow(image[i])
-      #for j in range(len(masks[i])):
-          #masks[i][j][masks[i][j] == 0] = np.nan
-      plt.imshow(target[i], cmap="cool", alpha=0.5)
+      print(l,i)
+      ax.append(fig.add_subplot(rows, columns, l*i))
+      ax[-1].set_title(str(l) + ',' + str(i-1))
+      plt.imshow(image[i-1])
+      #for j in range(len(target[i])):
+          #target[i][j][target[i][j] == 0] = np.nan
+      plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       plt.axis('off')
-  if save_name is not None:
-    plt.savefig("pics_" + str(save_name) + ".png")
-  if show: 
-    plt.show()
+  path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/pic_'
+  plt.savefig(path + str(save_name) + '.png')
   return fig
 
+#data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz'
+#display_input_data(data_path)
+
+def display_net_test(inps, msks, gts):
+  images, targets, preds = [],[],[]
+  data_size = len(inps)
+  print("test data size: ", data_size)
+  for i in range(data_size):
+    image, gt = base_projections(inps[i], gts[i])
+    images.append(image)
+    targets.append(gt)
+    _, pred = base_projections(inps[i], msks[i])
+    preds.append(pred)
+  #make the figure
+  fig = plt.figure(figsize=(200, 400))
+  ax = []
+  columns = 3
+  rows = 2*data_size
+  for l in range(1, data_size +1):
+    image = images[l-1]
+    target =  targets[l-1]
+    pred = preds[l-1]
+    for i in range(1,4):
+      #create gt subplot 
+      print((2*l),i)
+      ax.append(fig.add_subplot(rows, columns, (2*l-1)*i))
+      ax[-1].set_title("GT " + str(l) + ',' + str(i-1))
+      plt.imshow(image[i-1])
+      plt.imshow(target[i-1], cmap="cool", alpha=0.5)
+    for i in range(1,4):
+      #mask subplot
+      print((2*l+1),i)
+      ax.append(fig.add_subplot(rows, columns, (2*l)*i))
+      ax[-1].set_title("pred " + str(l) + ',' + str(i-1))
+      plt.imshow(image[i-1])
+      plt.imshow(pred[i-1], cmap="cool", alpha=0.5)
+
+    plt.axis('off')
+  path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
+  plt.savefig(path + '.png')
+  return fig
