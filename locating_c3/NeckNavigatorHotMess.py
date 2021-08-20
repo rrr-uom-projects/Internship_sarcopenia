@@ -147,6 +147,24 @@ class neckNavigator(nn.Module):
         # Predict
         #return self.pred(x)
 
+    def load_previous(self, checkpoint_dir, logger):
+        # load previous best weights
+        model_dict = self.state_dict()
+        state = torch.load(os.path.join(checkpoint_dir, 'last_checkpoint.pytorch'))
+        best_checkpoint_dict = state['model_state_dict']
+        # remove the 'module.' wrapper
+        renamed_dict = OrderedDict()
+        for key, value in best_checkpoint_dict.items():
+            new_key = key.replace('module.','')
+            renamed_dict[new_key] = value
+        # identify which layers to grab
+        renamed_dict = {k: v for k, v in list(renamed_dict.items()) if k in model_dict}
+        model_dict.update(renamed_dict)
+        self.load_state_dict(model_dict)
+        if logger:
+            logger.info("Loaded layers from previous best checkpoint:")
+            logger.info([k for k, v in list(renamed_dict.items())])
+            
     def load_best(self, checkpoint_dir, logger):
         # load previous best weights
         model_dict = self.state_dict()

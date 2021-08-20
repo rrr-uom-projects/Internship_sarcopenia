@@ -19,6 +19,7 @@ class neckNavigator(nn.Module):
         super(neckNavigator, self).__init__()
         ff = filter_factor # filter factor (easy net scaling)
         # Input --> (3, 48, 120, 120)
+        #new inp --> (1,128,128,128)
         # conv layers set 1 - down 1
         self.c1 = nn.Conv3d(in_channels=in_channels, out_channels=int(16*ff), kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm3d(int(16*ff))
@@ -118,6 +119,24 @@ class neckNavigator(nn.Module):
         #x = self.act(x)
         # Predict
         return x
+
+    def load_previous(self, checkpoint_dir, logger):
+        # load last checkpoint weights
+        model_dict = self.state_dict()
+        state = torch.load(os.path.join(checkpoint_dir, 'last_checkpoint.pytorch'))
+        best_checkpoint_dict = state['model_state_dict']
+        # remove the 'module.' wrapper
+        renamed_dict = OrderedDict()
+        for key, value in best_checkpoint_dict.items():
+            new_key = key.replace('module.','')
+            renamed_dict[new_key] = value
+        # identify which layers to grab
+        renamed_dict = {k: v for k, v in list(renamed_dict.items()) if k in model_dict}
+        model_dict.update(renamed_dict)
+        self.load_state_dict(model_dict)
+        if logger:
+            logger.info("Loaded layers from previous best checkpoint:")
+            logger.info([k for k, v in list(renamed_dict.items())])
 
     def load_best(self, checkpoint_dir, logger):
         # load previous best weights

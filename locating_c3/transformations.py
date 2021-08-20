@@ -194,8 +194,8 @@ class preprocessing():
         self.inputs = inputs
         self.targets = targets
         self.transform = transform
-        self.inputs_dtype = torch.float32
-        self.targets_dtype = torch.long
+        #self.inputs_dtype = torch.float32
+        #self.targets_dtype = torch.long
         self.cropping = cropping
         self.normalise = normalise
         self.heatmap = heatmap

@@ -31,9 +31,11 @@ def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
   return gauss
 
-def setup_model(model, checkpoint_dir, device, load_prev = False, eval_mode = False):
+def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = False, eval_mode = False):
   model.to(device)
   if load_prev == True:
+    model.load_previous(checkpoint_dir, logger=None)
+  if load_best == True:
     model.load_best(checkpoint_dir, logger=None)
   for param in model.parameters():
       param.requires_grad = True
@@ -54,10 +56,7 @@ def PrintSlice(input, targets, show = False):
       plt.show()
       plt.savefig("Slice.png")
 
-def base_projections(inp, msk):
-  axi,cor,sag = 0,1,2
-  proj_order = [2,1,0]
-  def arrange(input, ax):
+def arrange(input, ax, proj_order):
     #to return the projection in whatever order.
     av = np.average(input, axis = ax)
     mx = np.max(input, axis = ax)
@@ -67,10 +66,12 @@ def base_projections(inp, msk):
     out = np.stack((ord_list), axis=2)
     return out
 
-  axial = arrange(inp, axi)
-  coronal = arrange(inp, cor)
-  sagital = arrange(inp, sag)
-
+def base_projections(inp, msk):
+  axi,cor,sag = 0,1,2
+  proj_order = [2,1,0]
+  axial = arrange(inp, axi, proj_order)
+  coronal = arrange(inp, cor, proj_order)
+  sagital = arrange(inp, sag, proj_order)
   ax_mask = np.max(msk, axis = axi)
   cor_mask = np.max(msk, axis = cor)
   sag_mask = np.max(msk, axis = sag)
@@ -175,42 +176,19 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
   data_size = len(inps)
   axi,cor,sag = 0,1,2
   proj_order = [2,1,0]
+  images = []
+  targets = []
   if type == "tensor":
      inp = inps.cpu().detach().squeeze().numpy()
      msk = msks.cpu().detach().squeeze().numpy().astype(float)
-     
-  def arrange(input, ax):
-    #to return the projection in whatever order.
-    av = np.average(input, axis = ax)
-    mx = np.max(input, axis = ax)
-    std = np.std(input, axis=ax)
-    ord_list = [mx,av,std]
-    ord_list[:] = [ord_list[i] for i in proj_order]
-    out = np.stack((ord_list), axis=2)
-    return out
-  #print(inp.shape)
-  images = []
-  targets = []
+       
   for j in range(data_size):
     inp = inps[j]
     msk = msks[j]
-    axial = arrange(inp, axi)
-    coronal = arrange(inp, cor)
-    sagital = arrange(inp, sag)
-
-    ax_mask = np.max(msk, axis = axi)
-    cor_mask = np.max(msk, axis = cor)
-    sag_mask = np.max(msk, axis = sag)
-    #flip right way up
-    coronal = coronal[::-1]
-    sagital = sagital[::-1]
-    cor_mask = cor_mask[::-1]
-    sag_mask = sag_mask[::-1]
-    image = (axial,coronal,sagital)
-    mask = (ax_mask,cor_mask, sag_mask)
+    image, mask = base_projections(inp, msk)
     images.append(image)
     targets.append(mask)
-  #print(coronal.shape)
+
   fig = plt.figure(figsize=(200, 400))
   ax = []
   columns = 9
