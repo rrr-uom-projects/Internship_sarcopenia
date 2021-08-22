@@ -132,6 +132,12 @@ def euclid_dis(gts, masks, is_tensor = False):
   if is_tensor:
     gt = gts
     msk = masks
+    gts = gts.cpu()
+    masks = masks.cpu()
+    pred_vox = torch.tensor([np.unravel_index(torch.argmax(gts[i, 0]), gts.size()[2:]) for i in range(gts.size(0))]).type(torch.FloatTensor)
+    gt_vox = torch.tensor([np.unravel_index(torch.argmax(masks[i, 0]), masks.size()[2:]) for i in range(masks.size(0))]).type(torch.FloatTensor)
+    print(pred_vox, gt_vox)
+    print("vox_coord dff: ",torch.abs(gt_vox[2]-pred_vox[2]))
     gts = gt.cpu().detach().numpy()[0]
     masks = msk.cpu().detach().numpy()[0]
   distances = []

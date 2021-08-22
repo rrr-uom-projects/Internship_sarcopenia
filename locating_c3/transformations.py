@@ -181,7 +181,7 @@ def save_preprocessed(inputs, targets, ids):
     ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
-    np.savez(path, inputs = inputs, masks = targets, ids = ids)
+    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids)
     print("Saved preprocessed data")
 
 class preprocessing():

@@ -193,16 +193,17 @@ class neckNavigator_trainer:
             output = self.model(ct_im)
             #print(torch.sum(output), torch.max(output))
             output = F.log_softmax(output, -1)
+            print(torch.sum(output), torch.max(output))
             output = output/(torch.sum(output))
-            #print(torch.sum(output), torch.max(output))
+            print(torch.sum(output), torch.max(output))
             #assert torch.sum(output) == 1
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for >1 targets
             #loss = torch.nn.MSELoss()(100*output, 100*h_target)#prob masks
             #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([10000])).to(self.device)(output, h_target)#masks 0s and 1s
             #loss = L.BinaryFocalLoss()(output, h_target)
-            loss = torch.nn.KLDivLoss(reduction = 'batchmean')(output,h_target)
-            #loss = L.JointLoss(L.BinaryFocalLoss(), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10000]).to(self.device)), 1.0, 0.5)(output, h_target)
+            loss = torch.nn.KLDivLoss(reduction = 'batchmean')(output, h_target)
+            #loss = L.JointLoss(torch.nn.KLDivLoss(reduction = 'batchmean'), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10000]).to(self.device)), 1.0, 0.5)(output, h_target)
             #loss = L.JointLoss(L.BinaryFocalLoss(), torch.nn.KLDivLoss(reduction = 'batchmean'), 1.0, 1.0)(output, h_target)
             #loss = torch.nn.MSELoss().item()
             # L1 loss contribution

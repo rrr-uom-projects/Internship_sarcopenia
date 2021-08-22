@@ -39,13 +39,13 @@ def main():
     C3s, segments, GTs = tester
     
     print("gt info: ", len(GTs))
-    print(GTs.shape,)
+    print(GTs.shape)
     print("segs info: ", segments.shape)
 
     difference = euclid_dis(GTs, segments)
     print(difference)
-    projections(C3s[0],segments[0], order = [1,2,0], show=True)
-    projections(C3s[0],GTs[0], order = [1,2,0], show=True)
+    projections(C3s[1],segments[1], order = [1,2,0], show=True)
+    projections(C3s[1],GTs[1], order = [1,2,0], show=True)
     #display_net_test(C3s, segments, GTs)
 
     return
