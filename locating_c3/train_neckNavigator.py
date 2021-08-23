@@ -22,8 +22,8 @@ import matplotlib.pyplot as plt
 import pickle
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-from neckNavigator import neckNavigator
-#from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
+#from neckNavigator import neckNavigator
+from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters
@@ -89,12 +89,12 @@ def main():
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     #torch.save(test_dataloader, dataloader_dir, pickle_protocol= pickle.HIGHEST_PROTOCOL)
     # create model
-    model = neckNavigator(filter_factor=2, targets = 1, in_channels = 1)
+    model = neckNavigator()
     #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
 
     # put the model on GPU(s)
-    device = 'cuda:1'
+    device = 'cuda:0'
     # model.to(device)
     load_prev=False
     model=setup_model(model, checkpoint_dir, device, load_prev= False)
@@ -125,6 +125,29 @@ def main():
     
     # Start training
     trainer.fit()
+
+
+    #testing
+    model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
+    tester = neckNavigatorTest1(model, checkpoint_dir, test_dataloader, device)
+    #test_results = tester
+    C3s, segments, GTs = tester
+    
+    print("gt info: ", len(GTs))
+    print(GTs.shape,)
+    print("segs info: ", segments.shape)
+    #print(segments[0].shape, len(segments))
+    #print(C3s[0].shape)
+    #c3 = C3s[0][0]
+    #segment = segments[0][0]
+
+    difference = euclid_dis(GTs, segments)
+    print(difference)
+    PrintSlice(C3s[0], segments[0], show=True)
+    for j in range(0,4):
+        projections(C3s[j],segments[j], order = [1,2,0])
+
+
     
     return
     

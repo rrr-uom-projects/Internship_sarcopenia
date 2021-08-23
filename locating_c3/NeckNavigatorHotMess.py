@@ -28,7 +28,7 @@ class UnetDsv3(nn.Module):
         return self.dsv(input)
 
 class neckNavigator(nn.Module):
-    def __init__(self, filter_factor=2, targets=1, in_channels=3):
+    def __init__(self, filter_factor=2, targets=1, in_channels=1):
         super(neckNavigator, self).__init__()
         ff = filter_factor # filter factor (easy net scaling)
         #old Input --> (3, 48, 120, 120)
@@ -140,13 +140,31 @@ class neckNavigator(nn.Module):
         dsv1 = self.dsv1(up1)
         x = self.final(torch.cat([dsv1,dsv2], dim=1))
         #activation
-        x = self.act(x)
+        #x = self.act(x)
 
         return x
 
         # Predict
         #return self.pred(x)
 
+    def load_previous(self, checkpoint_dir, logger):
+        # load previous best weights
+        model_dict = self.state_dict()
+        state = torch.load(os.path.join(checkpoint_dir, 'last_checkpoint.pytorch'))
+        best_checkpoint_dict = state['model_state_dict']
+        # remove the 'module.' wrapper
+        renamed_dict = OrderedDict()
+        for key, value in best_checkpoint_dict.items():
+            new_key = key.replace('module.','')
+            renamed_dict[new_key] = value
+        # identify which layers to grab
+        renamed_dict = {k: v for k, v in list(renamed_dict.items()) if k in model_dict}
+        model_dict.update(renamed_dict)
+        self.load_state_dict(model_dict)
+        if logger:
+            logger.info("Loaded layers from previous best checkpoint:")
+            logger.info([k for k, v in list(renamed_dict.items())])
+            
     def load_best(self, checkpoint_dir, logger):
         # load previous best weights
         model_dict = self.state_dict()
