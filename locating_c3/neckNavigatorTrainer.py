@@ -265,7 +265,7 @@ class neckNavigator_trainer:
             self.writer.add_scalar(tag, value, self.num_iterations)
 
     def _log_dist(self, dist):
-        avgdist = np.average(dist)
+        avgdist = np.average(dist)###
         self.writer.add_scalar('Slice difference', avgdist, self.num_iterations)
     
     def _log_images(self, inp, pred, name):
