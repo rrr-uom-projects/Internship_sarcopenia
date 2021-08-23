@@ -15,10 +15,11 @@ import torch.nn.functional as F
 ############################  Neck Navigator model ##################################
 #####################################################################################
 class neckNavigator(nn.Module):
-    def __init__(self, filter_factor=2, targets=1, in_channels=3):
+    def __init__(self, filter_factor=2, targets=1, in_channels=1):
         super(neckNavigator, self).__init__()
         ff = filter_factor # filter factor (easy net scaling)
         # Input --> (3, 48, 120, 120)
+        #new inp --> (1,128,128,128)
         # conv layers set 1 - down 1
         self.c1 = nn.Conv3d(in_channels=in_channels, out_channels=int(16*ff), kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm3d(int(16*ff))
@@ -120,7 +121,7 @@ class neckNavigator(nn.Module):
         return x
 
     def load_previous(self, checkpoint_dir, logger):
-        # load previous best weights
+        # load last checkpoint weights
         model_dict = self.state_dict()
         state = torch.load(os.path.join(checkpoint_dir, 'last_checkpoint.pytorch'))
         best_checkpoint_dict = state['model_state_dict']

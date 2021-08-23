@@ -28,6 +28,12 @@ def GetTargetCoords(target):
     coords = center_of_mass(target)
     return coords
 
+def slice_preds(masks):
+  slice_nos = []
+  for i in range(len(masks)):
+    slice_nos.append(GetTargetCoords(masks[i])[2])
+  return np.asarray(slice_nos)
+
 def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
   return gauss
@@ -57,6 +63,34 @@ def PrintSlice(input, targets, show = False):
       plt.show()
       plt.savefig("Slice.png")
 
+def arrange(input, ax, proj_order):
+    #to return the projection in whatever order.
+    av = np.average(input, axis = ax)
+    mx = np.max(input, axis = ax)
+    std = np.std(input, axis=ax)
+    ord_list = [mx,av,std]
+    ord_list[:] = [ord_list[i] for i in proj_order]
+    out = np.stack((ord_list), axis=2)
+    return out
+
+def base_projections(inp, msk):
+  axi,cor,sag = 0,1,2
+  proj_order = [2,1,0]
+  axial = arrange(inp, axi, proj_order)
+  coronal = arrange(inp, cor, proj_order)
+  sagital = arrange(inp, sag, proj_order)
+  ax_mask = np.max(msk, axis = axi)
+  cor_mask = np.max(msk, axis = cor)
+  sag_mask = np.max(msk, axis = sag)
+  #flip right way up
+  coronal = coronal[::-1]
+  sagital = sagital[::-1]
+  cor_mask = cor_mask[::-1]
+  sag_mask = sag_mask[::-1]
+  image = (axial,coronal,sagital)
+  mask = (ax_mask,cor_mask, sag_mask)
+  return image, mask
+
 def projections(inp, msk, order, type = "numpy", show = False, save_name = None):
   axi,cor,sag = 0,1,2
   proj_order = order
@@ -67,32 +101,7 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None)
        inp = inp[0]
        msk = msk[0]
      #print(msk.shape)
-
-  def arrange(input, ax):
-    #to return the projection in whatever order.
-    av = np.average(input, axis = ax)
-    mx = np.max(input, axis = ax)
-    std = np.std(input, axis=ax)
-    ord_list = [mx,av,std]
-    ord_list[:] = [ord_list[i] for i in proj_order]
-    out = np.stack((ord_list), axis=2)
-    return out
-  #print(inp.shape)
-  axial = arrange(inp, axi)
-  coronal = arrange(inp, cor)
-  sagital = arrange(inp, sag)
-
-  ax_mask = np.max(msk, axis = axi)
-  cor_mask = np.max(msk, axis = cor)
-  sag_mask = np.max(msk, axis = sag)
-  #flip right way up
-  coronal = coronal[::-1]
-  sagital = sagital[::-1]
-  cor_mask = cor_mask[::-1]
-  sag_mask = sag_mask[::-1]
-  images = (axial,coronal,sagital)
-  masks = (ax_mask,cor_mask, sag_mask)
-  #print(coronal.shape)
+  images, masks = base_projections(inp, msk)
   fig = plt.figure(figsize=(48, 16))
   ax = []
   columns = 3
@@ -130,18 +139,20 @@ def euclid_dis(gts, masks, is_tensor = False):
   if is_tensor:
     gt = gts
     msk = masks
+    # pred_vox = torch.tensor([np.unravel_index(torch.argmax(gts[i, 0]), gts.size()[2:]) for i in range(gts.size(0))]).type(torch.FloatTensor)
+    # gt_vox = torch.tensor([np.unravel_index(torch.argmax(masks[i, 0]), masks.size()[2:]) for i in range(masks.size(0))]).type(torch.FloatTensor)
+    # print(pred_vox, gt_vox)
+    # print("vox_coord dff: ",torch.abs(gt_vox[2]-pred_vox[2]))
     gts = gt.cpu().detach().numpy()[0]
     masks = msk.cpu().detach().numpy()[0]
   distances = []
   for i in range(len(gts)):
-    #gts[i][gts[i] == np.nan] = 0
-    #masks[i][masks[i] == np.nan] = 0
-    #print(np.max(masks[i]))
-    #print(np.max(gts[i]))
+    print(np.max(masks[i]))
+    print(np.max(gts[i]))
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(masks[i])
-    #print(gt_coords)
-    #print(msk_coords)
+    print(gt_coords)
+    print(msk_coords)
     distances.append(np.abs(gt_coords[2]-msk_coords[2]))
   distances = np.array(distances)
   print(np.average(distances))
@@ -170,66 +181,86 @@ def get_data(path):
     ids = data['ids']
     return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
 
+
 def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = False):
   inps,msks,ids = get_data(path)
   data_size = len(inps)
   axi,cor,sag = 0,1,2
   proj_order = [2,1,0]
+  images = []
+  targets = []
   if type == "tensor":
      inp = inps.cpu().detach().squeeze().numpy()
      msk = msks.cpu().detach().squeeze().numpy().astype(float)
-     
-  def arrange(input, ax):
-    #to return the projection in whatever order.
-    av = np.average(input, axis = ax)
-    mx = np.max(input, axis = ax)
-    std = np.std(input, axis=ax)
-    ord_list = [mx,av,std]
-    ord_list[:] = [ord_list[i] for i in proj_order]
-    out = np.stack((ord_list), axis=2)
-    return out
-  #print(inp.shape)
-  images = []
-  targets = []
+       
   for j in range(data_size):
     inp = inps[j]
     msk = msks[j]
-    axial = arrange(inp, axi)
-    coronal = arrange(inp, cor)
-    sagital = arrange(inp, sag)
-
-    ax_mask = np.max(msk, axis = axi)
-    cor_mask = np.max(msk, axis = cor)
-    sag_mask = np.max(msk, axis = sag)
-    #flip right way up
-    coronal = coronal[::-1]
-    sagital = sagital[::-1]
-    cor_mask = cor_mask[::-1]
-    sag_mask = sag_mask[::-1]
-    image = (axial,coronal,sagital)
-    mask = (ax_mask,cor_mask, sag_mask)
+    image, mask = base_projections(inp, msk)
     images.append(image)
     targets.append(mask)
-  #print(coronal.shape)
-  fig = plt.figure(figsize=(2700, 16))
+
+  fig = plt.figure(figsize=(200, 400))
   ax = []
-  columns = 3
-  rows = data_size
-  for l in range(data_size):
-    image = images[l]
-    target =  targets[l]
-    for i in range(columns):
+  columns = 9
+  rows = 1 + data_size/3
+  
+  for l in range(1, data_size +1):
+    image = images[l-1]
+    target =  targets[l-1]
+    for i in range(1,4):
       # create subplot and append to ax
-      ax.append(fig.add_subplot(rows, columns, l*i+1) )
-      ax[-1].set_title("ax:"+str(l*i))
-      plt.imshow(image[i])
-      #for j in range(len(masks[i])):
-          #masks[i][j][masks[i][j] == 0] = np.nan
-      plt.imshow(target[i], cmap="cool", alpha=0.5)
+      print(l,i)
+      ax.append(fig.add_subplot(rows, columns, l*i))
+      ax[-1].set_title(str(l) + ',' + str(i-1))
+      plt.imshow(image[i-1])
+      plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       plt.axis('off')
-  if save_name is not None:
-    plt.savefig("pics_" + str(save_name) + ".png")
-  if show: 
-    plt.show()
+      
+  path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/pic_'
+  plt.savefig(path + str(save_name) + '.png')
   return fig
 
+#data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz'
+#display_input_data(data_path)
+
+def display_net_test(inps, msks, gts):
+  images, targets, preds = [],[],[]
+  data_size = len(inps)
+  slice_no_preds = slice_preds(msks)
+  print("test data size: ", data_size)
+  for i in range(data_size):
+    image, gt = base_projections(inps[i], gts[i])
+    images.append(image)
+    targets.append(gt)
+    _, pred = base_projections(inps[i], msks[i])
+    preds.append(pred)
+  #make the figure
+  fig = plt.figure(figsize=(200, 400))
+  ax = []
+  columns = 3
+  rows = 2*data_size
+  for l in range(1, data_size +1):
+    image = images[l-1]
+    target =  targets[l-1]
+    pred = preds[l-1]
+    for i in range(1,4):
+      #create gt subplot 
+      print((2*l),i)
+      ax.append(fig.add_subplot(rows, columns, (2*l-1)*i))
+      ax[-1].set_title("GT " + str(l) + ',' + str(i-1))
+      plt.imshow(image[i-1])
+      plt.imshow(target[i-1], cmap="cool", alpha=0.5)
+    for i in range(1,4):
+      #mask subplot
+      print((2*l+1),i)
+      ax.append(fig.add_subplot(rows, columns, (2*l)*i))
+      ax[-1].set_title("pred " + str(l) + ',' + str(i-1))
+      plt.imshow(image[i-1])
+      plt.imshow(pred[i-1], cmap="cool", alpha=0.5)
+      ax[-1].axhline(slice_no_preds, linewidth=2, c='y')
+      ax[-1].text(0, slice_no_preds-5, "C3", color='w')
+    plt.axis('off')
+  path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
+  plt.savefig(path + '.png')
+  return fig

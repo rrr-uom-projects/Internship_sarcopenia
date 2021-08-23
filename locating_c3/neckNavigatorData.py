@@ -62,7 +62,7 @@ class neckNavigatorDataset(Dataset):
 
 # functions and definitions
 def get_data(path): 
-    data = np.load(path)
+    data = np.load(path, allow_pickle=True)
     inputs = data['inputs']
     print(len(inputs))
     targets = data['masks']

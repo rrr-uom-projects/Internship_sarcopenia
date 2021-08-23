@@ -22,8 +22,8 @@ import matplotlib.pyplot as plt
 import pickle
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-from neckNavigator import neckNavigator
-#from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
+#from neckNavigator import neckNavigator
+from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters
@@ -86,12 +86,12 @@ def main():
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     #torch.save(test_dataloader, dataloader_dir, pickle_protocol= pickle.HIGHEST_PROTOCOL)
     # create model
-    model = neckNavigator(filter_factor=2, targets = 1, in_channels = 1)
+    model = neckNavigator()
     #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
 
     # put the model on GPU(s)
-    device = 'cuda:1'
+    device = 'cuda:0'
     # model.to(device)
     load_prev=False
     model=setup_model(model, checkpoint_dir, device, load_prev=load_prev)
@@ -122,9 +122,10 @@ def main():
     
     # Start training
     trainer.fit()
-#%%
+
     #testing
-    tester = neckNavigatorTest1(model, test_dataloader, device)
+    model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
+    tester = neckNavigatorTest1(model, checkpoint_dir, test_dataloader, device)
     #test_results = tester
     C3s, segments, GTs = tester
     
