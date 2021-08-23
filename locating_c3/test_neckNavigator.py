@@ -2,7 +2,9 @@
 #to test the model at various stages
 
 from utils import PrintSlice, get_data, projections, euclid_dis, display_net_test, slice_preds, GetSliceNumber
+from neckNavigatorTester import neckNavigatorTest2
 from neckNavigatorTester import neckNavigatorTest1
+
 from neckNavigator import neckNavigator
 from neckNavigatorData import neckNavigatorDataset
 from torch.utils.data import DataLoader

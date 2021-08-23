@@ -13,6 +13,7 @@ import torch
 import torchvision.transforms as T
 import torchvision.io.image as tim
 
+
 def GetSliceNumber(segment):
   slice_number = []
   max_range = len(segment)
@@ -42,7 +43,7 @@ def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = Fa
   if load_prev == True:
     model.load_previous(checkpoint_dir, logger=None)
   if load_best == True:
-    model.load_best(checkpoint_dir, logger=None)
+    model.load_best(checkpoint_dir, logger = None)
   for param in model.parameters():
       param.requires_grad = True
   if eval_mode:
