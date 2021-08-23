@@ -117,7 +117,7 @@ def main():
     
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=10, num_iterations = iteration, 
+                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
                                  num_epoch = epoch ,patience=20, iters_to_accumulate=4)
     
     # Start training
@@ -139,23 +139,8 @@ def main():
 
     difference = euclid_dis(GTs, segments)
     print(difference)
-    PrintSlice(C3s[0], segments[0], show=True)
-    for j in range(0,4):
-        projections(C3s[j],segments[j], order = [1,2,0])
-
-    
-
-    # fig  = plt.figure(figsize=(100,25))
-    # ax = []
-    # columns = 2
-    # rows = 1
-    # for i in range(0,rows*columns):
-    #     ax.append(fig.add_subplot(rows, columns, i+1))
-    #     ax[-1].set_title(str(i+1))
-    #     PrintSlice(C3s[i], segments[i])
-    #     #projections(c3s[0][i], segments[0][i], order=[1,2,0])
-    # plt.savefig("slices.png")
-    #plt.show()
+    #PrintSlice(C3s[0], segments[0], show=True)
+    projections(C3s[0], segments[0], order = [1,2,0], save_name = 'funky')
 
 
 
