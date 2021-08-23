@@ -27,6 +27,12 @@ def GetTargetCoords(target):
     coords = center_of_mass(target)
     return coords
 
+def slice_preds(masks):
+  slice_nos = []
+  for i in range(len(masks)):
+    slice_nos.append(GetTargetCoords(masks[i])[2])
+  return np.asarray(slice_nos)
+
 def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
   return gauss
@@ -132,12 +138,10 @@ def euclid_dis(gts, masks, is_tensor = False):
   if is_tensor:
     gt = gts
     msk = masks
-    gts = gts.cpu()
-    masks = masks.cpu()
-    pred_vox = torch.tensor([np.unravel_index(torch.argmax(gts[i, 0]), gts.size()[2:]) for i in range(gts.size(0))]).type(torch.FloatTensor)
-    gt_vox = torch.tensor([np.unravel_index(torch.argmax(masks[i, 0]), masks.size()[2:]) for i in range(masks.size(0))]).type(torch.FloatTensor)
-    print(pred_vox, gt_vox)
-    print("vox_coord dff: ",torch.abs(gt_vox[2]-pred_vox[2]))
+    # pred_vox = torch.tensor([np.unravel_index(torch.argmax(gts[i, 0]), gts.size()[2:]) for i in range(gts.size(0))]).type(torch.FloatTensor)
+    # gt_vox = torch.tensor([np.unravel_index(torch.argmax(masks[i, 0]), masks.size()[2:]) for i in range(masks.size(0))]).type(torch.FloatTensor)
+    # print(pred_vox, gt_vox)
+    # print("vox_coord dff: ",torch.abs(gt_vox[2]-pred_vox[2]))
     gts = gt.cpu().detach().numpy()[0]
     masks = msk.cpu().detach().numpy()[0]
   distances = []
@@ -199,6 +203,7 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
   ax = []
   columns = 9
   rows = 1 + data_size/3
+  
   for l in range(1, data_size +1):
     image = images[l-1]
     target =  targets[l-1]
@@ -208,10 +213,9 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
       ax.append(fig.add_subplot(rows, columns, l*i))
       ax[-1].set_title(str(l) + ',' + str(i-1))
       plt.imshow(image[i-1])
-      #for j in range(len(target[i])):
-          #target[i][j][target[i][j] == 0] = np.nan
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       plt.axis('off')
+      
   path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/pic_'
   plt.savefig(path + str(save_name) + '.png')
   return fig
@@ -222,6 +226,7 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
 def display_net_test(inps, msks, gts):
   images, targets, preds = [],[],[]
   data_size = len(inps)
+  slice_no_preds = slice_preds(msks)
   print("test data size: ", data_size)
   for i in range(data_size):
     image, gt = base_projections(inps[i], gts[i])
@@ -252,7 +257,8 @@ def display_net_test(inps, msks, gts):
       ax[-1].set_title("pred " + str(l) + ',' + str(i-1))
       plt.imshow(image[i-1])
       plt.imshow(pred[i-1], cmap="cool", alpha=0.5)
-
+      ax[-1].axhline(slice_no_preds, linewidth=2, c='y')
+      ax[-1].text(0, slice_no_preds-5, "C3", color='w')
     plt.axis('off')
   path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
   plt.savefig(path + '.png')

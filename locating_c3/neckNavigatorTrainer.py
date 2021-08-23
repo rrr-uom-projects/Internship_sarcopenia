@@ -193,9 +193,9 @@ class neckNavigator_trainer:
             output = self.model(ct_im)
             #print(torch.sum(output), torch.max(output))
             output = F.log_softmax(output, -1)
-            print(torch.sum(output), torch.max(output))
+            #print(torch.sum(output), torch.max(output))
             output = output/(torch.sum(output))
-            print(torch.sum(output), torch.max(output))
+            #print(torch.sum(output), torch.max(output))
             #assert torch.sum(output) == 1
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for >1 targets
@@ -265,7 +265,8 @@ class neckNavigator_trainer:
             self.writer.add_scalar(tag, value, self.num_iterations)
 
     def _log_dist(self, dist):
-        self.writer.add_scalar('Slice difference', np.average(dist), self.num_iterations)
+        avgdist = np.average(dist)
+        self.writer.add_scalar('Slice difference', avgdist, self.num_iterations)
     
     def _log_images(self, inp, pred, name):
         images = projections(inp, pred, order=[2,1,0], type="tensor")
