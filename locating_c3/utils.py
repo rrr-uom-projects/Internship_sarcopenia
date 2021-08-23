@@ -168,7 +168,7 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None,
     plt.imshow(images[i])
     #for j in range(len(masks[i])):
         #masks[i][j][masks[i][j] == 0] = np.nan
-    plt.imshow(masks[i], cmap="cool", alpha=0.5, vmin = 0, vmax = vmax)#vmin = 0, vmax = max of gt
+    plt.imshow(masks[i], cmap="cool", alpha=0.5, vmin = 0, vmax =vmax)#vmin = 0, vmax = max of gt
     plt.axis('off')
   if save_name is not None:
     plt.savefig("projections" + str(save_name) + ".png")
