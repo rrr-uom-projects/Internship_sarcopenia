@@ -47,12 +47,15 @@ def main():
 
     # decide file paths
     #livs paths
-    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
-    #checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
-    #dataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
+
+    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
+    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    dataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
+
+
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz'
-    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz'
+    #checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
     # Create main logger
@@ -94,7 +97,7 @@ def main():
     device = 'cuda:0'
     # model.to(device)
     load_prev=False
-    model=setup_model(model, checkpoint_dir, device, load_prev=load_prev)
+    model=setup_model(model, checkpoint_dir, device, load_prev= False)
     # Log the number of learnable parameters
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
@@ -119,9 +122,11 @@ def main():
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
                                  val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
                                  num_epoch = epoch ,patience=20, iters_to_accumulate=4)
+
     
     # Start training
     trainer.fit()
+
 
     #testing
     model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
@@ -142,8 +147,7 @@ def main():
     #PrintSlice(C3s[0], segments[0], show=True)
     projections(C3s[0], segments[0], order = [1,2,0], save_name = 'funky')
 
-
-
+    
     return
     
     

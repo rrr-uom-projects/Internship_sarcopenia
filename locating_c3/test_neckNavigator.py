@@ -28,14 +28,18 @@ def main():
     test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     
-    #model_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/"
+    model_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/"
     #testdataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
     device = 'cuda:0'
 
     #tester = neckNavigatorTest2(model_dir, test_dataloader, device)
-    checkpoint_dir = checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    #checkpoint_dir = checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
     model = neckNavigator()
-    tester = neckNavigatorTest1(model, checkpoint_dir, test_dataloader, device)
+    #tester = neckNavigatorTest1(model, checkpoint_dir, test_dataloader, device)
+
+    tester = neckNavigatorTest2(model_dir, test_dataloader, device)
+    #tester = neckNavigatorTest1(model, test_dataloader, device)
+
 
     #test_results = tester
     C3s, segments, GTs = tester
