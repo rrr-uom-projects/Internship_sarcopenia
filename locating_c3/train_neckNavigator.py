@@ -121,7 +121,8 @@ def main():
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
                                  val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
-                                 num_epoch = epoch ,patience=40, iters_to_accumulate=4)
+                                 num_epoch = epoch ,patience=20, iters_to_accumulate=4)
+
     
     # Start training
     trainer.fit()
@@ -143,10 +144,8 @@ def main():
 
     difference = euclid_dis(GTs, segments)
     print(difference)
-    PrintSlice(C3s[0], segments[0], show=True)
-    for j in range(0,4):
-        projections(C3s[j],segments[j], order = [1,2,0])
-
+    #PrintSlice(C3s[0], segments[0], show=True)
+    projections(C3s[0], segments[0], order = [1,2,0], save_name = 'funky')
 
     
     return

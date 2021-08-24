@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
 from pytorch_toolbelt import losses as L
-from utils import projections, euclid_dis, plot_to_image
+from utils import projections, euclid_dis, plot_to_image, kl_reg, flat_softmax, sharpen_heatmaps
 import tensorflow as tf
 
 #####################################################################################################
@@ -125,7 +125,7 @@ class neckNavigator_trainer:
                 #difference = euclid_dis(h_target, output, is_tensor=True)
                 #self._log_dist(difference)
 
-                self._log_images(ct_im, output, name = "Training Data")
+                self._log_images(ct_im, output, h_target, name = "Training Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
             
             self.num_iterations += 1
@@ -176,7 +176,7 @@ class neckNavigator_trainer:
                 
                 #write the slice difference between gts and preds
                 difference = euclid_dis(h_target, output, is_tensor=True)  
-                self._log_images(ct_im, output, name = "Validation Data")
+                self._log_images(ct_im, output, h_target, name = "Validation Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
                 
 
@@ -192,17 +192,27 @@ class neckNavigator_trainer:
             # forward pass
             output = self.model(ct_im)
             #print(torch.sum(output), torch.max(output))
-            output = F.log_softmax(output, -1)
+            #h_target = sharpen_heatmaps(h_target, alpha = 2)
+            #print(torch.sum(h_target), torch.max(h_target), h_target.shape)
+            output = flat_softmax(output)
+            h_target = flat_softmax(100*h_target)
             #print(torch.sum(output), torch.max(output))
-            output = output/(torch.sum(output))
-            #print(torch.sum(output), torch.max(output))
+            #output = output/(torch.sum(output))
+            #print(torch.sum(h_target), torch.max(h_target))
+            #h_target = h_target/(torch.sum(h_target))
+            print(torch.sum(h_target), torch.max(h_target))
+            print(torch.sum(output), torch.max(output))
             #assert torch.sum(output) == 1
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
-            # MSE loss contribution - unchanged for >1 targets
+            # MSE loss contribution - unchanged for > 1 targets
             #loss = torch.nn.MSELoss()(100*output, 100*h_target)#prob masks
             #loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([10000])).to(self.device)(output, h_target)#masks 0s and 1s
             #loss = L.BinaryFocalLoss()(output, h_target)
-            loss = torch.nn.KLDivLoss(reduction = 'batchmean')(output, h_target)
+            #loss = torch.nn.KLDivLoss(reduction = 'batchmean')(output, h_target)
+            #print(output.shape)
+            loss = kl_reg(output, h_target)
+            #print(loss.shape)
+            #torch.sum(loss.flatten)
             #loss = L.JointLoss(torch.nn.KLDivLoss(reduction = 'batchmean'), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10000]).to(self.device)), 1.0, 0.5)(output, h_target)
             #loss = L.JointLoss(L.BinaryFocalLoss(), torch.nn.KLDivLoss(reduction = 'batchmean'), 1.0, 1.0)(output, h_target)
             #loss = torch.nn.MSELoss().item()
@@ -268,8 +278,10 @@ class neckNavigator_trainer:
         avgdist = np.average(dist)###
         self.writer.add_scalar('Slice difference', avgdist, self.num_iterations)
     
-    def _log_images(self, inp, pred, name):
-        images = projections(inp, pred, order=[2,1,0], type="tensor")
+    def _log_images(self, inp, pred, gt, name):
+        vmax = torch.max(gt.cpu().detach()).numpy()
+        print(vmax)
+        images = projections(inp, pred, order=[2,1,0], type="tensor", vmax=vmax)
         with self.fig_writer.as_default():
             tf.summary.image(name, plot_to_image(images), self.num_iterations)
 
