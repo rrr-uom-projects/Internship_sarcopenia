@@ -42,20 +42,21 @@ class neckNavigatorDataset(Dataset):
         y = self.availableTargets[index]
 
         # Calculating voxel spacing
-        def voxeldim():
-            voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
-            return voxel_dim
+        #def voxeldim():
+            #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
+            #return voxel_dim
         
         #Typecasting
         x = (torch.from_numpy(x)).type(self.inputs_dtype)
         y = (torch.from_numpy(y)).type(self.targets_dtype)
         # Preprocessing
         if self.transform is not None:
-            y = K.RandomAffine3D(0,[0,1,1],p=0.5,keepdim = True)(y)#random mask shifts side to side
+            #y = K.RandomAffine3D(0,[0,1,1],p=0.5,keepdim = True)(y)#random mask shifts side to side
             augs = self.transform(x,y, data_keys=["input","input"])
             x = augs[0]
             y = augs[1] 
-     
+
+        assert torch.max(y) > 0.5
         # creating channel dimension            
         return x.unsqueeze(0), y.unsqueeze(0)
 

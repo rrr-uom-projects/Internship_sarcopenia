@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import torch
 from neckNavigatorUtils import k_fold_split_train_val_test
+import pandas as pd
 
 def main():
 
@@ -57,8 +58,11 @@ def main():
     slice_no_preds = slice_preds(segments)
     slice_no_gts = slice_preds(GTs)
     slice_no_gts_test = []
-    for i in range(len(GTs)):
+
+    for i in range(len(GTs)): #sanity check
         slice_no_gts_test.append(GetSliceNumber(GTs[i]))
+        
+    if slice_no_gts != slice_no_gts_test: print("well shit")
 
     print("Net Preds: ",slice_no_preds)
     print("GTS: ", slice_no_gts)
@@ -66,6 +70,11 @@ def main():
 
     #c3_loc_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/c3_loc.npz'
     #np.savez(c3_loc_path, inputs = inputs, masks = segments, slice_nos = slice_no_preds, ids = ids)
+    test_ids = [ids[ind] for ind in test_inds]
+    df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds})
+    save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/c3_loc.xlsx'
+    df.to_excel(excel_writer = save_path, index=False,
+             sheet_name="data")
 
     return
 

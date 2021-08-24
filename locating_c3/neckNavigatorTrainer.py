@@ -192,16 +192,17 @@ class neckNavigator_trainer:
             # forward pass
             output = self.model(ct_im)
             #print(torch.sum(output), torch.max(output))
-            #h_target = sharpen_heatmaps(h_target, alpha = 2)
-            #print(torch.sum(h_target), torch.max(h_target), h_target.shape)
+            #print(torch.sum(h_target), torch.max(h_target), torch.min(h_target))
+            h_target = sharpen_heatmaps(h_target, alpha = 2)
+            #print(torch.sum(h_target), torch.max(h_target))
             output = flat_softmax(output)
-            h_target = flat_softmax(100*h_target)
+            h_target = flat_softmax(h_target)
             #print(torch.sum(output), torch.max(output))
             #output = output/(torch.sum(output))
             #print(torch.sum(h_target), torch.max(h_target))
             #h_target = h_target/(torch.sum(h_target))
-            print(torch.sum(h_target), torch.max(h_target))
-            print(torch.sum(output), torch.max(output))
+            print(torch.sum(h_target), torch.max(h_target), torch.min(h_target))
+            #print(torch.sum(output), torch.max(output))
             #assert torch.sum(output) == 1
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for > 1 targets
@@ -280,7 +281,7 @@ class neckNavigator_trainer:
     
     def _log_images(self, inp, pred, gt, name):
         vmax = torch.max(gt.cpu().detach()).numpy()
-        print(vmax)
+        #print(vmax)
         images = projections(inp, pred, order=[2,1,0], type="tensor", vmax=vmax)
         with self.fig_writer.as_default():
             tf.summary.image(name, plot_to_image(images), self.num_iterations)

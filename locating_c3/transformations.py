@@ -10,7 +10,7 @@ import random
 from scipy.ndimage.measurements import center_of_mass
 from scipy.ndimage import gaussian_filter
 import torch
-from utils import GetSliceNumber, Guassian, projections, PrintSlice
+from utils import GetSliceNumber, Guassian, projections, PrintSlice, display_input_data
 import cv2
 import os
 import matplotlib.pyplot as plt
@@ -177,7 +177,7 @@ def path_list2():
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_guass2.npz' 
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz' 
     ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
@@ -244,7 +244,7 @@ class preprocessing():
         #print("max, min: ", np.max(x), np.min(x))
         print("y being a little shit: ", np.max(y), np.min(y))
         assert np.min(y) >= 0
-        #assert np.max(y) > 0
+        assert np.max(y) > 0
         data = {'input': x, 'mask': y}  
         return data
 
@@ -252,7 +252,7 @@ class preprocessing():
 #main
 #get the file names
 PathList =  path_list2()
-no_patients = len(PathList[0])
+#no_patients = len(PathList[0])
 inputs = PathList[0]
 targets = PathList[1]
 ids = PathList[2]#[:no_patients]
@@ -294,7 +294,8 @@ projections(CTs[1], masks[1], order=[1,2,0])
 #save the preprocessed masks and cts for the dataset
 save_preprocessed(CTs, masks, ids)
 
-
+#path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz' 
+#display_input_data(path)
 """
 def cropping(inp: np.ndarray, tar: np.ndarray ):
     #want to crop all CT scans to be [177,260,260]
