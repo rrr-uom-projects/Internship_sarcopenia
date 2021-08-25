@@ -157,6 +157,7 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None,
      #print(msk.shape)
   if vmax == None:
     vmax = np.max(msk)
+  print(np.max(msk))
   #elif vmax <= 0.01:
     #vmax = np.max(msk)
   #else: vmax = np.max(vmax)
@@ -170,8 +171,7 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None,
     ax.append(fig.add_subplot(rows, columns, i+1) )
     ax[-1].set_title("ax:"+str(i))
     plt.imshow(images[i])
-    #for j in range(len(masks[i])):
-        #masks[i][j][masks[i][j] == 0] = np.nan
+    masks[i][masks[i] == 0.0] = np.nan
     plt.imshow(masks[i], cmap="cool", alpha=0.5)#vmin = 0, vmax = max of gt
     plt.axis('off')
   if save_name is not None:
@@ -206,13 +206,15 @@ def euclid_dis(gts, masks, is_tensor = False):
     masks = msk.cpu().detach().numpy()[0]
   distances = []
   for i in range(len(gts)):
-    print(np.max(masks[i]))
-    print(np.max(gts[i]))
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(masks[i])
     print(gt_coords)
     print(msk_coords)
-    distances.append(np.abs(gt_coords[2]-msk_coords[2]))
+    distance = np.abs(gt_coords[2]-msk_coords[2])
+    if len(gts) == 1: 
+      distances = distance
+    else: 
+      distances.append(distance)
   distances = np.array(distances)
   print(np.average(distances))
   return distances

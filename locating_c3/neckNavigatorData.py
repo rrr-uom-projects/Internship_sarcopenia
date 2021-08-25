@@ -40,11 +40,6 @@ class neckNavigatorDataset(Dataset):
 
         x = self.availableInputs[index]
         y = self.availableTargets[index]
-
-        # Calculating voxel spacing
-        #def voxeldim():
-            #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
-            #return voxel_dim
         
         #Typecasting
         x = (torch.from_numpy(x)).type(self.inputs_dtype)

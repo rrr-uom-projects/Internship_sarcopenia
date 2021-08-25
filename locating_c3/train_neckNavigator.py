@@ -22,8 +22,8 @@ import matplotlib.pyplot as plt
 import pickle
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-#from neckNavigator import neckNavigator
-from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
+from neckNavigator import neckNavigator
+#from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters
@@ -70,8 +70,8 @@ def main():
     # decide batch sizes
     train_BS = 1 #int(6 * args.GPUs)
     val_BS = 1 #int(6 * args.GPUs)
-    train_workers = int(8)
-    val_workers = int(4)
+    train_workers = 1 #int(8)
+    val_workers = 1 #int(4)
 
     # allocate ims to train, val and test
     dataset_size = len(inputs)

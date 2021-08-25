@@ -28,7 +28,7 @@ def main():
     train_inds, val_inds, test_inds = k_fold_split_train_val_test(len(inputs), fold_num= 2)
     test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
-    
+    print(test_inds)
     model_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/"
     #testdataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
     device = 'cuda:0'
