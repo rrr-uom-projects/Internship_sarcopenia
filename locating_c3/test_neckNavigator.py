@@ -31,19 +31,19 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
             y += transforms[i,1][4]
             x_arr.append(x)
         #undo flip if necessary
+            if (transforms[i,0]==True):
+                y = shape - y
+            y_arr.append(y)
         if (transforms[i,0]==True):
             z = shape - z
-            z_arr.append(z)
-            if coords != None:
-                y = shape - y
-                y_arr.append(y)
+        z_arr.append(z)
     return x_arr,y_arr,z_arr
 
 def main():
 
     # get data
     #data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss2.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     data = get_data(data_path)
     inputs = data[0]
     targets = data[1]
@@ -60,9 +60,8 @@ def main():
     #testdataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
     device = 'cuda:0'
 
-    #tester = neckNavigatorTest2(model_dir, test_dataloader, device)
     model_dir =  "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
-    model = neckNavigator()
+    #model = neckNavigator()
     #tester = neckNavigatorTest1(model, checkpoint_dir, test_dataloader, device)
 
     tester = neckNavigatorTest2(model_dir, test_dataloader, device)
@@ -75,9 +74,9 @@ def main():
     print("segs info: ", segments.shape)
 
     difference = euclid_dis(GTs, segments)
-    print(difference)
+    #print(difference)
     projections(C3s[1],segments[1], order = [1,2,0], show=True)
-    projections(C3s[1],GTs[1], order = [1,2,0], show=True)
+    #projections(C3s[1],GTs[1], order = [1,2,0], show=True)
     #display_net_test(C3s, segments, GTs)
 
     slice_no_preds = slice_preds(segments)
@@ -85,18 +84,23 @@ def main():
     slice_no_gts_test = []
 
     for i in range(len(GTs)): #sanity check
-        slice_no_gts_test.append(GetSliceNumber(GTs[i]))
-        
-    if slice_no_gts != slice_no_gts_test: print("well shit")
+        slice_no_gt = GetSliceNumber(GTs[i])
+        slice_no_gts_test.append(slice_no_gt)
+        if slice_no_gt != slice_no_gts[i]: print("well shit")
 
-    print("Net Preds: ",slice_no_preds)
-    print("GTS: ", slice_no_gts)
-    print("checking...", slice_no_gts_test)
+    #print("Net Preds: ",slice_no_preds)
+    #print("GTS: ", slice_no_gts)
+    #print("checking...", slice_no_gts_test)
 
     #c3_loc_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/c3_loc.npz'
     #np.savez(c3_loc_path, inputs = inputs, masks = segments, slice_nos = slice_no_preds, ids = ids)
     test_ids = [ids[ind] for ind in test_inds]
-    df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds})
+
+    #undoing transforms to get corect slice number
+    x,y,z = mrofsnart(slice_no_preds, transforms, test_inds)
+    print("z: ",z, "\nx: ", x, "\ny: ", y)
+    print("length: ", len(z), len(test_ids), len(slice_no_preds) )
+    df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds, "True Slice numbers": z})
     save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/c3_loc.xlsx'
     df.to_excel(excel_writer = save_path, index=False,
              sheet_name="data")
