@@ -22,8 +22,8 @@ import matplotlib.pyplot as plt
 import pickle
 
 from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
-#from neckNavigator import neckNavigator
-from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
+from neckNavigator import neckNavigator
+#from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters
@@ -48,7 +48,7 @@ def main():
     # decide file paths
     #livs paths
 
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
+    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
     checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     dataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
 
@@ -70,8 +70,8 @@ def main():
     # decide batch sizes
     train_BS = 1 #int(6 * args.GPUs)
     val_BS = 1 #int(6 * args.GPUs)
-    train_workers = int(8)
-    val_workers = int(4)
+    train_workers = 0 # int(8)
+    val_workers = 0 # int(4)
 
     # allocate ims to train, val and test
     dataset_size = len(inputs)
@@ -80,16 +80,16 @@ def main():
 
     # dataloaders
     training_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)#, transform = head_augmentations
-    training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+    training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn= None )#lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     
     validation_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = val_inds)
-    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn= None )#lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
     test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
-    test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+    test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn= None )# lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     #torch.save(test_dataloader, dataloader_dir, pickle_protocol= pickle.HIGHEST_PROTOCOL)
     # create model
-    model = neckNavigator()
+    model = neckNavigator(filter_factor=2, targets=1, in_channels=1)
     #model = neckNavigator()
     #model = headHunter_multiHead_deeper(filter_factor=1)
 
