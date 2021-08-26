@@ -236,11 +236,12 @@ def plot_to_image(figure):
   return image
 
 def get_data(path): 
-    data = np.load(path)
+    data = np.load(path, allow_pickle=True)
     inputs = data['inputs']
     targets = data['masks']
     ids = data['ids']
-    return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
+    transforms = data['transforms']
+    return np.array(inputs), np.array(targets), np.array(ids), np.array(transforms)
 
 def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = False):
   inps,msks,ids = get_data(path)
