@@ -12,6 +12,7 @@ import numpy as np
 import torch
 from neckNavigatorUtils import k_fold_split_train_val_test
 import pandas as pd
+#import openpyxl 
 
 def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = None):#transforms backwards
     #might have get transform indices for test data
@@ -75,7 +76,7 @@ def main():
 
     difference = euclid_dis(GTs, segments)
     #print(difference)
-    projections(C3s[1],segments[1], order = [1,2,0], show=True)
+    #projections(C3s[1],segments[1], order = [1,2,0], show=True)
     #projections(C3s[1],GTs[1], order = [1,2,0], show=True)
     #display_net_test(C3s, segments, GTs)
 
