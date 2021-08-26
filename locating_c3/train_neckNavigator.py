@@ -54,8 +54,8 @@ def main():
 
 
     #herms paths
-    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz'
-    #checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
+    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
     # Create main logger
@@ -70,8 +70,10 @@ def main():
     # decide batch sizes
     train_BS = 1 #int(6 * args.GPUs)
     val_BS = 1 #int(6 * args.GPUs)
-    train_workers = 0 # int(8)
-    val_workers = 0 # int(4)
+
+    train_workers = 0 #int(8)
+    val_workers = 0 #int(4)
+
 
     # allocate ims to train, val and test
     dataset_size = len(inputs)
@@ -80,10 +82,12 @@ def main():
 
     # dataloaders
     training_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)#, transform = head_augmentations
-    training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn= None )#lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+
+    training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=None)#worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1))
     
     validation_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = val_inds)
-    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn= None )#lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=None)
+
 
     test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn= None )# lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
@@ -97,7 +101,7 @@ def main():
     device = 'cuda:0'
     # model.to(device)
     load_prev=False
-    model=setup_model(model, checkpoint_dir, device, load_prev= False)
+    model=setup_model(model, checkpoint_dir, device, load_prev= False, load_best = load_prev)
     # Log the number of learnable parameters
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
@@ -105,7 +109,7 @@ def main():
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.0005)
 
     # Create learning rate adjustment strategy
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
 
     # Parallelize model
     #model = nn.DataParallel(model) #runs on multiple gpus if we want a larger batch size
@@ -121,8 +125,7 @@ def main():
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
                                  val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
-                                 num_epoch = epoch ,patience=20, iters_to_accumulate=4)
-
+                                 num_epoch = epoch ,patience=15, iters_to_accumulate=4)
     
     # Start training
     trainer.fit()

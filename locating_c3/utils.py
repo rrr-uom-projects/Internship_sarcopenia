@@ -5,7 +5,7 @@
 from SimpleITK.SimpleITK import Modulus
 import numpy as np
 import scipy.ndimage as nd
-from scipy.ndimage.measurements import center_of_mass
+from scipy.ndimage.measurements import center_of_mass, label
 import matplotlib.pyplot as plt
 import io
 import tensorflow as tf
@@ -64,7 +64,8 @@ def sharpen_heatmaps(heatmaps, alpha):
         The sharpened heatmaps.
     """
     sharpened_heatmaps = heatmaps ** alpha
-    sharpened_heatmaps /= sharpened_heatmaps.flatten(2).sum(-1)
+    sharpened_heatmaps = 100*sharpened_heatmaps
+    #sharpened_heatmaps /= sharpened_heatmaps.sum(-1) #.flatten(2)
     return sharpened_heatmaps
 
 def GetSliceNumber(segment):
@@ -156,6 +157,10 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None,
      #print(msk.shape)
   if vmax == None:
     vmax = np.max(msk)
+  print(np.max(msk))
+  #elif vmax <= 0.01:
+    #vmax = np.max(msk)
+  #else: vmax = np.max(vmax)
   images, masks = base_projections(inp, msk)
   fig = plt.figure(figsize=(150, 50))
   ax = []
@@ -166,9 +171,8 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None,
     ax.append(fig.add_subplot(rows, columns, i+1) )
     ax[-1].set_title("ax:"+str(i))
     plt.imshow(images[i])
-    #for j in range(len(masks[i])):
-        #masks[i][j][masks[i][j] == 0] = np.nan
-    plt.imshow(masks[i], cmap="cool", alpha=0.5, vmin = 0, vmax =vmax)#vmin = 0, vmax = max of gt
+    masks[i][masks[i] == 0.0] = np.nan
+    plt.imshow(masks[i], cmap="cool", alpha=0.5)#vmin = 0, vmax = max of gt
     plt.axis('off')
   if save_name is not None:
     plt.savefig("projections" + str(save_name) + ".png")
@@ -202,13 +206,15 @@ def euclid_dis(gts, masks, is_tensor = False):
     masks = msk.cpu().detach().numpy()[0]
   distances = []
   for i in range(len(gts)):
-    print(np.max(masks[i]))
-    print(np.max(gts[i]))
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(masks[i])
     print(gt_coords)
     print(msk_coords)
-    distances.append(np.abs(gt_coords[2]-msk_coords[2]))
+    distance = np.abs(gt_coords[2]-msk_coords[2])
+    if len(gts) == 1: 
+      distances = distance
+    else: 
+      distances.append(distance)
   distances = np.array(distances)
   print(np.average(distances))
   return distances
@@ -236,12 +242,9 @@ def get_data(path):
     ids = data['ids']
     return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
 
-
 def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = False):
   inps,msks,ids = get_data(path)
   data_size = len(inps)
-  axi,cor,sag = 0,1,2
-  proj_order = [2,1,0]
   images = []
   targets = []
   if type == "tensor":
@@ -255,28 +258,36 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
     images.append(image)
     targets.append(mask)
 
-  fig = plt.figure(figsize=(200, 400))
+  print(np.asarray(images).shape, np.asarray(targets).shape)
+  fig = plt.figure(figsize=(30, 150))
   ax = []
-  columns = 9
-  rows = 1 + data_size/3
-  
-  for l in range(1, data_size +1):
-    image = images[l-1]
-    target =  targets[l-1]
-    for i in range(1,4):
+  columns = 3
+  rows = int(1 + data_size/3)
+  j=0
+  for l in range(1, data_size +1):#data_size +1
+    inp = inps[l-1]
+    msk = msks[l-1]
+    image, target = base_projections(inp, msk)
+    #image = images[l-1]
+    #target =  targets[l-1]
+    for i in range(3,4):
       # create subplot and append to ax
+      j+=1
       print(l,i)
-      ax.append(fig.add_subplot(rows, columns, l*i))
-      ax[-1].set_title(str(l) + ',' + str(i-1))
+      label = str(l) + ',' + str(i-1)
+      ax.append(fig.add_subplot(rows, columns, j, label = label))
+      ax[-1].set_title(label)
       plt.imshow(image[i-1])
+      target[i-1][target[i-1] == 0] = np.nan
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       plt.axis('off')
       
   path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/pic_'
   plt.savefig(path + str(save_name) + '.png')
+  print("Saved Figure.")
   return fig
 
-#data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss2.npz'
+#data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
 #display_input_data(data_path)
 
 def display_net_test(inps, msks, gts):
