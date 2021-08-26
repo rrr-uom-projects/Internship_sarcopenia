@@ -10,7 +10,7 @@ import random
 from scipy.ndimage.measurements import center_of_mass
 from scipy.ndimage import gaussian_filter
 import torch
-from utils import GetSliceNumber, Guassian, projections, PrintSlice
+from utils import GetSliceNumber, Guassian, projections, PrintSlice, display_input_data
 import cv2
 import os
 import matplotlib.pyplot as plt
@@ -74,12 +74,9 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     #z crop
     z_size = 112
     z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
-    #z_coords = {"z_min":0,"z_max":z_size}
-    
-    if (z_size < x.shape[0] < z_size):
-        print("True", x.shape[0])
+    org_inp_size = x.shape
         
-    elif (z_size < x.shape[0]):
+    if (z_size < x.shape[0]):
         print("bigger", x.shape[0])
         if(x.shape[0] > int(coords[0])+z_size): #190>87+112=199
             print("crop")
@@ -93,11 +90,12 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
     
     #print("y pre chopped: ", np.max(y), np.min(y))   
-    #print("z_coords: ",z_coords["z_min"], z_coords["z_max"] )
+    #print("z_coords: ",z_coords["z_min"], z_coords["z_max"], x_min, x_max, y_min, y_max, org_inp_size)
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
+    cropped_info = [z_coords["z_min"],org_inp_size[0] - z_coords["z_max"],x_min,org_inp_size[1] - x_max,y_min,org_inp_size[2] - y_max ]
     #print(x.shape, y.shape)
     #print("y chopped: ", np.max(y), np.min(y))
-    return x, y
+    return x, y, np.array(cropped_info)
 
 def sphereMask(tar: np.ndarray):
     def create_bin_sphere(arr_size, center, r):
@@ -126,17 +124,20 @@ def gaussian(msk):
     return gauss
 
 def flip(im):
-    flipped = False
-    if im.GetDirection()[-1] == -1:
-        print("Image upside down, CC flip required!")
-        im = sitk.GetArrayFromImage(im).astype(float)
-        im = np.flip(im, axis=0)        # flip CC
-        im = np.flip(im, axis=2)        # flip LR --> this works, should be made more robust though (with sitk cosine matrix)
-        #im = im[::-1, :, :]
-        flipped = True   
-        #print("flipped") 
-    else:
-        im = sitk.GetArrayFromImage(im).astype(float)
+    # flipped = False
+    # if im.GetDirection()[-1] == -1:
+    #     print("Image upside down, CC flip required!")
+    #     im = sitk.GetArrayFromImage(im).astype(float)
+    #     im = np.flip(im, axis=0)        # flip CC
+    #     im = np.flip(im, axis=2)        # flip LR --> this works, should be made more robust though (with sitk cosine matrix)
+    #     #im = im[::-1, :, :]
+    #     flipped = True   
+    #     #print("flipped") 
+    # else:
+    #     im = sitk.GetArrayFromImage(im).astype(float)
+
+    im = np.flip(im, axis=0)        # flip CC
+    im = np.flip(im, axis=2)        # flip LR
     return im
 
 def path_list(no_patients, skip: list):
@@ -176,13 +177,13 @@ def path_list2():
     ids = inputs[1]
     return path_list_inputs, path_list_targets, ids
 
-def save_preprocessed(inputs, targets, ids):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_guass2.npz' 
+def save_preprocessed(inputs, targets, ids, transforms = None):
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
     ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
-    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids)
-    print("Saved preprocessed data")
+    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms)
+    print("Saved preprocessed data") 
 
 class preprocessing():
     def __init__(self,
@@ -200,32 +201,41 @@ class preprocessing():
         self.normalise = normalise
         self.heatmap = heatmap
         self.sphere  =sphere
+        self.transform_list = []
 
     def __len__(self):
         return len(self.inputs)
+
+    def transforms(self):
+        #maybe save it here
+        return np.array(self.transform_list)
 
     def __getitem__(self, index: int):
         # Select the sample
         input_ID = self.inputs[index]
         target_ID = self.targets[index]
-
+        #transform_list_item = []
         # Load input and target
-        #x, y = imread(input_ID), imread(target_ID)
         x = sitk.ReadImage(input_ID, imageIO="NiftiImageIO")
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         # check if flip required
-        x,y = flip(x), flip(y)
-        #x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
+        need_flip = False
+        if x.GetDirection()[-1] == -1:
+            need_flip = True
         #x,y = flip(x), flip(y)
+        x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         x-=1024
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         #print("y start: ", np.max(y), np.min(y))
         # Preprocessing
+        if need_flip == True:
+            x,y = flip(x), flip(y)
+
         if self.transform is not None:
             x = self.transform(x)
     
         if self.cropping is not None:
-            x, y = self.cropping(x, y)
+            x, y, crop_info = self.cropping(x, y)
 
         if self.sphere is not None:
             y = self.sphere(y)
@@ -236,15 +246,14 @@ class preprocessing():
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
 
-        #downsampling #[32,128,128]
+        transform_list_item = [need_flip, crop_info]
+        self.transform_list.append(np.array(transform_list_item))
+        #downsampling to size -> [128,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
        
-        #print("shape: ", x.shape, y.shape)
-        #print("max, min: ", np.max(x), np.min(x))
-        print("y being a little shit: ", np.max(y), np.min(y))
         assert np.min(y) >= 0
-        #assert np.max(y) > 0
+        assert np.max(y) > 0
         data = {'input': x, 'mask': y}  
         return data
 
@@ -252,9 +261,9 @@ class preprocessing():
 #main
 #get the file names
 PathList =  path_list2()
-no_patients = len(PathList[0])
-inputs = PathList[0]
-targets = PathList[1]
+no_patients = 2
+inputs = PathList[0]#[:no_patients]
+targets = PathList[1]#[:no_patients]
 ids = PathList[2]#[:no_patients]
 
 print("no of patients: ",len(inputs))
@@ -273,28 +282,19 @@ for i in range(len(preprocessed_data)):
 
 CTs, masks = np.array(CTs), np.array(masks)   
 
+transforms = preprocessed_data.transforms()
 
-# fig  = plt.figure(figsize=(150,25))
-# ax = []
-# columns = 4
-# rows = 2
-# for i in range(0,no_patients):
-#     ax.append(fig.add_subplot(rows, columns, i+1))
-#     ax[-1].set_title(str(i+1))
-#     PrintSlice(CTs[i], masks[i])
-#     #projections(CTs[i], masks[i], order=[1,2,0])
-# plt.show()
-
-#projections(CTs[8], masks[8], order=[1,2,0])
-#projections(CTs[9], masks[9], order=[1,2,0])
 projections(CTs[1], masks[1], order=[1,2,0])
 #PrintSlice(CTs[10], masks[10], show = True)
 
+print(transforms.shape, transforms)
+print("crop info:", transforms[:,1])
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids)
+save_preprocessed(CTs, masks, ids, transforms)
 
-
+#path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz' 
+#display_input_data(path)
 """
 def cropping(inp: np.ndarray, tar: np.ndarray ):
     #want to crop all CT scans to be [177,260,260]
