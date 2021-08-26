@@ -125,7 +125,7 @@ class neckNavigator_trainer:
                 #difference = euclid_dis(h_target, output, is_tensor=True)
                 #self._log_dist(difference)
 
-                self._log_images(ct_im, output, h_target, name = "Training Data")
+                self._log_images(ct_im, output, name = "Training Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
             
             self.num_iterations += 1
@@ -178,7 +178,7 @@ class neckNavigator_trainer:
                 #write the slice difference between gts and preds
                 difference = euclid_dis(h_target, output, is_tensor=True)  
                 val_slice_diff.append(difference)
-                self._log_images(ct_im, output, h_target, name = "Validation Data")
+                self._log_images(ct_im, output, name = "Validation Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
                 
 
@@ -278,7 +278,7 @@ class neckNavigator_trainer:
         avgdist = np.average(dist)
         self.writer.add_scalar('Slice difference', avgdist, self.num_iterations)
     
-    def _log_images(self, inp, pred, gt, name):
+    def _log_images(self, inp, pred, name):
         #vmax = torch.max(gt.cpu().detach()).numpy()
         #print(vmax)
         images = projections(inp, pred, order=[2,1,0], type="tensor")

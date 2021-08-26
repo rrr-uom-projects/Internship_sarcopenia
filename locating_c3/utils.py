@@ -86,7 +86,7 @@ def slice_preds(masks):
   slice_nos = []
   for i in range(len(masks)):
     slice_nos.append(GetTargetCoords(masks[i])[2])
-  return np.asarray(slice_nos)
+  return np.array(slice_nos)
 
 def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
@@ -148,6 +148,7 @@ def base_projections(inp, msk):
 def projections(inp, msk, order, type = "numpy", show = False, save_name = None, vmax = None):
   axi,cor,sag = 0,1,2
   proj_order = order
+  plt.close('all')
   if type == "tensor":
      inp = inp.cpu().detach().squeeze().numpy()
      msk = msk.cpu().detach().squeeze().numpy().astype(float)
@@ -208,8 +209,8 @@ def euclid_dis(gts, masks, is_tensor = False):
   for i in range(len(gts)):
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(masks[i])
-    print(gt_coords)
-    print(msk_coords)
+    #print(gt_coords)
+    #print(msk_coords)
     distance = np.abs(gt_coords[2]-msk_coords[2])
     if len(gts) == 1: 
       distances = distance

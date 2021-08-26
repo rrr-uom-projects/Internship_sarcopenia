@@ -11,8 +11,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import torch
 from neckNavigatorUtils import k_fold_split_train_val_test
-import pandas as pd
-#import openpyxl 
+import pandas as pd 
 
 def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = None):#transforms backwards
     #might have get transform indices for test data
@@ -21,24 +20,26 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
     x_arr,y_arr,z_arr = [],[],[]
     for i in range(len(net_slice)):
         #undo scale
-        net_slice *= 14/16
+        net_slice[i] *= 14/16
+        print(net_slice[i], transforms[i][1][0])
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
-        z = net_slice + transforms[i,1][0]
-        if coords != None:
-            x = coords[0]*2
-            y = coords[1]*2
-            x += transforms[i,1][2]
-            y += transforms[i,1][4]
+        z = net_slice[i] + transforms[i][1][0]
+        if coords is not None:
+            x = coords[i,0]*2
+            y = coords[i,1]*2
+            x += transforms[i][1][2]
+            y += transforms[i][1][4]
             x_arr.append(x)
         #undo flip if necessary
-            if (transforms[i,0]==True):
+            if (transforms[i][0]==True):
                 y = shape - y
             y_arr.append(y)
-        if (transforms[i,0]==True):
+        if (transforms[i][0]==True):
             z = shape - z
+        print(z)
         z_arr.append(z)
-    return x_arr,y_arr,z_arr
+    return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 def main():
 
@@ -70,9 +71,9 @@ def main():
     #test_results = tester
     C3s, segments, GTs = tester
     
-    print("gt info: ", len(GTs))
-    print(GTs.shape)
-    print("segs info: ", segments.shape)
+    #print("gt info: ", len(GTs))
+    #print(GTs.shape)
+    #print("segs info: ", segments.shape)
 
     difference = euclid_dis(GTs, segments)
     #print(difference)
@@ -87,9 +88,9 @@ def main():
     for i in range(len(GTs)): #sanity check
         slice_no_gt = GetSliceNumber(GTs[i])
         slice_no_gts_test.append(slice_no_gt)
-        if slice_no_gt != slice_no_gts[i]: print("well shit")
+        #if slice_no_gt != slice_no_gts[i]: print("well shit")
 
-    #print("Net Preds: ",slice_no_preds)
+    print("Net Preds: ",slice_no_preds.shape)
     #print("GTS: ", slice_no_gts)
     #print("checking...", slice_no_gts_test)
 
@@ -98,13 +99,14 @@ def main():
     test_ids = [ids[ind] for ind in test_inds]
 
     #undoing transforms to get corect slice number
-    x,y,z = mrofsnart(slice_no_preds, transforms, test_inds)
-    print("z: ",z, "\nx: ", x, "\ny: ", y)
+    x,y,z = mrofsnart(slice_no_preds, transforms, test_inds =test_inds)
+    #print("z: ",z, "\nx: ", x, "\ny: ", y)
     print("length: ", len(z), len(test_ids), len(slice_no_preds) )
-    df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds, "True Slice numbers": z})
+    df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds, "PostProcess Slice numbers": z})
     save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/c3_loc.xlsx'
     df.to_excel(excel_writer = save_path, index=False,
              sheet_name="data")
+    print("Saved predictions")
 
     return
 
