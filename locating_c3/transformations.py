@@ -147,8 +147,8 @@ def path_list(no_patients, skip: list):
 
     for i in range(1,no_patients+1):
         if i not in skip:
-            #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
-            path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
+            path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/'
+            #path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
             path_list_inputs.append(path + "/P" + str(i) + "_RT_sim_ct.nii.gz")
             path_list_targets.append(path + "/P" + str(i) + "_RT_sim_seg.nii.gz")
             id = "01-00" + str(i)
@@ -178,7 +178,7 @@ def path_list2():
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids, transforms = None):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
     ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
