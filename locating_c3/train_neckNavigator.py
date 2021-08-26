@@ -70,8 +70,8 @@ def main():
     # decide batch sizes
     train_BS = 1 #int(6 * args.GPUs)
     val_BS = 1 #int(6 * args.GPUs)
-    train_workers = 1 #int(8)
-    val_workers = 1 #int(4)
+    train_workers = 0 #int(8)
+    val_workers = 0 #int(4)
 
     # allocate ims to train, val and test
     dataset_size = len(inputs)
@@ -80,10 +80,10 @@ def main():
 
     # dataloaders
     training_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = train_inds, transform = head_augmentations)#, transform = head_augmentations
-    training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+    training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=None)#worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1))
     
     validation_dataset = neckNavigatorDataset(inputs=inputs, targets=targets, image_inds = val_inds)
-    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=None)
 
     test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
@@ -97,7 +97,7 @@ def main():
     device = 'cuda:0'
     # model.to(device)
     load_prev=False
-    model=setup_model(model, checkpoint_dir, device, load_prev= False)
+    model=setup_model(model, checkpoint_dir, device, load_prev= False, load_best = load_prev)
     # Log the number of learnable parameters
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  

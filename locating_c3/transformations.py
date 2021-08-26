@@ -74,11 +74,7 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     #z crop
     z_size = 112
     z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
-    org_inp_size = x.shape[0]
-    #z_coords = {"z_min":0,"z_max":z_size}
-    
-    #if (z_size < x.shape[0] < z_size):
-    #    print("True", x.shape[0])
+    org_inp_size = x.shape
         
     if (z_size < x.shape[0]):
         print("bigger", x.shape[0])
@@ -94,12 +90,12 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
     
     #print("y pre chopped: ", np.max(y), np.min(y))   
-    #print("z_coords: ",z_coords["z_min"], z_coords["z_max"] )
+    #print("z_coords: ",z_coords["z_min"], z_coords["z_max"], x_min, x_max, y_min, y_max, org_inp_size)
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-    cropped_info = [z_coords["z_min"], org_inp_size - z_coords["z_max"]]
+    cropped_info = [z_coords["z_min"],org_inp_size[0] - z_coords["z_max"],x_min,org_inp_size[1] - x_max,y_min,org_inp_size[2] - y_max ]
     #print(x.shape, y.shape)
     #print("y chopped: ", np.max(y), np.min(y))
-    return x, y, cropped_info
+    return x, y, np.array(cropped_info)
 
 def sphereMask(tar: np.ndarray):
     def create_bin_sphere(arr_size, center, r):
@@ -182,19 +178,12 @@ def path_list2():
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids, transforms = None):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz' 
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
     ids = np.array(ids)   
     #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
     np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms)
-    print("Saved preprocessed data")
-
-def transformations():
-    #function to keep track of what we have to do to select the right slice on the dicom image
-    #can test this with our gts
-    flip = False
-    crop = 112
-    return 
+    print("Saved preprocessed data") 
 
 class preprocessing():
     def __init__(self,
@@ -217,9 +206,9 @@ class preprocessing():
     def __len__(self):
         return len(self.inputs)
 
-    def __transforms__(self):
+    def transforms(self):
         #maybe save it here
-        return self.transform_list
+        return np.array(self.transform_list)
 
     def __getitem__(self, index: int):
         # Select the sample
@@ -258,12 +247,11 @@ class preprocessing():
             x, y = self.normalise(x), self.normalise(y)
 
         transform_list_item = [need_flip, crop_info]
-        self.transform_list.append(transform_list_item)
+        self.transform_list.append(np.array(transform_list_item))
         #downsampling to size -> [128,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
        
-        print("y being a little shit: ", np.max(y), np.min(y))
         assert np.min(y) >= 0
         assert np.max(y) > 0
         data = {'input': x, 'mask': y}  
@@ -273,9 +261,9 @@ class preprocessing():
 #main
 #get the file names
 PathList =  path_list2()
-#no_patients = len(PathList[0])
-inputs = PathList[0]
-targets = PathList[1]
+no_patients = 2
+inputs = PathList[0]#[:no_patients]
+targets = PathList[1]#[:no_patients]
 ids = PathList[2]#[:no_patients]
 
 print("no of patients: ",len(inputs))
@@ -294,11 +282,13 @@ for i in range(len(preprocessed_data)):
 
 CTs, masks = np.array(CTs), np.array(masks)   
 
-transforms = preprocessed_data.transform_list()
+transforms = preprocessed_data.transforms()
 
 projections(CTs[1], masks[1], order=[1,2,0])
 #PrintSlice(CTs[10], masks[10], show = True)
 
+print(transforms.shape, transforms)
+print("crop info:", transforms[:,1])
 #%%
 #save the preprocessed masks and cts for the dataset
 save_preprocessed(CTs, masks, ids, transforms)
