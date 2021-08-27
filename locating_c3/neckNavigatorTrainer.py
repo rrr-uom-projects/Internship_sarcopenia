@@ -120,12 +120,12 @@ class neckNavigator_trainer:
                 self.logger.info(f'Training stats. Loss: {train_losses.avg}')
                 self._log_stats('train', train_losses.avg)
 
-            if (self.num_iterations%(3*self.iters_to_accumulate) == 0) and (self.num_iterations != 0):
+            #if (self.num_iterations%(4*self.iters_to_accumulate) == 0) and (self.num_iterations != 0):
                 #write the slice difference between gts and preds
                 #difference = euclid_dis(h_target, output, is_tensor=True)
                 #self._log_dist(difference)
 
-                self._log_images(ct_im, output, h_target, name = "Training Data")
+                #self._log_images(ct_im, output, name = "Training Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
             
             self.num_iterations += 1
@@ -133,7 +133,7 @@ class neckNavigator_trainer:
         # evaluate on validation set
         self.model.eval()
         eval_score = self.validate()
-
+        self._log_images(ct_im, output, name = "Training Data")
         # adjust learning rate if necessary
         self.scheduler.step(eval_score)
 
@@ -178,7 +178,8 @@ class neckNavigator_trainer:
                 #write the slice difference between gts and preds
                 difference = euclid_dis(h_target, output, is_tensor=True)  
                 val_slice_diff.append(difference)
-                self._log_images(ct_im, output, h_target, name = "Validation Data")
+                # if (self.num_iterations%(3*self.iters_to_accumulate) == 0):
+                #     self._log_images(ct_im, output, name = "Validation Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
                 
 
@@ -278,7 +279,7 @@ class neckNavigator_trainer:
         avgdist = np.average(dist)
         self.writer.add_scalar('Slice difference', avgdist, self.num_iterations)
     
-    def _log_images(self, inp, pred, gt, name):
+    def _log_images(self, inp, pred, name):
         #vmax = torch.max(gt.cpu().detach()).numpy()
         #print(vmax)
         images = projections(inp, pred, order=[2,1,0], type="tensor")

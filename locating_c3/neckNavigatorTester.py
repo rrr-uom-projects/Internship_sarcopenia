@@ -10,8 +10,6 @@ from neckNavigator import neckNavigator
 
 def neckNavigatorTest2(model_dir, test_dataloader, device):
   model = setup_model(neckNavigator(filter_factor=2, targets = 1, in_channels = 1), model_dir, device, load_prev = True,eval_mode=True)
-  #test_dataloader = torch.load(test_dataloader_dir)
-  #model.eval()
   segments = []
   c3s = []
   GTs =[]
