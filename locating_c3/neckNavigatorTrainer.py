@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import neckNavigatorUtils as utils
 import time
 from pytorch_toolbelt import losses as L
-from utils import projections, euclid_dis, plot_to_image, kl_reg, flat_softmax, sharpen_heatmaps
+from utils import projections, euclid_dis, plot_to_image, kl_reg, flat_softmax, sharpen_heatmaps, pil_flow
 import tensorflow as tf
 
 #####################################################################################################
@@ -282,9 +282,11 @@ class neckNavigator_trainer:
     def _log_images(self, inp, pred, name):
         #vmax = torch.max(gt.cpu().detach()).numpy()
         #print(vmax)
-        images = projections(inp, pred, order=[2,1,0], type="tensor")
+        # images = projections(inp, pred, order=[2,1,0], type="tensor")
+        # with self.fig_writer.as_default():
+        #     tf.summary.image(name, plot_to_image(images), self.num_iterations)
         with self.fig_writer.as_default():
-            tf.summary.image(name, plot_to_image(images), self.num_iterations)
+            tf.summary.image(name, pil_flow(inp, pred), self.num_iterations)
 
     def _log_params(self):
         self.logger.info('Logging model parameters and gradients')
