@@ -21,30 +21,32 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
     x_arr,y_arr,z_arr = [],[],[]
     for i in range(len(net_slice)):
         #undo scale
-        net_slice *= 14/16
+        net_slice[i] *= 14/16
+        print(net_slice[i], transforms[i][1][0])
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
-        z = net_slice + transforms[i,1][0]
-        if coords != None:
-            x = coords[0]*2
-            y = coords[1]*2
-            x += transforms[i,1][2]
-            y += transforms[i,1][4]
+        z = net_slice[i] + transforms[i][1][0]
+        if coords is not None:
+            x = coords[i,0]*2
+            y = coords[i,1]*2
+            x += transforms[i][1][2]
+            y += transforms[i][1][4]
             x_arr.append(x)
         #undo flip if necessary
-            if (transforms[i,0]==True):
+            if (transforms[i][0]==True):
                 y = shape - y
             y_arr.append(y)
-        if (transforms[i,0]==True):
+        if (transforms[i][0]==True):
             z = shape - z
+        print(z)
         z_arr.append(z)
-    return x_arr,y_arr,z_arr
+    return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 def main():
 
     # get data
-    #data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     data = get_data(data_path)
     inputs = data[0]
     targets = data[1]
@@ -54,14 +56,23 @@ def main():
     val_workers = int(4)
 
     train_inds, val_inds, test_inds = k_fold_split_train_val_test(len(inputs), fold_num= 2)
+    #print("train_inds: ", train_inds)
+    #print("val inds: ", val_inds)
+    #print("test inds: ", test_inds)
+    for i in range(0, len(val_inds)):
+        if np.array(train_inds).any() == val_inds[i]:
+            print("yikes")
+        else:
+            print("yay")
+
     test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     print(test_inds)
     #model_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/"
     #testdataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
-    device = 'cuda:0'
+    device = 'cuda:2'
 
-    model_dir =  "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    model_dir =  "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #model = neckNavigator()
     #tester = neckNavigatorTest1(model, checkpoint_dir, test_dataloader, device)
 
@@ -97,14 +108,17 @@ def main():
     #np.savez(c3_loc_path, inputs = inputs, masks = segments, slice_nos = slice_no_preds, ids = ids)
     test_ids = [ids[ind] for ind in test_inds]
 
+  
     #undoing transforms to get corect slice number
-    x,y,z = mrofsnart(slice_no_preds, transforms, test_inds)
+    x,y,z = mrofsnart(slice_no_gts, transforms, test_inds)
     print("z: ",z, "\nx: ", x, "\ny: ", y)
     print("length: ", len(z), len(test_ids), len(slice_no_preds) )
     df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds, "True Slice numbers": z})
-    save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/c3_loc.xlsx'
+    save_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/c3_locT.xlsx'
     df.to_excel(excel_writer = save_path, index=False,
              sheet_name="data")
+ 
+   
 
     return
 
