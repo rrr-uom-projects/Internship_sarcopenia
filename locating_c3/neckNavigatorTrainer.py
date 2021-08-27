@@ -120,12 +120,12 @@ class neckNavigator_trainer:
                 self.logger.info(f'Training stats. Loss: {train_losses.avg}')
                 self._log_stats('train', train_losses.avg)
 
-            #if (self.num_iterations%(4*self.iters_to_accumulate) == 0) and (self.num_iterations != 0):
+            if (self.num_epochs%2 == 0) and (self.num_iterations != 0):
                 #write the slice difference between gts and preds
                 #difference = euclid_dis(h_target, output, is_tensor=True)
                 #self._log_dist(difference)
 
-                #self._log_images(ct_im, output, name = "Training Data")
+                self._log_images(ct_im, output, name = "Training Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
             
             self.num_iterations += 1
@@ -133,7 +133,7 @@ class neckNavigator_trainer:
         # evaluate on validation set
         self.model.eval()
         eval_score = self.validate()
-        self._log_images(ct_im, output, name = "Training Data")
+        #self._log_images(ct_im, output, name = "Training Data")
         # adjust learning rate if necessary
         self.scheduler.step(eval_score)
 
@@ -178,8 +178,8 @@ class neckNavigator_trainer:
                 #write the slice difference between gts and preds
                 difference = euclid_dis(h_target, output, is_tensor=True)  
                 val_slice_diff.append(difference)
-                # if (self.num_iterations%(3*self.iters_to_accumulate) == 0):
-                #     self._log_images(ct_im, output, name = "Validation Data")
+                if (self.num_epochs%2 == 0) and (self.num_iterations != 0):
+                    self._log_images(ct_im, output, name = "Validation Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
                 
 
@@ -263,7 +263,7 @@ class neckNavigator_trainer:
 
     def _log_lr(self):
         lr = self.optimizer.param_groups[0]['lr']
-        self.writer.add_scalar('learning_rate', lr, self.num_iterations)
+        self.writer.add_scalar('learning_rate', lr, self.num_epoch)
 
     def _log_new_best(self, eval_score):
         self.writer.add_scalar('best_val_loss', eval_score, self.num_iterations)
@@ -277,9 +277,10 @@ class neckNavigator_trainer:
 
     def _log_dist(self, dist):
         avgdist = np.average(dist)
-        self.writer.add_scalar('Slice difference', avgdist, self.num_iterations)
+        self.writer.add_scalar('Slice difference', avgdist, self.num_epoch)
     
     def _log_images(self, inp, pred, name):
+
         #vmax = torch.max(gt.cpu().detach()).numpy()
         #print(vmax)
         # images = projections(inp, pred, order=[2,1,0], type="tensor")
@@ -287,6 +288,7 @@ class neckNavigator_trainer:
         #     tf.summary.image(name, plot_to_image(images), self.num_iterations)
         with self.fig_writer.as_default():
             tf.summary.image(name, pil_flow(inp, pred), self.num_iterations)
+
 
     def _log_params(self):
         self.logger.info('Logging model parameters and gradients')

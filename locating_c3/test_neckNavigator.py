@@ -21,7 +21,9 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
     for i in range(len(net_slice)):
         #undo scale
         net_slice[i] *= 14/16
-        print(net_slice[i], transforms[i][1][0])
+
+        #print(net_slice[i], transforms[i][1][0])
+
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
         z = net_slice[i] + transforms[i][1][0]
@@ -37,15 +39,17 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
             y_arr.append(y)
         if (transforms[i][0]==True):
             z = shape - z
-        print(z)
+
+        #print(z)
+
         z_arr.append(z)
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 def main():
 
     # get data
-    #data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     data = get_data(data_path)
     inputs = data[0]
     targets = data[1]
@@ -55,14 +59,18 @@ def main():
     val_workers = int(4)
 
     train_inds, val_inds, test_inds = k_fold_split_train_val_test(len(inputs), fold_num= 2)
-    test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
+
+    test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, im_inds = test_inds)
+
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     print(test_inds)
     #model_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/"
     #testdataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
+
     device = 'cuda:1'
 
-    model_dir =  "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+
+    model_dir =  "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #model = neckNavigator()
     #tester = neckNavigatorTest1(model, checkpoint_dir, test_dataloader, device)
 
@@ -77,7 +85,7 @@ def main():
 
     difference = euclid_dis(GTs, segments)
     #print(difference)
-    projections(C3s[0],segments[0], order = [1,2,0], show=True)
+    projections(C3s[0],segments[0], order = [2,1,0], show=True)
     #projections(C3s[1],GTs[1], order = [1,2,0], show=True)
     display_net_test(C3s, segments, GTs)
 
@@ -98,7 +106,9 @@ def main():
     #np.savez(c3_loc_path, inputs = inputs, masks = segments, slice_nos = slice_no_preds, ids = ids)
     test_ids = [ids[ind] for ind in test_inds]
 
+  
     #undoing transforms to get corect slice number
+
     x,y,z = mrofsnart(slice_no_preds, transforms, test_inds =test_inds)
     #print("z: ",z, "\nx: ", x, "\ny: ", y)
     print("length: ", len(z), len(test_ids), len(slice_no_preds) )
@@ -107,6 +117,7 @@ def main():
     df.to_excel(excel_writer = save_path, index=False,
              sheet_name="data")
     print("Saved predictions")
+
 
     return
 
