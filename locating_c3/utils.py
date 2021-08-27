@@ -89,8 +89,8 @@ def GetTargetCoords(target):
 def slice_preds(masks):
   slice_nos = []
   for i in range(len(masks)):
-    slice_nos.append(GetTargetCoords(masks[i])[2])
-    #slice_nos.append(GetSliceNumber(masks[i]))
+    #slice_nos.append(GetTargetCoords(masks[i])[2])
+    slice_nos.append(GetSliceNumber(masks[i]))
   return np.array(slice_nos)
 
 def Guassian(inp: np.ndarray):
@@ -177,7 +177,7 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None,
     ax.append(fig.add_subplot(rows, columns, i+1) )
     ax[-1].set_title("ax:"+str(i))
     plt.imshow(images[i])
-    masks[i][masks[i] == 0.0] = np.nan
+    masks[i][masks[i] == 0.00] = np.nan
     plt.imshow(masks[i], cmap="cool", alpha=0.5)#vmin = 0, vmax = max of gt
     plt.axis('off')
   if save_name is not None:
@@ -310,10 +310,9 @@ def display_net_test(inps, msks, gts, shape = 128):
     targets.append(gt)
     _, pred = base_projections(inps[i], msks[i])
     preds.append(pred)
-  # slice_no_preds = GetTargetCoords(preds[0][2])[1]
-  # slice_no_gts = GetTargetCoords(targets[0][2])[1]
+  
   #make the figure
-  fig = plt.figure(figsize=(200, 400))
+  fig = plt.figure(figsize=(100, 400))
   ax = []
   columns = 3
   rows = 2*data_size
@@ -323,7 +322,7 @@ def display_net_test(inps, msks, gts, shape = 128):
     target =  targets[l-1]
     pred = preds[l-1]
     slice_pred = shape - np.int(slice_no_preds[l-1]) #upside fucking down dear god
-    slice_gt = shape -np.int(slice_no_gts[l-1])
+    slice_gt = shape - np.int(slice_no_gts[l-1])
     for i in range(1,4):
       #create gt subplot 
       j+=1
