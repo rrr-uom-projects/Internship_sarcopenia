@@ -21,7 +21,7 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
     for i in range(len(net_slice)):
         #undo scale
         net_slice[i] *= 14/16
-        print(net_slice[i], transforms[i][1][0])
+        #print(net_slice[i], transforms[i][1][0])
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
         z = net_slice[i] + transforms[i][1][0]
@@ -37,7 +37,7 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
             y_arr.append(y)
         if (transforms[i][0]==True):
             z = shape - z
-        print(z)
+        #print(z)
         z_arr.append(z)
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 

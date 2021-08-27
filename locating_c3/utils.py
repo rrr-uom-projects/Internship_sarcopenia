@@ -66,18 +66,20 @@ def sharpen_heatmaps(heatmaps, alpha):
     """
     sharpened_heatmaps = heatmaps ** alpha
     sharpened_heatmaps = 100*sharpened_heatmaps
-    #sharpened_heatmaps /= sharpened_heatmaps.sum(-1) #.flatten(2)
+    #sharpened_heatmaps /= sharpened_heatmaps.flatten(2).sum(-1)
     return sharpened_heatmaps
 
 def GetSliceNumber(segment):
   slice_number = []
+  weights = []
   max_range = len(segment)
   for x in range(0,max_range):
     seg_slice = segment[x,...]
     val = np.sum(seg_slice)
     if val != 0:
       slice_number.append(x)
-  return int(np.average(slice_number))
+      weights.append(val)
+  return int(np.average(slice_number, weights = weights))
 
 def GetTargetCoords(target):
     coords = center_of_mass(target)
@@ -88,6 +90,7 @@ def slice_preds(masks):
   slice_nos = []
   for i in range(len(masks)):
     slice_nos.append(GetTargetCoords(masks[i])[2])
+    #slice_nos.append(GetSliceNumber(masks[i]))
   return np.array(slice_nos)
 
 def Guassian(inp: np.ndarray):
@@ -295,7 +298,7 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
 #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
 #display_input_data(data_path)
 
-def display_net_test(inps, msks, gts):
+def display_net_test(inps, msks, gts, shape = 128):
   images, targets, preds = [],[],[]
   data_size = len(inps)
   slice_no_preds = slice_preds(msks)
@@ -307,8 +310,8 @@ def display_net_test(inps, msks, gts):
     targets.append(gt)
     _, pred = base_projections(inps[i], msks[i])
     preds.append(pred)
-  slice_no_preds = slice_preds(preds[2])
-  slice_no_gts = slice_preds(targets[2])
+  # slice_no_preds = GetTargetCoords(preds[0][2])[1]
+  # slice_no_gts = GetTargetCoords(targets[0][2])[1]
   #make the figure
   fig = plt.figure(figsize=(200, 400))
   ax = []
@@ -319,8 +322,8 @@ def display_net_test(inps, msks, gts):
     image = images[l-1]
     target =  targets[l-1]
     pred = preds[l-1]
-    slice_pred = slice_no_preds[l-1]
-    slice_gt = slice_no_gts[l-1]
+    slice_pred = shape - np.int(slice_no_preds[l-1]) #upside fucking down dear god
+    slice_gt = shape -np.int(slice_no_gts[l-1])
     for i in range(1,4):
       #create gt subplot 
       j+=1
@@ -330,19 +333,19 @@ def display_net_test(inps, msks, gts):
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       if (i%3==0):
         ax[-1].axhline(slice_gt, linewidth=2, c='y')
-        ax[-1].text(0, slice_gt-5, "C3:"+ str(slice_gt), color='w')
+        ax[-1].text(0, slice_gt-5, "C3: " + str(slice_gt), color='w')
       plt.axis('off')
     for i in range(1,4):
       #mask subplot
       j+=1
-      #print((2*l+1),i)
+      #print(slice_pred)
       ax.append(fig.add_subplot(rows, columns, j))
       ax[-1].set_title("pred " + str(l) + ',' + str(i-1))
       plt.imshow(image[i-1])
       plt.imshow(pred[i-1], cmap="cool", alpha=0.5)
       if (i%3==0):
         ax[-1].axhline(slice_pred, linewidth=2, c='y')
-        ax[-1].text(0, slice_pred-5, "C3:"+ str(slice_pred), color='w')
+        ax[-1].text(0, slice_pred-5, "C3: "+ str(slice_pred), color='w')
       plt.axis('off')
   path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
   plt.savefig(path + '.png')

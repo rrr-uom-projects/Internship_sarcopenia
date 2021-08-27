@@ -9,7 +9,7 @@ from utils import setup_model
 from neckNavigator import neckNavigator
 
 def neckNavigatorTest2(model_dir, test_dataloader, device):
-  model = setup_model(neckNavigator(filter_factor=2, targets = 1, in_channels = 1), model_dir, device, load_prev = True,eval_mode=True)
+  model = setup_model(neckNavigator(), model_dir, device, load_prev = True, eval_mode=True)
   segments = []
   c3s = []
   GTs =[]
