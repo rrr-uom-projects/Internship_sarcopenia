@@ -22,7 +22,7 @@ class neckNavigatorDataset(Dataset):
     def __init__(self,
                  inputs: list,
                  targets: list,
-                 image_inds:list,
+                 im_inds = None,
                  transform=None
                  ):
         self.inputs = inputs
@@ -30,16 +30,16 @@ class neckNavigatorDataset(Dataset):
         self.transform = transform
         self.inputs_dtype = torch.float32
         self.targets_dtype = torch.float32
-        self.availableInputs = [inputs[ind] for ind in image_inds]
-        self.availableTargets = [targets[ind] for ind in image_inds]
+        if im_inds is not None:
+            self.inputs = [inputs[inds] for inds in im_inds]
 
     def __len__(self):
-        return len(self.availableInputs)
+        return len(self.inputs)
 
     def __getitem__(self, index: int):
 
-        x = self.availableInputs[index]
-        y = self.availableTargets[index]
+        x = self.inputs[index]
+        y = self.targets[index]
         
         #Typecasting
         x = (torch.from_numpy(x)).type(self.inputs_dtype)

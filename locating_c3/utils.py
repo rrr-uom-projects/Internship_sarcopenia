@@ -4,6 +4,7 @@
 
 from SimpleITK.SimpleITK import Modulus
 import numpy as np
+from numpy.core.fromnumeric import argmax
 import scipy.ndimage as nd
 from scipy.ndimage.measurements import center_of_mass, label
 import matplotlib.pyplot as plt
@@ -65,28 +66,32 @@ def sharpen_heatmaps(heatmaps, alpha):
     """
     sharpened_heatmaps = heatmaps ** alpha
     sharpened_heatmaps = 100*sharpened_heatmaps
-    #sharpened_heatmaps /= sharpened_heatmaps.sum(-1) #.flatten(2)
+    #sharpened_heatmaps /= sharpened_heatmaps.flatten(2).sum(-1)
     return sharpened_heatmaps
 
 def GetSliceNumber(segment):
   slice_number = []
+  weights = []
   max_range = len(segment)
   for x in range(0,max_range):
     seg_slice = segment[x,...]
     val = np.sum(seg_slice)
     if val != 0:
       slice_number.append(x)
-  return int(np.average(slice_number))
+      weights.append(val)
+  return int(np.average(slice_number, weights = weights))
 
 def GetTargetCoords(target):
     coords = center_of_mass(target)
+    #coords = torch.argmax(target, keepdim=True)
     return coords
 
 def slice_preds(masks):
   slice_nos = []
   for i in range(len(masks)):
-    slice_nos.append(GetTargetCoords(masks[i])[2])
-  return np.asarray(slice_nos)
+    #slice_nos.append(GetTargetCoords(masks[i])[2])
+    slice_nos.append(GetSliceNumber(masks[i]))
+  return np.array(slice_nos)
 
 def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
@@ -148,6 +153,7 @@ def base_projections(inp, msk):
 def projections(inp, msk, order, type = "numpy", show = False, save_name = None, vmax = None):
   axi,cor,sag = 0,1,2
   proj_order = order
+  plt.close('all')
   if type == "tensor":
      inp = inp.cpu().detach().squeeze().numpy()
      msk = msk.cpu().detach().squeeze().numpy().astype(float)
@@ -171,7 +177,7 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None,
     ax.append(fig.add_subplot(rows, columns, i+1) )
     ax[-1].set_title("ax:"+str(i))
     plt.imshow(images[i])
-    masks[i][masks[i] == 0.0] = np.nan
+    masks[i][masks[i] == 0.00] = np.nan
     plt.imshow(masks[i], cmap="cool", alpha=0.5)#vmin = 0, vmax = max of gt
     plt.axis('off')
   if save_name is not None:
@@ -208,8 +214,8 @@ def euclid_dis(gts, masks, is_tensor = False):
   for i in range(len(gts)):
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(masks[i])
-    print(gt_coords)
-    print(msk_coords)
+    #print(gt_coords)
+    #print(msk_coords)
     distance = np.abs(gt_coords[2]-msk_coords[2])
     if len(gts) == 1: 
       distances = distance
@@ -246,6 +252,7 @@ def get_data(path):
 def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = False):
   inps,msks,ids = get_data(path)
   data_size = len(inps)
+  slice_no_gts = slice_preds(msks)
   images = []
   targets = []
   if type == "tensor":
@@ -291,10 +298,11 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
 #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
 #display_input_data(data_path)
 
-def display_net_test(inps, msks, gts):
+def display_net_test(inps, msks, gts, shape = 128):
   images, targets, preds = [],[],[]
   data_size = len(inps)
   slice_no_preds = slice_preds(msks)
+  slice_no_gts = slice_preds(gts)
   print("test data size: ", data_size)
   for i in range(data_size):
     image, gt = base_projections(inps[i], gts[i])
@@ -302,32 +310,42 @@ def display_net_test(inps, msks, gts):
     targets.append(gt)
     _, pred = base_projections(inps[i], msks[i])
     preds.append(pred)
+  
   #make the figure
-  fig = plt.figure(figsize=(200, 400))
+  fig = plt.figure(figsize=(100, 400))
   ax = []
   columns = 3
   rows = 2*data_size
+  j=0
   for l in range(1, data_size +1):
     image = images[l-1]
     target =  targets[l-1]
     pred = preds[l-1]
+    slice_pred = shape - np.int(slice_no_preds[l-1]) #upside fucking down dear god
+    slice_gt = shape - np.int(slice_no_gts[l-1])
     for i in range(1,4):
       #create gt subplot 
-      print((2*l),i)
-      ax.append(fig.add_subplot(rows, columns, (2*l-1)*i))
+      j+=1
+      ax.append(fig.add_subplot(rows, columns, j))
       ax[-1].set_title("GT " + str(l) + ',' + str(i-1))
       plt.imshow(image[i-1])
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
+      if (i%3==0):
+        ax[-1].axhline(slice_gt, linewidth=2, c='y')
+        ax[-1].text(0, slice_gt-5, "C3: " + str(slice_gt), color='w')
+      plt.axis('off')
     for i in range(1,4):
       #mask subplot
-      print((2*l+1),i)
-      ax.append(fig.add_subplot(rows, columns, (2*l)*i))
+      j+=1
+      #print(slice_pred)
+      ax.append(fig.add_subplot(rows, columns, j))
       ax[-1].set_title("pred " + str(l) + ',' + str(i-1))
       plt.imshow(image[i-1])
       plt.imshow(pred[i-1], cmap="cool", alpha=0.5)
-      ax[-1].axhline(slice_no_preds, linewidth=2, c='y')
-      ax[-1].text(0, slice_no_preds-5, "C3", color='w')
-    plt.axis('off')
+      if (i%3==0):
+        ax[-1].axhline(slice_pred, linewidth=2, c='y')
+        ax[-1].text(0, slice_pred-5, "C3: "+ str(slice_pred), color='w')
+      plt.axis('off')
   path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
   plt.savefig(path + '.png')
   return fig

@@ -11,8 +11,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import torch
 from neckNavigatorUtils import k_fold_split_train_val_test
-import pandas as pd
-#import openpyxl 
+import pandas as pd 
 
 def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = None):#transforms backwards
     #might have get transform indices for test data
@@ -22,7 +21,9 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
     for i in range(len(net_slice)):
         #undo scale
         net_slice[i] *= 14/16
-        print(net_slice[i], transforms[i][1][0])
+
+        #print(net_slice[i], transforms[i][1][0])
+
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
         z = net_slice[i] + transforms[i][1][0]
@@ -38,7 +39,9 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
             y_arr.append(y)
         if (transforms[i][0]==True):
             z = shape - z
-        print(z)
+
+        #print(z)
+
         z_arr.append(z)
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
@@ -56,21 +59,16 @@ def main():
     val_workers = int(4)
 
     train_inds, val_inds, test_inds = k_fold_split_train_val_test(len(inputs), fold_num= 2)
-    #print("train_inds: ", train_inds)
-    #print("val inds: ", val_inds)
-    #print("test inds: ", test_inds)
-    for i in range(0, len(val_inds)):
-        if np.array(train_inds).any() == val_inds[i]:
-            print("yikes")
-        else:
-            print("yay")
 
-    test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, image_inds = test_inds)
+    test_dataset = neckNavigatorDataset(inputs = inputs, targets = targets, im_inds = test_inds)
+
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     print(test_inds)
     #model_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/"
     #testdataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
-    device = 'cuda:2'
+
+    device = 'cuda:1'
+
 
     model_dir =  "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
     #model = neckNavigator()
@@ -81,15 +79,15 @@ def main():
     #test_results = tester
     C3s, segments, GTs = tester
     
-    print("gt info: ", len(GTs))
-    print(GTs.shape)
-    print("segs info: ", segments.shape)
+    #print("gt info: ", len(GTs))
+    #print(GTs.shape)
+    #print("segs info: ", segments.shape)
 
     difference = euclid_dis(GTs, segments)
     #print(difference)
-    #projections(C3s[1],segments[1], order = [1,2,0], show=True)
+    projections(C3s[0],segments[0], order = [2,1,0], show=True)
     #projections(C3s[1],GTs[1], order = [1,2,0], show=True)
-    #display_net_test(C3s, segments, GTs)
+    display_net_test(C3s, segments, GTs)
 
     slice_no_preds = slice_preds(segments)
     slice_no_gts = slice_preds(GTs)
@@ -98,9 +96,9 @@ def main():
     for i in range(len(GTs)): #sanity check
         slice_no_gt = GetSliceNumber(GTs[i])
         slice_no_gts_test.append(slice_no_gt)
-        if slice_no_gt != slice_no_gts[i]: print("well shit")
+        #if slice_no_gt != slice_no_gts[i]: print("well shit")
 
-    #print("Net Preds: ",slice_no_preds)
+    print("Net Preds: ",slice_no_preds.shape)
     #print("GTS: ", slice_no_gts)
     #print("checking...", slice_no_gts_test)
 
@@ -110,15 +108,16 @@ def main():
 
   
     #undoing transforms to get corect slice number
-    x,y,z = mrofsnart(slice_no_gts, transforms, test_inds)
-    print("z: ",z, "\nx: ", x, "\ny: ", y)
+
+    x,y,z = mrofsnart(slice_no_preds, transforms, test_inds =test_inds)
+    #print("z: ",z, "\nx: ", x, "\ny: ", y)
     print("length: ", len(z), len(test_ids), len(slice_no_preds) )
-    df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds, "True Slice numbers": z})
-    save_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/c3_locT.xlsx'
+    df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds, "PostProcess Slice numbers": z})
+    save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/c3_loc.xlsx'
     df.to_excel(excel_writer = save_path, index=False,
              sheet_name="data")
- 
-   
+    print("Saved predictions")
+
 
     return
 

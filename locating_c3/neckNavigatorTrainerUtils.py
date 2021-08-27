@@ -10,9 +10,21 @@ import shutil
 import sys
 import logging
 import SimpleITK as sitk
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 #import matplotlib.pyplot as plt
 import random
+
+def dataset_TVTsplit(inputs, targets, train_inds, val_inds, test_inds):
+    def select_data(im_inds):
+        selected_im = [inputs[ind] for ind in im_inds]
+        selected_masks = [targets[ind] for ind in im_inds]
+        return selected_im, selected_masks
+
+    train_inputs, train_masks = select_data(train_inds)
+    val_inputs, val_masks = select_data(val_inds)
+    test_inputs, test_masks = select_data(test_inds)
+
+    return train_inputs, train_masks, val_inputs, val_masks, test_inputs, test_masks
 
 def getFiles(targetdir):
     ls = []

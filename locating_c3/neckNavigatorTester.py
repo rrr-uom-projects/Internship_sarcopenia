@@ -5,13 +5,11 @@
 #imports 
 import torch
 import numpy as np
-from utils import setup_model
+from utils import setup_model, flat_softmax
 from neckNavigator import neckNavigator
 
 def neckNavigatorTest2(model_dir, test_dataloader, device):
-  model = setup_model(neckNavigator(filter_factor=2, targets = 1, in_channels = 1), model_dir, device, load_prev = True,eval_mode=True)
-  #test_dataloader = torch.load(test_dataloader_dir)
-  #model.eval()
+  model = setup_model(neckNavigator(), model_dir, device, load_prev = True, eval_mode=True)
   segments = []
   c3s = []
   GTs =[]
@@ -20,12 +18,13 @@ def neckNavigatorTest2(model_dir, test_dataloader, device):
     test_em = test_em.type(torch.FloatTensor)
     test_em = test_em.to(device)
     output = model(test_em)
+    output = flat_softmax(output)
     #print("output shape: ", output.shape)
     test_output = output.squeeze().cpu().detach().numpy()
     #print("test out: ",test_output.shape, np.max(test_output), np.min(test_output))
-    sigmoid = 1/(1 + np.exp(-test_output))
-    segment = sigmoid.astype(np.float) #for heatmaps
-    #segment = (sigmoid > 0.5).astype(np.float)
+    #sigmoid = 1/(1 + np.exp(-test_output))
+    segment = test_output.astype(np.float) #for heatmaps
+    #segment = (segment > 0.5).astype(np.float)
     GTs.append(test_lab.squeeze().numpy())
     c3s.append(test_em.squeeze().cpu().detach().numpy())
     segments.append(segment)
