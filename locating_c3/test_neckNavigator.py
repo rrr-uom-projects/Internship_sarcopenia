@@ -60,7 +60,7 @@ def main():
     print(test_inds)
     #model_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/"
     #testdataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
-    device = 'cuda:0'
+    device = 'cuda:1'
 
     model_dir =  "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
     #model = neckNavigator()
@@ -77,9 +77,9 @@ def main():
 
     difference = euclid_dis(GTs, segments)
     #print(difference)
-    #projections(C3s[1],segments[1], order = [1,2,0], show=True)
+    projections(C3s[0],segments[0], order = [1,2,0], show=True)
     #projections(C3s[1],GTs[1], order = [1,2,0], show=True)
-    #display_net_test(C3s, segments, GTs)
+    display_net_test(C3s, segments, GTs)
 
     slice_no_preds = slice_preds(segments)
     slice_no_gts = slice_preds(GTs)
