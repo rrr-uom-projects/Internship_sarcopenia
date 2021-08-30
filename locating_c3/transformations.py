@@ -147,8 +147,8 @@ def path_list(no_patients, skip: list):
 
     for i in range(1,no_patients+1):
         if i not in skip:
-            #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'
-            path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
+            path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/'
+            #path = 'C:/Users/hermi/OneDrive/Documents/physics year 4/Mphys/L3_scans/My_segs'
             path_list_inputs.append(path + "/P" + str(i) + "_RT_sim_ct.nii.gz")
             path_list_targets.append(path + "/P" + str(i) + "_RT_sim_seg.nii.gz")
             id = "01-00" + str(i)
@@ -179,8 +179,8 @@ def path_list2():
 
 def save_preprocessed(inputs, targets, ids, org_slice_nos, transforms = None):
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
-    ids = np.array(ids)   
-    #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
+    #path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+    ids = np.array(ids)
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
     np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos)
     print("Saved preprocessed data") 
