@@ -177,12 +177,12 @@ def path_list2():
     ids = inputs[1]
     return path_list_inputs, path_list_targets, ids
 
-def save_preprocessed(inputs, targets, ids, transforms = None):
-    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
-    ids = np.array(ids)   
-    #path = 'C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\summer internship\\Internship_sarcopenia\\locating_c3\\preprocessed.npz'
+def save_preprocessed(inputs, targets, ids, org_slice_nos, transforms = None):
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+    #path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+    ids = np.array(ids)
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
-    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms)
+    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos)
     print("Saved preprocessed data") 
 
 class preprocessing():
@@ -195,13 +195,12 @@ class preprocessing():
         self.inputs = inputs
         self.targets = targets
         self.transform = transform
-        #self.inputs_dtype = torch.float32
-        #self.targets_dtype = torch.long
         self.cropping = cropping
         self.normalise = normalise
         self.heatmap = heatmap
-        self.sphere  =sphere
+        self.sphere  = sphere
         self.transform_list = []
+        self.slices_gt = []
 
     def __len__(self):
         return len(self.inputs)
@@ -209,6 +208,9 @@ class preprocessing():
     def transforms(self):
         #maybe save it here
         return np.array(self.transform_list)
+    
+    def original_slice(self):
+        return np.array(self.slices_gt)
 
     def __getitem__(self, index: int):
         # Select the sample
@@ -225,6 +227,9 @@ class preprocessing():
         #x,y = flip(x), flip(y)
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         x-=1024
+        #save original slice number
+        slice_no = GetSliceNumber(y)
+        self.slices_gt.append(slice_no)
         #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
         #print("y start: ", np.max(y), np.min(y))
         # Preprocessing
@@ -246,6 +251,7 @@ class preprocessing():
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
 
+        #save transforms and gt slice
         transform_list_item = [need_flip, crop_info]
         self.transform_list.append(np.array(transform_list_item))
         #downsampling to size -> [128,128,128]
@@ -283,6 +289,7 @@ for i in range(len(preprocessed_data)):
 CTs, masks = np.array(CTs), np.array(masks)   
 
 transforms = preprocessed_data.transforms()
+org_slices = preprocessed_data.slices_gt()
 
 projections(CTs[1], masks[1], order=[1,2,0])
 #PrintSlice(CTs[10], masks[10], show = True)
@@ -291,7 +298,7 @@ print(transforms.shape, transforms)
 print("crop info:", transforms[:,1])
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids, transforms)
+save_preprocessed(CTs, masks, ids, org_slices, transforms)
 
 #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz' 
 #display_input_data(path)
