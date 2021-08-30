@@ -15,6 +15,9 @@ import torchvision.transforms as T
 import torchvision.io.image as tim
 from operator import mul
 
+from PIL import Image
+from matplotlib.colors import Normalize
+from matplotlib import cm
 """
 Script with modified losses 
 """
@@ -224,6 +227,107 @@ def euclid_dis(gts, masks, is_tensor = False):
   distances = np.array(distances)
   print(np.average(distances))
   return distances
+
+def get_mips(array):
+  """
+  Get whatever type of projection you want - this gets maximum intensity projection
+  """
+  axial_mip = np.max(array, axis=0)[::-1,:]
+  sagittal_mip = np.max(array,axis=2)[::-1,:]
+  coronal_mip = np.max(array,axis=1)[::-1,:]
+
+  return (axial_mip, sagittal_mip, coronal_mip)
+
+def array_2_image(array, mode="image", window=450, level=50):
+  """
+  Convert numpy arrays to PIL images, using window/level for CT and some colourmap for 
+  masks/distributions
+
+  This also tries to fix aspect ratio so that the patient isn't squashed into a tiny
+  little bar.
+  """
+  if mode == "image":
+      cmap = cm.get_cmap('Greys_r')
+      norm = Normalize(vmin=level-window//2, vmax=level+window//2) ## use normalise to apply level and window. 
+      ## NB Normalize is equivalent to setting vmin & vmax in plt.imshow
+
+      ## Appky W/L and convert slice to PIL Image
+      wld_slice = cmap(norm(array))
+      image = Image.fromarray((wld_slice[:, :, :3] * 255).astype(np.uint8))
+      
+  elif mode == "mask":
+      cmap_mask = cm.get_cmap('viridis')
+      norm_mask = Normalize(vmin=1, vmax=2) 
+      ## these two lines convert the mask into a colour image that PIL will be able to understand
+
+      ## apply class colourmap and convert to PIL Image
+      array[array == 0] = np.nan
+      transf_mask = cmap_mask(norm_mask(array))
+      print(transf_mask.shape)
+      image = Image.fromarray((transf_mask[:, :, :3] * 255).astype(np.uint8))
+  sizefac = image.size[0] / image.size[1]
+  image = image.resize( (int(image.size[1]*sizefac ), int(image.size[0])))
+  return image
+
+
+def make_three_projection(axial, sagittal, coronal):
+  """
+  Paste together the images side-by-side for display
+  """
+  dest = Image.new("RGB", (axial.width + sagittal.width + coronal.width, axial.height))
+  dest.paste(axial, (0,0))
+  dest.paste(sagittal, (axial.width, 0))
+  dest.paste(coronal, (axial.width+sagittal.width, 0))
+
+  return dest
+
+def composite_three_panel_images(ct, mask, alpha=0.5):
+  """
+  Composite the images together with mask semi-transparent over the CT
+
+  The image returned can be saved
+  """
+    ## Generate mask for compositing - should be informed by alpha (i.e. for alpha=0.5, should be 128 in areas where the masks are)
+  compo_mask = np.ones(ct.size[::-1], dtype=np.uint8) * np.uint8(255*alpha) ## default alpha 0.5
+  compo_mask[mask == 0] = 255 ## transparent background
+  ## This is 255 not zero because it is allowing all of the background through. It's a bit backwards.
+  compo_mask_image = Image.fromarray(compo_mask) 
+  ## Now create the overlaid image
+  compost = Image.composite(ct, mask, compo_mask_image)
+  ## Save to specified path
+  return compost
+
+
+def pil_2_tf(pil_image):
+  """
+  Convert a PIL image to something tensorboard can handle
+  """
+  return tf.keras.preprocessing.img_to_array(pil_image)
+
+def pil_flow(ct, pred):
+  """
+  Tie everything together in one call
+  """
+  act, sct, cct = get_mips(test_arr) ## chage these if you don't want a MIP
+  amask, smask, cmask = get_mips(pred) ## I think this will work with float
+
+  axial_ct_im = array_2_image(act, mode='image')
+  sagittal_ct_im = array_2_image(sct, mode='image')
+  coronal_ct_im = array_2_image(cct, mode='image')
+
+  threeway_ct = make_three_projection(axial_ct_im, sagittal_ct_im, coronal_ct_im)
+
+
+  axial_msk_im = array_2_image(amask, mode='mask')
+  sagittal_msk_im = array_2_image(smask, mode='mask')
+  coronal_msk_im = array_2_image(cmask, mode='mask')
+
+  threeway_msk = make_three_projection(axial_msk_im, sagittal_msk_im, coronal_msk_im)
+
+  composited = composite_three_panel_images(threeway_ct, threeway_msk)
+
+  return pil_2_tf(composited)
+
 
 def plot_to_image(figure):
   """Converts the matplotlib plot specified by 'figure' to a PNG image and
