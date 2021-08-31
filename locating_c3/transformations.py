@@ -209,7 +209,7 @@ class preprocessing():
         #maybe save it here
         return np.array(self.transform_list)
     
-    def original_slice(self):
+    def original_slices(self):
         return np.array(self.slices_gt)
 
     def __getitem__(self, index: int):
@@ -222,8 +222,11 @@ class preprocessing():
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         # check if flip required
         need_flip = False
+        #need_flipy = False
         if x.GetDirection()[-1] == -1:
             need_flip = True
+        # if y.GetDirection()[-1] == -1:
+        #     need_flipy = True
         #x,y = flip(x), flip(y)
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         x-=1024
@@ -235,6 +238,9 @@ class preprocessing():
         # Preprocessing
         if need_flip == True:
             x,y = flip(x), flip(y)
+
+        # if need_flipy == True:
+        #     y = flip(y)
 
         if self.transform is not None:
             x = self.transform(x)
@@ -268,9 +274,9 @@ class preprocessing():
 #get the file names
 PathList =  path_list2()
 no_patients = 2
-inputs = PathList[0]#[:no_patients]
-targets = PathList[1]#[:no_patients]
-ids = PathList[2]#[:no_patients]
+inputs = PathList[0]
+targets = PathList[1]
+ids = PathList[2]
 
 print("no of patients: ",len(inputs))
 #apply preprocessing
@@ -289,19 +295,20 @@ for i in range(len(preprocessed_data)):
 CTs, masks = np.array(CTs), np.array(masks)   
 
 transforms = preprocessed_data.transforms()
-org_slices = preprocessed_data.slices_gt()
-
+org_slices = preprocessed_data.original_slices()
+print(org_slices)
 projections(CTs[1], masks[1], order=[1,2,0])
 #PrintSlice(CTs[10], masks[10], show = True)
 
-print(transforms.shape, transforms)
-print("crop info:", transforms[:,1])
+#print(transforms.shape, transforms)
+#print("crop info:", transforms[:,1])
 #%%
 #save the preprocessed masks and cts for the dataset
 save_preprocessed(CTs, masks, ids, org_slices, transforms)
 
-#path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz' 
-#display_input_data(path)
+#%%
+path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+display_input_data(path)
 """
 def cropping(inp: np.ndarray, tar: np.ndarray ):
     #want to crop all CT scans to be [177,260,260]
@@ -347,3 +354,4 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
    
     #x, y = im[(im.shape[0]-117):,x_min:x_max,y_min:y_max], tar[(im.shape[0]-117):,x_min:x_max,y_min:y_max]
     return x, y"""
+# %%
