@@ -217,8 +217,6 @@ def euclid_dis(gts, masks, is_tensor = False):
   for i in range(len(gts)):
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(masks[i])
-    #print(gt_coords)
-    #print(msk_coords)
     distance = np.abs(gt_coords[2]-msk_coords[2])
     if len(gts) == 1: 
       distances = distance
@@ -227,6 +225,47 @@ def euclid_dis(gts, masks, is_tensor = False):
   distances = np.array(distances)
   print(np.average(distances))
   return distances
+
+def euclid_diff_mm(gts, msks, dims, is_tensor = False):
+  distances = []
+  if is_tensor:
+    gts = gts.cpu().detach().numpy()[0]
+    msks = msks.cpu().detach().numpy()[0]
+  for i in range(len(gts)):
+    gt_coords = GetSliceNumber(gts[i])
+    msk_coords = GetSliceNumber(msks[i])
+    distance = np.abs(gt_coords-msk_coords)
+    z_distance = dims[i][2]*distance #mm?
+    if len(gts) == 1: 
+      distances = z_distance
+    else: 
+      distances.append(z_distance)
+  distances = np.array(distances)
+  print(np.average(distances))
+  return distances
+
+def threeD_euclid_diff(gts, msks, dims, is_tensor = False):
+  mm_distances = []
+  distances = []
+  if is_tensor:
+    gts = gts.cpu().detach().numpy()[0]
+    msks = msks.cpu().detach().numpy()[0]
+  for i in range(len(gts)):
+    gt_coords = GetTargetCoords(gts[i])
+    msk_coords = GetTargetCoords(msks[i])
+    distance = np.abs(gt_coords-msk_coords)
+    mm_distance = dims[i]*distance #mm?
+    if len(gts) == 1: 
+      mm_distances = mm_distance
+      distances = distance
+    else: 
+      mm_distances.append(mm_distance)
+      distances.append(distance)
+  distances = np.array(distances)
+  mm_distances = np.array(mm_distances)
+  print(np.average(mm_distances, axis = [0,1,2]))
+  print(np.average(distances, axis = [0,1,2]))
+  return distances, mm_distances
 
 def get_mips(array):
   """

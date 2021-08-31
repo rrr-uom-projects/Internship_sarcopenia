@@ -177,12 +177,12 @@ def path_list2():
     ids = inputs[1]
     return path_list_inputs, path_list_targets, ids
 
-def save_preprocessed(inputs, targets, ids, org_slice_nos, transforms = None):
+def save_preprocessed(inputs, targets, ids, org_slice_nos, voxel_dims, transforms = None):
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
     #path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
     ids = np.array(ids)
-    print("final shape: ", inputs.shape, targets.shape, ids.shape)
-    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos.astype(int))
+    print("final shape: ", inputs.shape, targets.shape, ids.shape, len(org_slice_nos), len(voxel_dims))
+    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos.astype(int), dims = voxel_dims.astype(np.float32))
     print("Saved preprocessed data") 
 
 class preprocessing():
@@ -201,6 +201,7 @@ class preprocessing():
         self.sphere  = sphere
         self.transform_list = []
         self.slices_gt = []
+        self.voxel_dims_list = []
 
     def __len__(self):
         return len(self.inputs)
@@ -211,6 +212,9 @@ class preprocessing():
     
     def original_slices(self):
         return np.array(self.slices_gt)
+    
+    def voxel_dims(self):
+        return np.array(self.voxel_dims_list)
 
     def __getitem__(self, index: int):
         # Select the sample
@@ -230,11 +234,15 @@ class preprocessing():
         #x,y = flip(x), flip(y)
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         x-=1024
+
         #save original slice number
         slice_no = GetSliceNumber(y)
         self.slices_gt.append(slice_no)
-        #voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
-        #print("y start: ", np.max(y), np.min(y))
+
+        #saving the spacing
+        voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
+        self.voxel_dims_list.append(voxel_dim)
+
         # Preprocessing
         if need_flip == True:
             x,y = flip(x), flip(y)
@@ -296,6 +304,7 @@ CTs, masks = np.array(CTs), np.array(masks)
 
 transforms = preprocessed_data.transforms()
 org_slices = preprocessed_data.original_slices()
+voxel_dims = preprocessed_data.voxel_dims()
 print(org_slices)
 projections(CTs[1], masks[1], order=[1,2,0])
 #PrintSlice(CTs[10], masks[10], show = True)
@@ -304,7 +313,7 @@ projections(CTs[1], masks[1], order=[1,2,0])
 #print("crop info:", transforms[:,1])
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids, org_slices, transforms)
+save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
 
 #%%
 path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
