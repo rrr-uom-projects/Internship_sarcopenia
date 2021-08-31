@@ -15,6 +15,9 @@ import torchvision.transforms as T
 import torchvision.io.image as tim
 from operator import mul
 
+from PIL import Image
+from matplotlib.colors import Normalize
+from matplotlib import cm
 """
 Script with modified losses 
 """
@@ -225,6 +228,107 @@ def euclid_dis(gts, masks, is_tensor = False):
   print(np.average(distances))
   return distances
 
+def get_mips(array):
+  """
+  Get whatever type of projection you want - this gets maximum intensity projection
+  """
+  axial_mip = np.max(array, axis=0)[::-1,:]
+  sagittal_mip = np.max(array,axis=2)[::-1,:]
+  coronal_mip = np.max(array,axis=1)[::-1,:]
+
+  return (axial_mip, sagittal_mip, coronal_mip)
+
+def array_2_image(array, mode="image", window=450, level=50):
+  """
+  Convert numpy arrays to PIL images, using window/level for CT and some colourmap for 
+  masks/distributions
+
+  This also tries to fix aspect ratio so that the patient isn't squashed into a tiny
+  little bar.
+  """
+  if mode == "image":
+      cmap = cm.get_cmap('Greys_r')
+      norm = Normalize(vmin=level-window//2, vmax=level+window//2) ## use normalise to apply level and window. 
+      ## NB Normalize is equivalent to setting vmin & vmax in plt.imshow
+
+      ## Appky W/L and convert slice to PIL Image
+      wld_slice = cmap(norm(array))
+      image = Image.fromarray((wld_slice[:, :, :3] * 255).astype(np.uint8))
+      
+  elif mode == "mask":
+      cmap_mask = cm.get_cmap('viridis')
+      norm_mask = Normalize(vmin=1, vmax=2) 
+      ## these two lines convert the mask into a colour image that PIL will be able to understand
+
+      ## apply class colourmap and convert to PIL Image
+      array[array == 0] = np.nan
+      transf_mask = cmap_mask(norm_mask(array))
+      print(transf_mask.shape)
+      image = Image.fromarray((transf_mask[:, :, :3] * 255).astype(np.uint8))
+  sizefac = image.size[0] / image.size[1]
+  image = image.resize( (int(image.size[1]*sizefac ), int(image.size[0])))
+  return image
+
+
+def make_three_projection(axial, sagittal, coronal):
+  """
+  Paste together the images side-by-side for display
+  """
+  dest = Image.new("RGB", (axial.width + sagittal.width + coronal.width, axial.height))
+  dest.paste(axial, (0,0))
+  dest.paste(sagittal, (axial.width, 0))
+  dest.paste(coronal, (axial.width+sagittal.width, 0))
+
+  return dest
+
+def composite_three_panel_images(ct, mask, alpha=0.5):
+  """
+  Composite the images together with mask semi-transparent over the CT
+
+  The image returned can be saved
+  """
+    ## Generate mask for compositing - should be informed by alpha (i.e. for alpha=0.5, should be 128 in areas where the masks are)
+  compo_mask = np.ones(ct.size[::-1], dtype=np.uint8) * np.uint8(255*alpha) ## default alpha 0.5
+  compo_mask[mask == 0] = 255 ## transparent background
+  ## This is 255 not zero because it is allowing all of the background through. It's a bit backwards.
+  compo_mask_image = Image.fromarray(compo_mask) 
+  ## Now create the overlaid image
+  compost = Image.composite(ct, mask, compo_mask_image)
+  ## Save to specified path
+  return compost
+
+
+def pil_2_tf(pil_image):
+  """
+  Convert a PIL image to something tensorboard can handle
+  """
+  return tf.keras.preprocessing.img_to_array(pil_image)
+
+def pil_flow(ct, pred):
+  """
+  Tie everything together in one call
+  """
+  act, sct, cct = get_mips(ct) ## chage these if you don't want a MIP
+  amask, smask, cmask = get_mips(pred) ## I think this will work with float
+
+  axial_ct_im = array_2_image(act, mode='image')
+  sagittal_ct_im = array_2_image(sct, mode='image')
+  coronal_ct_im = array_2_image(cct, mode='image')
+
+  threeway_ct = make_three_projection(axial_ct_im, sagittal_ct_im, coronal_ct_im)
+
+
+  axial_msk_im = array_2_image(amask, mode='mask')
+  sagittal_msk_im = array_2_image(smask, mode='mask')
+  coronal_msk_im = array_2_image(cmask, mode='mask')
+
+  threeway_msk = make_three_projection(axial_msk_im, sagittal_msk_im, coronal_msk_im)
+
+  composited = composite_three_panel_images(threeway_ct, threeway_msk)
+
+  return pil_2_tf(composited)
+
+
 def plot_to_image(figure):
   """Converts the matplotlib plot specified by 'figure' to a PNG image and
   returns it. The supplied figure is closed and inaccessible after this call."""
@@ -243,16 +347,21 @@ def plot_to_image(figure):
 
 def get_data(path): 
     data = np.load(path, allow_pickle=True)
+    #print([*data.keys()])
     inputs = data['inputs']
     targets = data['masks']
     ids = data['ids']
     transforms = data['transforms']
-    return np.array(inputs), np.array(targets), np.array(ids), np.array(transforms)
+    org_slices = data['org_nos']
+    return (np.array(inputs), np.array(targets), np.array(ids), np.array(transforms), np.array(org_slices))
 
-def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = False):
-  inps,msks,ids = get_data(path)
+def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = False):
+  inp_data = get_data(path)
+  inps = inp_data[0]
+  msks = inp_data[1]
+  ids = inp_data[2]
   data_size = len(inps)
-  slice_no_gts = slice_preds(msks)
+  #slice_no_gts = slice_preds(msks)
   images = []
   targets = []
   if type == "tensor":
@@ -273,17 +382,18 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
   rows = int(1 + data_size/3)
   j=0
   for l in range(1, data_size +1):#data_size +1
-    inp = inps[l-1]
-    msk = msks[l-1]
-    image, target = base_projections(inp, msk)
-    #image = images[l-1]
-    #target =  targets[l-1]
+    #inp = inps[l-1]
+    #msk = msks[l-1]
+    #image, target = base_projections(inp, msk)
+    image = images[l-1]
+    target =  targets[l-1]
+    id = ids[l-1]
     for i in range(3,4):
       # create subplot and append to ax
       j+=1
       print(l,i)
-      label = str(l) + ',' + str(i-1)
-      ax.append(fig.add_subplot(rows, columns, j, label = label))
+      label = str(l) + ', ID: ' + id
+      ax.append(fig.add_subplot(rows, columns, j))
       ax[-1].set_title(label)
       plt.imshow(image[i-1])
       target[i-1][target[i-1] == 0] = np.nan
@@ -298,7 +408,7 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
 #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
 #display_input_data(data_path)
 
-def display_net_test(inps, msks, gts, shape = 128):
+def display_net_test(inps, msks, gts, ids, shape = 128):
   images, targets, preds = [],[],[]
   data_size = len(inps)
   slice_no_preds = slice_preds(msks)
@@ -312,34 +422,35 @@ def display_net_test(inps, msks, gts, shape = 128):
     preds.append(pred)
   
   #make the figure
-  fig = plt.figure(figsize=(100, 400))
+  fig = plt.figure(figsize = (100, 400))
   ax = []
-  columns = 3
-  rows = 2*data_size
-  j=0
-  for l in range(1, data_size +1):
+  columns = 6
+  rows = (2*data_size)/6
+  j = 0
+  for l in range(1, data_size + 1):
     image = images[l-1]
     target =  targets[l-1]
     pred = preds[l-1]
+    id = ids[l-1]
     slice_pred = shape - np.int(slice_no_preds[l-1]) #upside fucking down dear god
     slice_gt = shape - np.int(slice_no_gts[l-1])
-    for i in range(1,4):
+    for i in range(3,4):
       #create gt subplot 
       j+=1
       ax.append(fig.add_subplot(rows, columns, j))
-      ax[-1].set_title("GT " + str(l) + ',' + str(i-1))
+      ax[-1].set_title("GT " + str(l) + ',' + id)
       plt.imshow(image[i-1])
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       if (i%3==0):
         ax[-1].axhline(slice_gt, linewidth=2, c='y')
         ax[-1].text(0, slice_gt-5, "C3: " + str(slice_gt), color='w')
       plt.axis('off')
-    for i in range(1,4):
+    for i in range(3,4):
       #mask subplot
       j+=1
       #print(slice_pred)
       ax.append(fig.add_subplot(rows, columns, j))
-      ax[-1].set_title("pred " + str(l) + ',' + str(i-1))
+      ax[-1].set_title("Pred " + str(l) + ',' + id)
       plt.imshow(image[i-1])
       plt.imshow(pred[i-1], cmap="cool", alpha=0.5)
       if (i%3==0):
@@ -348,4 +459,4 @@ def display_net_test(inps, msks, gts, shape = 128):
       plt.axis('off')
   path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
   plt.savefig(path + '.png')
-  return fig
+  return slice_no_preds
