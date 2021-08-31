@@ -57,8 +57,8 @@ def main():
 
 
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
-    checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
+    #checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
     # Create main logger
@@ -104,7 +104,7 @@ def main():
     #model = headHunter_multiHead_deeper(filter_factor=1)
 
     # put the model on GPU(s)
-    device = 'cuda:0'
+    device = 'cuda:1'
     # model.to(device)
     load_prev=False
     model=setup_model(model, checkpoint_dir, device, load_prev= False, load_best = load_prev)
@@ -112,7 +112,7 @@ def main():
     logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
  
     # Create the optimizer
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.0005)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.001)
 
     # Create learning rate adjustment strategy
     lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
@@ -131,7 +131,7 @@ def main():
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
                                  val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
-                                 num_epoch = epoch ,patience=15, iters_to_accumulate=4)
+                                 num_epoch = epoch ,patience=30, iters_to_accumulate=4)
     
     # Start training
     trainer.fit()
