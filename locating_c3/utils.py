@@ -308,7 +308,7 @@ def pil_flow(ct, pred):
   """
   Tie everything together in one call
   """
-  act, sct, cct = get_mips(test_arr) ## chage these if you don't want a MIP
+  act, sct, cct = get_mips(ct) ## chage these if you don't want a MIP
   amask, smask, cmask = get_mips(pred) ## I think this will work with float
 
   axial_ct_im = array_2_image(act, mode='image')
@@ -347,16 +347,21 @@ def plot_to_image(figure):
 
 def get_data(path): 
     data = np.load(path, allow_pickle=True)
+    #print([*data.keys()])
     inputs = data['inputs']
     targets = data['masks']
     ids = data['ids']
     transforms = data['transforms']
-    return np.array(inputs), np.array(targets), np.array(ids), np.array(transforms)
+    org_slices = data['org_nos']
+    return (np.array(inputs), np.array(targets), np.array(ids), np.array(transforms), np.array(org_slices))
 
-def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = False):
-  inps,msks,ids = get_data(path)
+def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = False):
+  inp_data = get_data(path)
+  inps = inp_data[0]
+  msks = inp_data[1]
+  ids = inp_data[2]
   data_size = len(inps)
-  slice_no_gts = slice_preds(msks)
+  #slice_no_gts = slice_preds(msks)
   images = []
   targets = []
   if type == "tensor":
@@ -377,17 +382,18 @@ def display_input_data(path, type = 'numpy' ,save_name = 'gauss_data', show = Fa
   rows = int(1 + data_size/3)
   j=0
   for l in range(1, data_size +1):#data_size +1
-    inp = inps[l-1]
-    msk = msks[l-1]
-    image, target = base_projections(inp, msk)
-    #image = images[l-1]
-    #target =  targets[l-1]
+    #inp = inps[l-1]
+    #msk = msks[l-1]
+    #image, target = base_projections(inp, msk)
+    image = images[l-1]
+    target =  targets[l-1]
+    id = ids[l-1]
     for i in range(3,4):
       # create subplot and append to ax
       j+=1
       print(l,i)
-      label = str(l) + ',' + str(i-1)
-      ax.append(fig.add_subplot(rows, columns, j, label = label))
+      label = str(l) + ', ID: ' + id
+      ax.append(fig.add_subplot(rows, columns, j))
       ax[-1].set_title(label)
       plt.imshow(image[i-1])
       target[i-1][target[i-1] == 0] = np.nan

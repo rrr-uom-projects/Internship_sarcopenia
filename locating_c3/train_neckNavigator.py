@@ -27,7 +27,7 @@ from neckNavigator import neckNavigator
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, dataset_TVTsplit
-from neckNavigatorTester import neckNavigatorTest1
+from neckNavigatorTester import neckNavigatorTest2
 from utils import setup_model, PrintSlice , projections, euclid_dis
 
 def setup_argparse():
@@ -48,16 +48,12 @@ def main():
 
     # decide file paths
     #livs paths
-
-
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
-    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
-    dataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
-
+    # data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
+    # checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
 
 
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
 
@@ -113,7 +109,7 @@ def main():
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.001)
 
     # Create learning rate adjustment strategy
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
 
     # Parallelize model
     #model = nn.DataParallel(model) #runs on multiple gpus if we want a larger batch size
@@ -129,29 +125,24 @@ def main():
     # Create model trainer
     trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
                                  val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
-                                 num_epoch = epoch ,patience=30, iters_to_accumulate=4)
+                                 num_epoch = epoch ,patience=50, iters_to_accumulate=4)
     
     # Start training
     trainer.fit()
 
 
     #testing
-    model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
-    tester = neckNavigatorTest1(model, checkpoint_dir, test_dataloader, device)
-    #test_results = tester
+    #model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
+    tester = neckNavigatorTest2(checkpoint_dir, test_dataloader, device)
     C3s, segments, GTs = tester
     
     print("gt info: ", len(GTs))
     print(GTs.shape,)
     print("segs info: ", segments.shape)
-    #print(segments[0].shape, len(segments))
-    #print(C3s[0].shape)
-    #c3 = C3s[0][0]
-    #segment = segments[0][0]
 
     difference = euclid_dis(GTs, segments)
     print(difference)
-    projections(C3s[0], segments[0], order = [1,2,0], save_name = 'funky')
+    #projections(C3s[0], segments[0], order = [1,2,0], save_name = 'funky')
 
     
     return

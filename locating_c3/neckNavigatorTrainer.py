@@ -120,16 +120,17 @@ class neckNavigator_trainer:
                 self.logger.info(f'Training stats. Loss: {train_losses.avg}')
                 self._log_stats('train', train_losses.avg)
 
-            if (self.num_epoch%2 == 0) and (self.num_iterations != 0):
+            self.num_iterations += 1
+
+        if (self.num_epoch%2 == 0):
                 #write the slice difference between gts and preds
                 #difference = euclid_dis(h_target, output, is_tensor=True)
                 #self._log_dist(difference)
 
-                self._log_images(ct_im, output, name = "Training Data")
+            self._log_images(ct_im, output, name = "Training Data")
                 #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
             
-            self.num_iterations += 1
-
+            
         # evaluate on validation set
         self.model.eval()
         eval_score = self.validate()
@@ -178,9 +179,8 @@ class neckNavigator_trainer:
                 #write the slice difference between gts and preds
                 difference = euclid_dis(h_target, output, is_tensor=True)  
                 val_slice_diff.append(difference)
-                if (self.num_epoch%2 == 0) and (self.num_iterations != 0):
-                    self._log_images(ct_im, output, name = "Validation Data")
-                #projections(ct_im, output, order=[2,1,0], type="tensor", save_name=self.num_epoch)
+            if (self.num_epoch%2 == 0):
+                self._log_images(ct_im, output, name = "Validation Data")
                 
 
             self._log_dist(val_slice_diff)      
@@ -204,7 +204,7 @@ class neckNavigator_trainer:
             #output = output/(torch.sum(output))
             #print(torch.sum(h_target), torch.max(h_target))
             #h_target = h_target/(torch.sum(h_target))
-            print(torch.sum(h_target), torch.max(h_target), torch.min(h_target))
+            #print(torch.sum(h_target), torch.max(h_target), torch.min(h_target))
             #print(torch.sum(output), torch.max(output))
             #assert torch.sum(output) == 1
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
@@ -280,14 +280,11 @@ class neckNavigator_trainer:
         self.writer.add_scalar('Slice difference', avgdist, self.num_epoch)
     
     def _log_images(self, inp, pred, name):
-
-        #vmax = torch.max(gt.cpu().detach()).numpy()
-        #print(vmax)
-        # images = projections(inp, pred, order=[2,1,0], type="tensor")
-        # with self.fig_writer.as_default():
-        #     tf.summary.image(name, plot_to_image(images), self.num_iterations)
+        images = projections(inp, pred, order=[2,1,0], type="tensor")
         with self.fig_writer.as_default():
-            tf.summary.image(name, pil_flow(inp, pred), self.num_iterations)
+            tf.summary.image(name, plot_to_image(images), self.num_epoch)
+        # with self.fig_writer.as_default():
+        #     tf.summary.image(name, pil_flow(inp, pred), self.num_epoch)
 
 
     def _log_params(self):
