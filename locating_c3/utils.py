@@ -408,7 +408,7 @@ def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = F
 #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
 #display_input_data(data_path)
 
-def display_net_test(inps, msks, gts, shape = 128):
+def display_net_test(inps, msks, gts, ids, shape = 128):
   images, targets, preds = [],[],[]
   data_size = len(inps)
   slice_no_preds = slice_preds(msks)
@@ -422,34 +422,35 @@ def display_net_test(inps, msks, gts, shape = 128):
     preds.append(pred)
   
   #make the figure
-  fig = plt.figure(figsize=(100, 400))
+  fig = plt.figure(figsize = (100, 400))
   ax = []
-  columns = 3
-  rows = 2*data_size
-  j=0
-  for l in range(1, data_size +1):
+  columns = 6
+  rows = (2*data_size)/6
+  j = 0
+  for l in range(1, data_size + 1):
     image = images[l-1]
     target =  targets[l-1]
     pred = preds[l-1]
+    id = ids[l-1]
     slice_pred = shape - np.int(slice_no_preds[l-1]) #upside fucking down dear god
     slice_gt = shape - np.int(slice_no_gts[l-1])
-    for i in range(1,4):
+    for i in range(3,4):
       #create gt subplot 
       j+=1
       ax.append(fig.add_subplot(rows, columns, j))
-      ax[-1].set_title("GT " + str(l) + ',' + str(i-1))
+      ax[-1].set_title("GT " + str(l) + ',' + id)
       plt.imshow(image[i-1])
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       if (i%3==0):
         ax[-1].axhline(slice_gt, linewidth=2, c='y')
         ax[-1].text(0, slice_gt-5, "C3: " + str(slice_gt), color='w')
       plt.axis('off')
-    for i in range(1,4):
+    for i in range(3,4):
       #mask subplot
       j+=1
       #print(slice_pred)
       ax.append(fig.add_subplot(rows, columns, j))
-      ax[-1].set_title("pred " + str(l) + ',' + str(i-1))
+      ax[-1].set_title("Pred " + str(l) + ',' + id)
       plt.imshow(image[i-1])
       plt.imshow(pred[i-1], cmap="cool", alpha=0.5)
       if (i%3==0):
@@ -458,4 +459,4 @@ def display_net_test(inps, msks, gts, shape = 128):
       plt.axis('off')
   path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
   plt.savefig(path + '.png')
-  return fig
+  return slice_no_preds

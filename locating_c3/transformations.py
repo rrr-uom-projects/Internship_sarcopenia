@@ -182,7 +182,7 @@ def save_preprocessed(inputs, targets, ids, org_slice_nos, transforms = None):
     #path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
     ids = np.array(ids)
     print("final shape: ", inputs.shape, targets.shape, ids.shape)
-    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos)
+    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos.astype(int))
     print("Saved preprocessed data") 
 
 class preprocessing():
