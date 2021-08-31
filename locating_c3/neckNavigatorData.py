@@ -27,11 +27,13 @@ class neckNavigatorDataset(Dataset):
                  ):
         self.inputs = inputs
         self.targets = targets
+        if im_inds is not None:
+            self.inputs = [inputs[inds] for inds in im_inds]
+            self.targets = [targets[inds] for inds in im_inds]
         self.transform = transform
         self.inputs_dtype = torch.float32
         self.targets_dtype = torch.float32
-        if im_inds is not None:
-            self.inputs = [inputs[inds] for inds in im_inds]
+
 
     def __len__(self):
         return len(self.inputs)

@@ -48,13 +48,14 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
 def main():
 
     # get data
-    data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
-    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    #data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     data = get_data(data_path)
     inputs = data[0]
     targets = data[1]
     ids = data[2]
     transforms = data[3]
+    org_slices = data[4]
 
     val_workers = int(4)
 
@@ -64,30 +65,20 @@ def main():
 
     test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
     print(test_inds)
-    #model_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/"
-    #testdataloader_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1/test_dataloader.pt"
-
+    model_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    
     device = 'cuda:1'
-
-
-    model_dir =  "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
-    #model = neckNavigator()
-    #tester = neckNavigatorTest1(model, checkpoint_dir, test_dataloader, device)
 
     tester = neckNavigatorTest2(model_dir, test_dataloader, device)
 
     #test_results = tester
     C3s, segments, GTs = tester
-    
-    #print("gt info: ", len(GTs))
-    #print(GTs.shape)
-    #print("segs info: ", segments.shape)
 
     difference = euclid_dis(GTs, segments)
     #print(difference)
-    projections(C3s[0],segments[0], order = [2,1,0], show=True)
+    #projections(C3s[3],segments[3], order = [2,1,0], show=True)
     #projections(C3s[1],GTs[1], order = [1,2,0], show=True)
-    display_net_test(C3s, segments, GTs)
+    slice_preds_q = display_net_test(C3s, segments, GTs, ids)
 
     slice_no_preds = slice_preds(segments)
     slice_no_gts = slice_preds(GTs)
@@ -105,14 +96,12 @@ def main():
     #c3_loc_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/c3_loc.npz'
     #np.savez(c3_loc_path, inputs = inputs, masks = segments, slice_nos = slice_no_preds, ids = ids)
     test_ids = [ids[ind] for ind in test_inds]
-
+    test_org_slices = [org_slices[ind] for ind in test_inds]
   
     #undoing transforms to get corect slice number
-
     x,y,z = mrofsnart(slice_no_preds, transforms, test_inds =test_inds)
-    #print("z: ",z, "\nx: ", x, "\ny: ", y)
-    print("length: ", len(z), len(test_ids), len(slice_no_preds) )
-    df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds, "PostProcess Slice numbers": z})
+    print("length: ", len(z), len(test_ids), len(slice_no_preds), len(test_org_slices) )
+    df = pd.DataFrame({"IDs": test_ids, "Slice_Numbers": slice_no_preds, "PostProcess Slice numbers": z, "GT org slices": test_org_slices, "GT T Slices": slice_no_gts})
     save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/c3_loc.xlsx'
     df.to_excel(excel_writer = save_path, index=False,
              sheet_name="data")
