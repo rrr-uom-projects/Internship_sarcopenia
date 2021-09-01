@@ -20,6 +20,7 @@ import argparse as ap
 #import tensorflow as tf
 import matplotlib.pyplot as plt
 import pickle
+import pandas as pd
 
 from neckNavigatorData import neckNavigatorDataset, head_augmentations#, get_data
 from neckNavigator import neckNavigator
@@ -28,8 +29,11 @@ from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, dataset_TVTsplit
 from neckNavigatorTester import neckNavigatorTest2
-from utils import setup_model, PrintSlice , projections, euclid_dis,  get_data
-from utils import k_fold_cross_val
+
+from utils import setup_model, PrintSlice , projections, euclid_dis, get_data
+from utils import k_fold_cross_val, slice_preds, GetSliceNumber, GetTargetCoords
+from utils import mrofsnart
+
 
 def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
@@ -49,7 +53,7 @@ def main():
 
     # decide file paths
     #livs paths
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
+    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     
 
 
@@ -67,7 +71,10 @@ def main():
     inputs = data[0]
     targets = data[1]
     ids = data[2]
+    transforms = data[3]
+    org_slices = data[4]
     voxel_dims = data[5]
+
 
     # decide batch sizes
     train_BS = 1 #int(6 * args.GPUs)
@@ -145,14 +152,27 @@ def main():
         #model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
         tester = neckNavigatorTest2(checkpoint_dir, test_dataloader, device)
         C3s, segments, GTs = tester
-        
-        print("gt info: ", len(GTs))
-        print(GTs.shape,)
-        print("segs info: ", segments.shape)
-
         difference = euclid_dis(GTs, segments)
-        print(difference)
-        #projections(C3s[0], segments[0], order = [1,2,0], save_name = 'funky')
+
+        slice_no_preds = slice_preds(segments)
+        slice_no_gts = slice_preds(GTs)
+        slice_no_gts_test = []
+
+        for j in range(len(GTs)): #sanity check
+            slice_no_gt = GetSliceNumber(GTs[j])
+            slice_no_gts_test.append(slice_no_gt)
+
+
+
+
+
+        x,y,z = mrofsnart(slice_no_preds, transforms, test_inds =test_array)
+        df = pd.DataFrame({"IDs": ids[test_array[i]], "Slice_Numbers": slice_no_preds, "PostProcess Slice numbers": z, "GT org slices": test_org_slices, "GT T Slices": slice_no_gts, "Distances": difference})
+        save_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/fold' +str(i) + '/c3_loc.xlsx'
+        df.to_excel(excel_writer = save_path, index=False,
+                sheet_name="data")
+        
+        
 
         
     return
