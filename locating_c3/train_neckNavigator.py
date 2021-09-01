@@ -49,15 +49,11 @@ def main():
 
     # decide file paths
     #livs paths
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
+    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
     
-
-
     #herms paths
-    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
-    #checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
-
-
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    checkpoint = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
 
     # Create main logger
     logger = get_logger('NeckNavigator_Training')
@@ -86,7 +82,11 @@ def main():
     for i in range(0,5):
     # dataloaders
 
-        checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/fold" + str(i)
+        checkpoint_dir = checkpoint + "_fold" + str(i)
+        try:
+            os.makedirs(checkpoint_dir)
+        except OSError:
+            pass
 
         val_spli, train_spli = np.split(train_array[i], [16], axis= 0)
         train_inputs, train_targets, val_inputs, val_targets, test_inputs, test_targets = dataset_TVTsplit(inputs, targets, train_spli, val_spli, test_array[i])
@@ -133,7 +133,6 @@ def main():
         # Create model trainer
         trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
                                     val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1, num_iterations = iteration, 
-
                                     num_epoch = epoch ,patience=50, iters_to_accumulate=4)
 
         
@@ -141,8 +140,7 @@ def main():
         trainer.fit()
 
 
-        #testing
-        #model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
+        #########TESTING##########
         tester = neckNavigatorTest2(checkpoint_dir, test_dataloader, device)
         C3s, segments, GTs = tester
         
