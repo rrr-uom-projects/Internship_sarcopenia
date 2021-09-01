@@ -137,12 +137,15 @@ def euclid_dis(gts, masks, is_tensor = False):
   print(np.average(distances))
   return distances
 
-def GetVoxelDims(path):
+def GetVoxelDims():
+  path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
   data = np.load(path)
-  return data
+  vox_dims = data[1]
+  return vox_dims
 
-def euclid_diff_mm(gts, msks, dims, is_tensor = False):
+def euclid_diff_mm(gts, msks, is_tensor = False):
   distances = euclid_dis(gts, msks, is_tensor)
+  dims= GetVoxelDims()
   print(dims.shape)
   mm_distances = dims[:,2]*distances #might have to do a for loop
   return distances, mm_distances

@@ -16,6 +16,8 @@ import time
 from pytorch_toolbelt import losses as L
 from utils import projections, euclid_dis, plot_to_image, kl_reg, flat_softmax, sharpen_heatmaps, pil_flow
 import tensorflow as tf
+import csv
+import pandas as pd
 
 #####################################################################################################
 ##################################### headHunter trainers ###########################################
@@ -67,7 +69,14 @@ class neckNavigator_trainer:
         self.num_epoch = num_epoch
         self.epsilon = 1e-6
         self.scaler = torch.cuda.amp.GradScaler()
-
+        #log stuff as csv file
+        self.train_loss_list = []
+        self.val_loss_list = []
+        self.slice_difference_list = []
+        self.slice_dist_list = []
+        #self.file = open('log_info.csv', 'w', newline='')
+        #self.csv_writer = csv.writer(self.file)
+        
     def fit(self):
         self._save_init_state()
         for _ in range(self.num_epoch, self.max_num_epochs):
@@ -77,10 +86,32 @@ class neckNavigator_trainer:
             print("Epoch trained in " + str(int(time.time()-t)) + " seconds.")
             if should_terminate:
                 print("Hit termination condition...")
+                print("Epoch: ", '[',self.num_epoch,'/',self.max_num_epochs,']')
                 break
             self.num_epoch += 1
         self.writer.close()
+        #self.file.close() #close the csv file
+        self.log_info_csv()
         return self.num_iterations, self.best_eval_score
+    
+    def log_info_csv(self):
+        self.train_loss_list = np.array(self.train_loss_list)
+        self.val_loss_list = np.array(self.val_loss_list)
+        self.slice_difference_list = np.array(self.slice_difference_list)
+        print(self.train_loss_list.shape)
+        df_tl = pd.DataFrame({'interation': self.train_loss_list[:,0],'train_loss': self.train_loss_list[:,1]})
+        df_vl = pd.DataFrame({'interation': self.val_loss_list[:,0],'val_loss': self.val_loss_list[:,1]})
+        df_sd = pd.DataFrame({'slice_diff': self.slice_difference_list})
+        #keys = ['train_loss', 'val_loss', 'slice_diff']
+        dict = {'train_loss': df_tl, 'val_loss': df_vl, 'slice_diff': df_sd}
+        save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/log_info.xlsx'
+        csv_writer = pd.ExcelWriter(save_path)
+        for key, df in dict.items():
+            df.to_excel(excel_writer = csv_writer, index = False,
+                sheet_name = key)
+        csv_writer.close()
+        print("Saved predictions")
+        return
 
     def train(self, train_loader):
         """Trains the model for 1 epoch.
@@ -274,10 +305,17 @@ class neckNavigator_trainer:
         }
         for tag, value in tag_value.items():
             self.writer.add_scalar(tag, value, self.num_iterations)
+            if phase == 'train':
+                self.train_loss_list.append([self.num_iterations, value])
+            elif phase == 'val':
+                self.val_loss_list.append([self.num_iterations, value])
 
     def _log_dist(self, dist):
         avgdist = np.average(dist)
+        #avg_mmdist = np.average(mm_dist)
         self.writer.add_scalar('Slice difference', avgdist, self.num_epoch)
+        #self.writer.add_scalar('Slice difference', avg_mmdist, self.num_epoch)
+        self.slice_difference_list.append(avgdist)
     
     def _log_images(self, inp, pred, name):
         images = projections(inp, pred, order=[2,1,0], type="tensor")
