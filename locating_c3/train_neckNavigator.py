@@ -21,14 +21,14 @@ import argparse as ap
 import matplotlib.pyplot as plt
 import pickle
 
-from neckNavigatorData import neckNavigatorDataset, get_data, head_augmentations
+from neckNavigatorData import neckNavigatorDataset, head_augmentations#, get_data
 from neckNavigator import neckNavigator
 #from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
 from neckNavigatorTrainer import neckNavigator_trainer
 from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, dataset_TVTsplit
 from neckNavigatorTester import neckNavigatorTest2
-from utils import setup_model, PrintSlice , projections, euclid_dis
+from utils import setup_model, PrintSlice , projections, euclid_dis, get_data
 
 def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
@@ -65,6 +65,7 @@ def main():
     inputs = data[0]
     targets = data[1]
     ids = data[2]
+    voxel_dims = data[5]
 
     # decide batch sizes
     train_BS = 1 #int(6 * args.GPUs)

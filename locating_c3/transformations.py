@@ -42,7 +42,7 @@ def normalize_01(inp: np.ndarray):
     inp = (np.nan_to_num(inp)).astype(np.float64)
     shape = inp.shape
     inp_new = np.round(sklearn.preprocessing.minmax_scale(inp.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
-    print("norm: ", inp_new.shape, np.max(inp_new), np.min(inp_new))
+    #print("norm: ", inp_new.shape, np.max(inp_new), np.min(inp_new))
     #inp_out = (inp - np.min(inp)) / np.ptp(inp)
     #inp_out =(inp-np.min(inp)) / np.max(inp)
     inp_out = inp_new
@@ -77,13 +77,13 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
     org_inp_size = x.shape
         
     if (z_size < x.shape[0]):
-        print("bigger", x.shape[0])
+        #print("bigger", x.shape[0])
         if(x.shape[0] > int(coords[0])+z_size): #190>87+112=199
             print("crop")
             z_coords = {"z_min": int(coords[0]), "z_max": int(coords[0])+z_size}
 
     else:
-        print("too small: ", x.shape[0])
+        #print("too small: ", x.shape[0])
         padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         inp, tar =padded_arr, padded_tar
@@ -178,11 +178,14 @@ def path_list2():
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids, org_slice_nos, voxel_dims, transforms = None):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    vox_path =  '/home/hermione/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
     #path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
     ids = np.array(ids)
     print("final shape: ", inputs.shape, targets.shape, ids.shape, len(org_slice_nos), len(voxel_dims))
     np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos.astype(int), dims = voxel_dims.astype(np.float32))
+    #sep file for voxels
+    np.savez(vox_path, ids = ids, dims = voxel_dims.astype(np.float32))
     print("Saved preprocessed data") 
 
 class preprocessing():
@@ -232,16 +235,17 @@ class preprocessing():
         # if y.GetDirection()[-1] == -1:
         #     need_flipy = True
         #x,y = flip(x), flip(y)
+
+        #saving the spacing
+        voxel_dim = [(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
+        self.voxel_dims_list.append(np.array(voxel_dim).astype(np.float32))
+
         x, y = sitk.GetArrayFromImage(x).astype(float), sitk.GetArrayFromImage(y).astype(float)
         x-=1024
 
         #save original slice number
         slice_no = GetSliceNumber(y)
         self.slices_gt.append(slice_no)
-
-        #saving the spacing
-        voxel_dim = np.array[(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
-        self.voxel_dims_list.append(voxel_dim)
 
         # Preprocessing
         if need_flip == True:
@@ -282,9 +286,9 @@ class preprocessing():
 #get the file names
 PathList =  path_list2()
 no_patients = 2
-inputs = PathList[0]
-targets = PathList[1]
-ids = PathList[2]
+inputs = PathList[0]#[:no_patients]
+targets = PathList[1]#[:no_patients]
+ids = PathList[2]#[:no_patients]
 
 print("no of patients: ",len(inputs))
 #apply preprocessing
