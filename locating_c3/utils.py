@@ -213,6 +213,38 @@ def PrintSlice(input, targets, show = False):
       plt.show()
       plt.savefig("Slice.png")
 
+def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = None):#transforms backwards
+    #might have get transform indices for test data
+    if test_inds is not None:
+        transforms = [transforms[ind] for ind in test_inds]
+    x_arr,y_arr,z_arr = [],[],[]
+    for i in range(len(net_slice)):
+        #undo scale
+        net_slice[i] *= 14/16
+
+        #print(net_slice[i], transforms[i][1][0])
+
+        #undo crop
+        #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
+        z = net_slice[i] + transforms[i][1][0]
+        if coords is not None:
+            x = coords[i,0]*2
+            y = coords[i,1]*2
+            x += transforms[i][1][2]
+            y += transforms[i][1][4]
+            x_arr.append(x)
+        #undo flip if necessary
+            if (transforms[i][0]==True):
+                y = shape - y
+            y_arr.append(y)
+        if (transforms[i][0]==True):
+            z = shape - z
+
+        #print(z)
+
+        z_arr.append(z)
+    return np.array(x_arr),np.array(y_arr),np.array(z_arr)
+
 def arrange(input, ax, proj_order):
     #to return the projection in whatever order.
     av = np.average(input, axis = ax)
