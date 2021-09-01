@@ -54,7 +54,6 @@ def main():
     # decide file paths
     #livs paths
     #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
-    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
 
     #herms paths
     data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
