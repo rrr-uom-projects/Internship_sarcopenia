@@ -27,6 +27,19 @@ import torch.nn as nn
 from functools import reduce
 import torch
 import torch.nn.functional
+from sklearn.model_selection import KFold
+
+def k_fold_cross_val(dataset_size, num_splits):
+    train =[]
+    test = []
+    np.random.seed(2305)
+    shuffled_ind_list = np.random.permutation(dataset_size)
+    kf = KFold(n_splits= num_splits)
+    for train_index, test_index in kf.split(shuffled_ind_list):
+          print("TRAIN:", train_index, "TEST:", test_index)
+          train.append(train_index)
+          test.append(test_index)
+    return train, test
 
 def js_reg(p, q):
     #~ Jensen-Shannon Divergence

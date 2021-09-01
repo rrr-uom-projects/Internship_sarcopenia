@@ -29,6 +29,7 @@ from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, dataset_TVTsplit
 from neckNavigatorTester import neckNavigatorTest2
 from utils import setup_model, PrintSlice , projections, euclid_dis
+from utils import k_fold_cross_val
 
 def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
@@ -41,7 +42,7 @@ def setup_argparse():
 
 def main():
     #main
-
+    
     # get args
     setup_argparse()
     global args
@@ -49,7 +50,7 @@ def main():
     # decide file paths
     #livs paths
     data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
-    checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/attempt1"
+    
 
 
     #herms paths
@@ -77,79 +78,84 @@ def main():
 
     # allocate ims to train, val and test
     dataset_size = len(inputs)
-    train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num= 2)
+    #train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num= 2)
+    #train_inputs, train_targets, val_inputs, val_targets, test_inputs, test_targets = dataset_TVTsplit(inputs, targets, train_inds, val_inds, test_inds)
+    train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
     
-    train_inputs, train_targets, val_inputs, val_targets, test_inputs, test_targets = dataset_TVTsplit(inputs, targets, train_inds, val_inds, test_inds)
-    
+    for i in range(0,5):
     # dataloaders
 
-    training_dataset = neckNavigatorDataset(inputs=train_inputs, targets=train_targets, transform = head_augmentations)#, transform = head_augmentations
+        checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/fold" + str(i)
 
-    training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=None)#worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1))
+        val_spli, train_spli = np.split(train_array[i], [16], axis= 0)
+        train_inputs, train_targets, val_inputs, val_targets, test_inputs, test_targets = dataset_TVTsplit(inputs, targets, train_spli, val_spli, test_array[i])
+        training_dataset = neckNavigatorDataset(inputs=train_inputs, targets=train_targets, transform = head_augmentations)#, transform = head_augmentations
+
+        training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=None)#worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1))
     
-    validation_dataset = neckNavigatorDataset(inputs=val_inputs, targets=val_targets)
-    validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=None)
+        validation_dataset = neckNavigatorDataset(inputs=val_inputs, targets=val_targets)
+        validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=None)
 
 
-    test_dataset = neckNavigatorDataset(inputs = test_inputs, targets = test_targets)
-    test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
+        test_dataset = neckNavigatorDataset(inputs = test_inputs, targets = test_targets)
+        test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
-    #torch.save(test_dataloader, dataloader_dir, pickle_protocol= pickle.HIGHEST_PROTOCOL)
-    # create model
-    model = neckNavigator()
+        #torch.save(test_dataloader, dataloader_dir, pickle_protocol= pickle.HIGHEST_PROTOCOL)
+        # create model
+        model = neckNavigator()
 
-    # put the model on GPU(s)
-    device = 'cuda:1'
-    # model.to(device)
-    load_prev=False
-    model=setup_model(model, checkpoint_dir, device, load_prev= False, load_best = load_prev)
-    # Log the number of learnable parameters
-    logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
- 
-    # Create the optimizer
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.001)
-
-    # Create learning rate adjustment strategy
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
-
-    # Parallelize model
-    #model = nn.DataParallel(model) #runs on multiple gpus if we want a larger batch size
-    epoch = 0 
-    iteration = 0
-
-    if load_prev == True:
-        state = torch.load(os.path.join(checkpoint_dir, 'best_checkpoint.pytorch'))
-        epoch = state['epoch']
-        iteration = state['num_iterations']
-        print("starting epoch: ", epoch)
+        # put the model on GPU(s)
+        device = 'cuda:1'
+        # model.to(device)
+        load_prev=False
+        model=setup_model(model, checkpoint_dir, device, load_prev= False, load_best = load_prev)
+        # Log the number of learnable parameters
+        logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
     
-    # Create model trainer
-    trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                 val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
+        # Create the optimizer
+        optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = 0.001)
 
-                                 num_epoch = epoch ,patience=50, iters_to_accumulate=4)
+        # Create learning rate adjustment strategy
+        lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
 
-    
-    # Start training
-    trainer.fit()
+        # Parallelize model
+        #model = nn.DataParallel(model) #runs on multiple gpus if we want a larger batch size
+        epoch = 0 
+        iteration = 0
+
+        if load_prev == True:
+            state = torch.load(os.path.join(checkpoint_dir, 'best_checkpoint.pytorch'))
+            epoch = state['epoch']
+            iteration = state['num_iterations']
+            print("starting epoch: ", epoch)
+        
+        # Create model trainer
+        trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
+                                    val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1, num_iterations = iteration, 
+
+                                    num_epoch = epoch ,patience=50, iters_to_accumulate=4)
+
+        
+        # Start training
+        trainer.fit()
 
 
-    #testing
-    #model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
-    tester = neckNavigatorTest2(checkpoint_dir, test_dataloader, device)
-    C3s, segments, GTs = tester
-    
-    print("gt info: ", len(GTs))
-    print(GTs.shape,)
-    print("segs info: ", segments.shape)
+        #testing
+        #model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
+        tester = neckNavigatorTest2(checkpoint_dir, test_dataloader, device)
+        C3s, segments, GTs = tester
+        
+        print("gt info: ", len(GTs))
+        print(GTs.shape,)
+        print("segs info: ", segments.shape)
 
-    difference = euclid_dis(GTs, segments)
-    print(difference)
-    #projections(C3s[0], segments[0], order = [1,2,0], save_name = 'funky')
+        difference = euclid_dis(GTs, segments)
+        print(difference)
+        #projections(C3s[0], segments[0], order = [1,2,0], save_name = 'funky')
 
-    
+        
     return
-    
+        
     
 if __name__ == '__main__':
     main()
