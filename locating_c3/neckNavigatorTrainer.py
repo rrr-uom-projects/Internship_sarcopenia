@@ -47,11 +47,18 @@ class neckNavigator_trainer:
         self.patience = patience
         self.epochs_since_improvement = 0
         #tensorboard 
-        #scalars
+        #scalars log dir
+        try:
+            os.makedirs(os.path.join(checkpoint_dir, 'logs'))
+        except OSError:
+                pass
         runs = os.listdir(os.path.join(checkpoint_dir, 'logs'))
         if num_epoch == 0:
             log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)))
-            os.makedirs(log_dir)
+            try: 
+                os.makedirs(log_dir)
+            except OSError:
+                pass
         else: 
             log_dir = os.path.join(checkpoint_dir, 'logs','run_{0}'.format(len(runs)-1))
         self.writer = SummaryWriter(log_dir = log_dir)
@@ -104,7 +111,7 @@ class neckNavigator_trainer:
         df_sd = pd.DataFrame({'slice_diff': self.slice_difference_list})
         #keys = ['train_loss', 'val_loss', 'slice_diff']
         dict = {'train_loss': df_tl, 'val_loss': df_vl, 'slice_diff': df_sd}
-        save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/log_info.xlsx'
+        save_path = self.checkpoint_dir + '/log_info.xlsx'
         csv_writer = pd.ExcelWriter(save_path)
         for key, df in dict.items():
             df.to_excel(excel_writer = csv_writer, index = False,
