@@ -41,6 +41,7 @@ def k_fold_cross_val(dataset_size, num_splits):
           test.append(test_index)
     return train, test
 
+#LOSSES
 def js_reg(p, q):
     #~ Jensen-Shannon Divergence
     #@params:
@@ -85,6 +86,18 @@ def sharpen_heatmaps(heatmaps, alpha):
     #sharpened_heatmaps /= sharpened_heatmaps.flatten(2).sum(-1)
     return sharpened_heatmaps
 
+#METRICS
+def get_data(path): 
+    data = np.load(path, allow_pickle=True)
+    #print([*data.keys()])
+    inputs = data['inputs']
+    targets = data['masks']
+    ids = data['ids']
+    transforms = data['transforms']
+    org_slices = data['org_nos']
+    dims = data['dims']
+    return (np.array(inputs), np.array(targets), np.array(ids), np.array(transforms), np.array(org_slices), np.array(dims))
+
 def GetSliceNumber(segment):
   slice_number = []
   weights = []
@@ -113,6 +126,67 @@ def Guassian(inp: np.ndarray):
   gauss = nd.gaussian_filter(inp,3)
   return gauss
 
+def euclid_dis(gts, masks, is_tensor = False):
+  #quantifies how far of the network's predictions are
+  if is_tensor:
+    gt = gts
+    msk = masks
+    # pred_vox = torch.tensor([np.unravel_index(torch.argmax(gts[i, 0]), gts.size()[2:]) for i in range(gts.size(0))]).type(torch.FloatTensor)
+    # gt_vox = torch.tensor([np.unravel_index(torch.argmax(masks[i, 0]), masks.size()[2:]) for i in range(masks.size(0))]).type(torch.FloatTensor)
+    # print(pred_vox, gt_vox)
+    # print("vox_coord dff: ",torch.abs(gt_vox[2]-pred_vox[2]))
+    gts = gt.cpu().detach().numpy()[0]
+    masks = msk.cpu().detach().numpy()[0]
+  distances = []
+  for i in range(len(gts)):
+    gt_coords = GetTargetCoords(gts[i])
+    msk_coords = GetTargetCoords(masks[i])
+    distance = np.abs(gt_coords[2]-msk_coords[2])
+    if len(gts) == 1: 
+      distances = distance
+    else: 
+      distances.append(distance)
+  distances = np.array(distances)
+  print(np.average(distances))
+  return distances
+
+def GetVoxelDims():
+  path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
+  data = np.load(path)
+  vox_dims = data[1]
+  return vox_dims
+
+def euclid_diff_mm(gts, msks, is_tensor = False):
+  distances = euclid_dis(gts, msks, is_tensor)
+  dims= GetVoxelDims()
+  print(dims.shape)
+  mm_distances = dims[:,2]*distances #might have to do a for loop
+  return distances, mm_distances
+
+def threeD_euclid_diff(gts, msks, dims, is_tensor = False):
+  mm_distances = []
+  distances = []
+  if is_tensor:
+    gts = gts.cpu().detach().numpy()[0]
+    msks = msks.cpu().detach().numpy()[0]
+  for i in range(len(gts)):
+    gt_coords = GetTargetCoords(gts[i])
+    msk_coords = GetTargetCoords(msks[i])
+    distance = np.abs(gt_coords-msk_coords)
+    mm_distance = dims[i]*distance #mm?
+    if len(gts) == 1: 
+      mm_distances = mm_distance
+      distances = distance
+    else: 
+      mm_distances.append(mm_distance)
+      distances.append(distance)
+  distances = np.array(distances)
+  mm_distances = np.array(mm_distances)
+  print(np.average(mm_distances, axis = [0,1,2]))
+  print(np.average(distances, axis = [0,1,2]))
+  return distances, mm_distances
+
+#MODEL SETUP
 def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = False, eval_mode = False):
   model.to(device)
   if load_prev == True:
@@ -125,6 +199,7 @@ def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = Fa
     model.eval()
   return model
 
+#DISPLAYING DATA
 def PrintSlice(input, targets, show = False):
     slice_no = GetSliceNumber(targets)
     print("slice no: ", slice_no)
@@ -247,31 +322,6 @@ def classRatio(masks):
     weights = (1/average_ratio) #penalise the network more harshly for getting it wrong
     print(weights)
 
-def euclid_dis(gts, masks, is_tensor = False):
-  #quantifies how far of the network's predictions are
-  if is_tensor:
-    gt = gts
-    msk = masks
-    # pred_vox = torch.tensor([np.unravel_index(torch.argmax(gts[i, 0]), gts.size()[2:]) for i in range(gts.size(0))]).type(torch.FloatTensor)
-    # gt_vox = torch.tensor([np.unravel_index(torch.argmax(masks[i, 0]), masks.size()[2:]) for i in range(masks.size(0))]).type(torch.FloatTensor)
-    # print(pred_vox, gt_vox)
-    # print("vox_coord dff: ",torch.abs(gt_vox[2]-pred_vox[2]))
-    gts = gt.cpu().detach().numpy()[0]
-    masks = msk.cpu().detach().numpy()[0]
-  distances = []
-  for i in range(len(gts)):
-    gt_coords = GetTargetCoords(gts[i])
-    msk_coords = GetTargetCoords(masks[i])
-    #print(gt_coords)
-    #print(msk_coords)
-    distance = np.abs(gt_coords[2]-msk_coords[2])
-    if len(gts) == 1: 
-      distances = distance
-    else: 
-      distances.append(distance)
-  distances = np.array(distances)
-  print(np.average(distances))
-  return distances
 
 def get_mips(array):
   """
@@ -389,16 +439,6 @@ def plot_to_image(figure):
   # Add the batch dimension
   image = tf.expand_dims(image, 0)
   return image
-
-def get_data(path): 
-    data = np.load(path, allow_pickle=True)
-    #print([*data.keys()])
-    inputs = data['inputs']
-    targets = data['masks']
-    ids = data['ids']
-    transforms = data['transforms']
-    org_slices = data['org_nos']
-    return (np.array(inputs), np.array(targets), np.array(ids), np.array(transforms), np.array(org_slices))
 
 def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = False):
   inp_data = get_data(path)
