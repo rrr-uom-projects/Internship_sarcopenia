@@ -151,9 +151,11 @@ class neckNavigator_trainer:
                 self.logger.info(f'Training stats. Loss: {train_losses.avg}')
                 self._log_stats('train', train_losses.avg)
 
+
             self.num_iterations += 1
 
         if (self.num_epoch%2 == 0):
+
                 #write the slice difference between gts and preds
                 #difference = euclid_dis(h_target, output, is_tensor=True)
                 #self._log_dist(difference)
@@ -212,6 +214,7 @@ class neckNavigator_trainer:
                 val_slice_diff.append(difference)
             if (self.num_epoch%2 == 0):
                 self._log_images(ct_im, output, name = "Validation Data")
+
                 
 
             self._log_dist(val_slice_diff)      
