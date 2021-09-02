@@ -178,9 +178,10 @@ def path_list2():
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids, org_slice_nos, voxel_dims, transforms = None):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
-    vox_path =  '/home/hermione/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
-    #path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+    #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    #vox_path =  '/home/hermione/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
+    vox_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
+    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tsphere.npz' 
     ids = np.array(ids)
     print("final shape: ", inputs.shape, targets.shape, ids.shape, len(org_slice_nos), len(voxel_dims))
     np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos.astype(int), dims = voxel_dims.astype(np.float32))
@@ -292,7 +293,7 @@ ids = PathList[2]#[:no_patients]
 
 print("no of patients: ",len(inputs))
 #apply preprocessing
-preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, heatmap= gaussian)#sphere = sphereMask
+preprocessed_data = preprocessing(inputs=inputs, targets=targets, normalise = normalize_01, cropping = cropping, sphere = sphereMask )#heatmap= gaussian)#sphere = sphereMask
 
 CTs = []
 masks = []
@@ -320,8 +321,8 @@ projections(CTs[1], masks[1], order=[1,2,0])
 save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
 
 #%%
-path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
-display_input_data(path)
+#path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+#display_input_data(path)
 """
 def cropping(inp: np.ndarray, tar: np.ndarray ):
     #want to crop all CT scans to be [177,260,260]
