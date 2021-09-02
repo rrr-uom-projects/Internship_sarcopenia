@@ -2,6 +2,7 @@
 #created: 20/07/2021
 #hermione
 
+from math import sqrt
 from SimpleITK.SimpleITK import Modulus
 import numpy as np
 from numpy.core.fromnumeric import argmax
@@ -29,14 +30,17 @@ import torch
 import torch.nn.functional
 from sklearn.model_selection import KFold
 
+#K FOLD CROSS VALIDATION
 def k_fold_cross_val(dataset_size, num_splits):
     train =[]
     test = []
     np.random.seed(2305)
-    shuffled_ind_list = np.random.permutation(dataset_size)
-    kf = KFold(n_splits= num_splits)
+    #shuffled_ind_list = np.random.permutation(dataset_size)
+    shuffled_ind_list = np.arange(dataset_size)
+    #print(shuffled_ind_list)
+    kf = KFold(n_splits = num_splits, shuffle = True, random_state=np.random.seed(2305))
     for train_index, test_index in kf.split(shuffled_ind_list):
-          print("TRAIN:", train_index, "TEST:", test_index)
+          print("TRAIN:", train_index, "\nTEST:", test_index)
           train.append(train_index)
           test.append(test_index)
     return train, test
@@ -156,35 +160,46 @@ def GetVoxelDims():
   vox_dims = data[1]
   return vox_dims
 
-def euclid_diff_mm(gts, msks, is_tensor = False):
+def euclid_diff_mm(gts, msks, dims,is_tensor = False):
   distances = euclid_dis(gts, msks, is_tensor)
-  dims= GetVoxelDims()
+  dims = dims
   print(dims.shape)
   mm_distances = dims[:,2]*distances #might have to do a for loop
   return distances, mm_distances
 
-def threeD_euclid_diff(gts, msks, dims, is_tensor = False):
+def threeD_euclid_diff(gts_coords, msks_coords, dims):
   mm_distances = []
   distances = []
-  if is_tensor:
-    gts = gts.cpu().detach().numpy()[0]
-    msks = msks.cpu().detach().numpy()[0]
-  for i in range(len(gts)):
-    gt_coords = GetTargetCoords(gts[i])
-    msk_coords = GetTargetCoords(msks[i])
+  pythag_dist = []
+  for i in range(len(gts_coords)):
+    gt_coords = gts_coords[i]
+    msk_coords = msks_coords[i]
     distance = np.abs(gt_coords-msk_coords)
     mm_distance = dims[i]*distance #mm?
-    if len(gts) == 1: 
+    pythag = pythagoras(mm_distance)
+    if len(gts_coords) == 1: 
       mm_distances = mm_distance
       distances = distance
+      pythag_dist = pythag
     else: 
       mm_distances.append(mm_distance)
       distances.append(distance)
+      pythag_dist.append(pythag)
   distances = np.array(distances)
   mm_distances = np.array(mm_distances)
-  print(np.average(mm_distances, axis = [0,1,2]))
-  print(np.average(distances, axis = [0,1,2]))
-  return distances, mm_distances
+  pythag_dist = np.array(pythag_dist)
+  #print(np.average(mm_distances, axis = [0,1,2]))
+  #print(np.average(distances, axis = [0,1,2]))
+  return distances, mm_distances, pythag_dist
+
+def z_euclid_dist(gts, msks, dims, is_tensor = False):
+  three_diff, three_mm_dist = threeD_euclid_diff(gts, msks, dims, is_tensor=is_tensor)
+  return three_diff[2], three_mm_dist[2]
+
+def pythagoras(three_distance):
+  pythag = np.sqrt(np.pow(three_distance[0],2)+pow(three_distance[1],2)+pow(three_distance[2],2))
+  return pythag
+
 
 #MODEL SETUP
 def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = False, eval_mode = False):
