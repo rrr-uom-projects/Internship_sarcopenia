@@ -165,14 +165,14 @@ def main():
         ###*** POST-PROCESSING ***###
         x,y,z = mrofsnart(slice_no_preds, transforms, test_inds = test_array[i])
         _,_,z_test  = mrofsnart(slice_no_gts,transforms,test_inds = test_array[i])
-        
-        difference, mm_distance = z_euclid_dist(GTs, segments, test_vox_dims)
-        _, mm_threeD_distance, pythagoras_dist = threeD_euclid_diff(test_org_slices, z, test_vox_dims)
-        print(mm_distance)
 
+        difference_old = euclid_dis(GTs, segments)
+        difference, mm_distance= euclid_diff_mm(test_org_slices, z, test_vox_dims)
+       
+        ###*** SAVING TEST INFO ***###
         df = pd.DataFrame({"IDs": ids[test_array[i]], "Out_Slice_Numbers": slice_no_preds, "PostProcessSliceNo": z, "GT_Org_Slice_No": test_org_slices, 
-            "GT_ProcessedSliceNo": slice_no_gts, "GT_z_test": z_test, "SliceDifferences": difference, "Slice_mm_Distance": mm_distance, "x_distance": mm_threeD_distance[0], 
-            "y_distance": mm_threeD_distance[1], "z_disance":mm_threeD_distance[2], "pythag_dist_abs": pythagoras_dist})
+            "GT_ProcessedSliceNo": slice_no_gts, "GT_z_test": z_test, "SliceDifferences": difference,"OldSliceDifferences": difference_old, "z_distance": mm_distance}) 
+            #"y_distance": mm_threeD_distance[1], "z_disance":mm_threeD_distance[2], "pythag_dist_abs": pythagoras_dist})
         df.to_excel(excel_writer = xl_writer, index=False,
                 sheet_name=f'fold{i+1}')
         xl_writer.save()

@@ -160,12 +160,33 @@ def GetVoxelDims():
   vox_dims = data[1]
   return vox_dims
 
-def euclid_diff_mm(gts, msks, dims,is_tensor = False):
-  distances = euclid_dis(gts, msks, is_tensor)
-  dims = dims
-  print(dims.shape)
-  mm_distances = dims[:,2]*distances #might have to do a for loop
+# def euclid_diff_mm(gts, msks, dims,is_tensor = False):
+#   distances = euclid_dis(gts, msks, is_tensor)
+#   dims = dims
+#   print(dims.shape)
+#   mm_distances = dims[:,2]*distances #might have to do a for loop
+#   return distances, mm_distances
+
+def euclid_diff_mm(gts_no, msks_no, dims):
+  mm_distances = []
+  distances = []
+  for i in range(len(gts_no)):
+    gt_no = gts_no[i]
+    msk_no = msks_no[i]
+    distance = np.abs(gt_no-msk_no)
+    print(distance)
+    print(dims[i,2])
+    mm_distance = dims[i,2]*distance #mm?
+    if len(gts_no) == 1: 
+      mm_distances = mm_distance
+      distances = distance
+    else: 
+      mm_distances.append(mm_distance)
+      distances.append(distance)
+  distances = np.array(distances)
+  mm_distances = np.array(mm_distances)
   return distances, mm_distances
+
 
 def threeD_euclid_diff(gts_coords, msks_coords, dims):
   mm_distances = []
@@ -175,6 +196,8 @@ def threeD_euclid_diff(gts_coords, msks_coords, dims):
     gt_coords = gts_coords[i]
     msk_coords = msks_coords[i]
     distance = np.abs(gt_coords-msk_coords)
+    print(distance)
+    print(dims[i])
     mm_distance = dims[i]*distance #mm?
     pythag = pythagoras(mm_distance)
     if len(gts_coords) == 1: 
@@ -192,12 +215,12 @@ def threeD_euclid_diff(gts_coords, msks_coords, dims):
   #print(np.average(distances, axis = [0,1,2]))
   return distances, mm_distances, pythag_dist
 
-def z_euclid_dist(gts, msks, dims, is_tensor = False):
-  three_diff, three_mm_dist = threeD_euclid_diff(gts, msks, dims, is_tensor=is_tensor)
+def z_euclid_dist(gts, msks, dims):
+  three_diff, three_mm_dist,_ = threeD_euclid_diff(gts, msks, dims)
   return three_diff[2], three_mm_dist[2]
 
 def pythagoras(three_distance):
-  pythag = np.sqrt(np.pow(three_distance[0],2)+pow(three_distance[1],2)+pow(three_distance[2],2))
+  pythag = np.sqrt(pow(three_distance[0],2)+pow(three_distance[1],2)+pow(three_distance[2],2))
   return pythag
 
 
