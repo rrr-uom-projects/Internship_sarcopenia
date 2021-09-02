@@ -81,6 +81,7 @@ class neckNavigator_trainer:
         self.val_loss_list = []
         self.slice_difference_list = []
         self.slice_dist_list = []
+        self.lr_list = []
         #self.file = open('log_info.csv', 'w', newline='')
         #self.csv_writer = csv.writer(self.file)
         
@@ -105,12 +106,14 @@ class neckNavigator_trainer:
         self.train_loss_list = np.array(self.train_loss_list)
         self.val_loss_list = np.array(self.val_loss_list)
         self.slice_difference_list = np.array(self.slice_difference_list)
+        self.lr_list = np.array(self.lr_list)
         print(self.train_loss_list.shape)
         df_tl = pd.DataFrame({'interation': self.train_loss_list[:,0],'train_loss': self.train_loss_list[:,1]})
         df_vl = pd.DataFrame({'interation': self.val_loss_list[:,0],'val_loss': self.val_loss_list[:,1]})
-        df_sd = pd.DataFrame({'slice_diff': self.slice_difference_list})
+        df_sd = pd.DataFrame({'Epoch': self.slice_difference_list[:,0],'slice_diff': self.slice_difference_list[:,1]})
+        df_lr = pd.DataFrame({'Epoch': self.lr_list[:,0],'slice_diff': self.lr_list[:,1]})
         #keys = ['train_loss', 'val_loss', 'slice_diff']
-        dict = {'train_loss': df_tl, 'val_loss': df_vl, 'slice_diff': df_sd}
+        dict = {'train_loss': df_tl, 'val_loss': df_vl, 'slice_diff': df_sd, 'lr': df_lr}
         save_path = self.checkpoint_dir + '/log_info.xlsx'
         csv_writer = pd.ExcelWriter(save_path)
         for key, df in dict.items():
@@ -305,6 +308,7 @@ class neckNavigator_trainer:
     def _log_lr(self):
         lr = self.optimizer.param_groups[0]['lr']
         self.writer.add_scalar('learning_rate', lr, self.num_epoch)
+        self.lr_list.append([self.num_epoch, lr])
 
     def _log_new_best(self, eval_score):
         self.writer.add_scalar('best_val_loss', eval_score, self.num_iterations)
@@ -325,7 +329,7 @@ class neckNavigator_trainer:
         #avg_mmdist = np.average(mm_dist)
         self.writer.add_scalar('Slice difference', avgdist, self.num_epoch)
         #self.writer.add_scalar('Slice difference', avg_mmdist, self.num_epoch)
-        self.slice_difference_list.append(avgdist)
+        self.slice_difference_list.append([self.num_epoch, avgdist])
     
     def _log_images(self, inp, pred, name):
         images = projections(inp, pred, order=[2,1,0], type="tensor")
