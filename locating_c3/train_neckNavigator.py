@@ -30,8 +30,8 @@ from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, dataset_TVTsplit
 from neckNavigatorTester import neckNavigatorTest2
 
-from utils import setup_model, PrintSlice , projections, euclid_dis, get_data
-from utils import k_fold_cross_val, slice_preds, GetSliceNumber, GetTargetCoords
+from utils import pythagoras, setup_model, projections, euclid_dis, get_data, threeD_euclid_diff
+from utils import k_fold_cross_val, slice_preds, GetSliceNumber, euclid_diff_mm, z_euclid_dist
 from utils import mrofsnart
 
 
@@ -53,15 +53,14 @@ def main():
 
     # decide file paths
     #livs paths
-    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
-    
-
+    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
 
     #herms paths
-    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
-    #checkpoint_dir = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
-
-
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    checkpoint = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/fold_info/c3_loc.xlsx'#' +str(i) + '
+    
+    xl_writer = pd.ExcelWriter(save_path)
 
     # Create main logger
     logger = get_logger('NeckNavigator_Training')
@@ -80,8 +79,8 @@ def main():
     train_BS = 1 #int(6 * args.GPUs)
     val_BS = 1 #int(6 * args.GPUs)
 
-    train_workers = 0 #int(8)
-    val_workers = 0 #int(4)
+    train_workers = int(8)
+    val_workers = int(4)
 
 
     # allocate ims to train, val and test
@@ -90,19 +89,23 @@ def main():
     #train_inputs, train_targets, val_inputs, val_targets, test_inputs, test_targets = dataset_TVTsplit(inputs, targets, train_inds, val_inds, test_inds)
     train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
     
+    #######*** K FOLD CROSS VALIDATION LOOP ***#######
     for i in range(0,5):
-    # dataloaders
 
-        checkpoint_dir = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/fold" + str(i)
+        checkpoint_dir = checkpoint + "_fold" + str(i+1)
+        try:
+            os.makedirs(checkpoint_dir)
+        except OSError: #already there
+            pass
 
-        val_spli, train_spli = np.split(train_array[i], [16], axis= 0)
+        val_spli, train_spli = np.split(train_array[i], [round(0.2*len(train_array[i]))], axis= 0)#[16]
         train_inputs, train_targets, val_inputs, val_targets, test_inputs, test_targets = dataset_TVTsplit(inputs, targets, train_spli, val_spli, test_array[i])
-        training_dataset = neckNavigatorDataset(inputs=train_inputs, targets=train_targets, transform = head_augmentations)#, transform = head_augmentations
-
-        training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=None)#worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1))
+        
+        training_dataset = neckNavigatorDataset(inputs=train_inputs, targets=train_targets, transform = head_augmentations)
+        training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))#worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1))
     
         validation_dataset = neckNavigatorDataset(inputs=val_inputs, targets=val_targets)
-        validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=None)
+        validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
 
         test_dataset = neckNavigatorDataset(inputs = test_inputs, targets = test_targets)
@@ -140,7 +143,6 @@ def main():
         # Create model trainer
         trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
                                     val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1, num_iterations = iteration, 
-
                                     num_epoch = epoch ,patience=50, iters_to_accumulate=4)
 
         
@@ -148,33 +150,37 @@ def main():
         trainer.fit()
 
 
-        #testing
-        #model = setup_model(model, checkpoint_dir, device, load_prev=True, eval_mode=True)
+        #########TESTING##########
         tester = neckNavigatorTest2(checkpoint_dir, test_dataloader, device)
         C3s, segments, GTs = tester
-        difference = euclid_dis(GTs, segments)
+        #difference = euclid_dis(GTs, segments)
 
         slice_no_preds = slice_preds(segments)
         slice_no_gts = slice_preds(GTs)
-        slice_no_gts_test = []
-
-        for j in range(len(GTs)): #sanity check
-            slice_no_gt = GetSliceNumber(GTs[j])
-            slice_no_gts_test.append(slice_no_gt)
 
 
+        test_org_slices = org_slices[test_array[i]]
+        test_vox_dims = voxel_dims[test_array[i]]
 
+        ###*** POST-PROCESSING ***###
+        x,y,z = mrofsnart(slice_no_preds, transforms, test_inds = test_array[i])
+        _,_,z_test  = mrofsnart(slice_no_gts,transforms,test_inds = test_array[i])
 
-
-        x,y,z = mrofsnart(slice_no_preds, transforms, test_inds =test_array)
-        df = pd.DataFrame({"IDs": ids[test_array[i]], "Slice_Numbers": slice_no_preds, "PostProcess Slice numbers": z, "GT org slices": test_org_slices, "GT T Slices": slice_no_gts, "Distances": difference})
-        save_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/fold' +str(i) + '/c3_loc.xlsx'
-        df.to_excel(excel_writer = save_path, index=False,
-                sheet_name="data")
+        difference_old = euclid_dis(GTs, segments)
+        difference, mm_distance= euclid_diff_mm(test_org_slices, z, test_vox_dims)
+       
+        ###*** SAVING TEST INFO ***###
+        df = pd.DataFrame({"IDs": ids[test_array[i]], "Out_Slice_Numbers": slice_no_preds, "PostProcessSliceNo": z, "GT_Org_Slice_No": test_org_slices, 
+            "GT_ProcessedSliceNo": slice_no_gts, "GT_z_test": z_test, "SliceDifferences": difference,"OldSliceDifferences": difference_old, "z_distance": mm_distance}) 
+            #"y_distance": mm_threeD_distance[1], "z_disance":mm_threeD_distance[2], "pythag_dist_abs": pythagoras_dist})
+        df.to_excel(excel_writer = xl_writer, index=False,
+                sheet_name=f'fold{i+1}')
+        xl_writer.save()
         
         
 
-        
+    xl_writer.close()
+
     return
         
     
