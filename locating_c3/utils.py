@@ -28,22 +28,6 @@ import torch.nn as nn
 from functools import reduce
 import torch
 import torch.nn.functional
-from sklearn.model_selection import KFold
-
-#K FOLD CROSS VALIDATION
-def k_fold_cross_val(dataset_size, num_splits):
-    train =[]
-    test = []
-    np.random.seed(2305)
-    #shuffled_ind_list = np.random.permutation(dataset_size)
-    shuffled_ind_list = np.arange(dataset_size)
-    #print(shuffled_ind_list)
-    kf = KFold(n_splits = num_splits, shuffle = True, random_state=np.random.seed(2305))
-    for train_index, test_index in kf.split(shuffled_ind_list):
-          print("TRAIN:", train_index, "\nTEST:", test_index)
-          train.append(train_index)
-          test.append(test_index)
-    return train, test
 
 #LOSSES
 def js_reg(p, q):
@@ -116,7 +100,6 @@ def GetSliceNumber(segment):
 
 def GetTargetCoords(target):
     coords = center_of_mass(target)
-    #coords = torch.argmax(target, keepdim=True)
     return coords
 
 def slice_preds(masks):
@@ -126,81 +109,43 @@ def slice_preds(masks):
     slice_nos.append(GetSliceNumber(masks[i]))
   return np.array(slice_nos)
 
-def Guassian(inp: np.ndarray):
-  gauss = nd.gaussian_filter(inp,3)
-  return gauss
-
 def euclid_dis(gts, masks, is_tensor = False):
-  #quantifies how far of the network's predictions are
+  #quantifies how far off the network's predictions are
   if is_tensor:
     gt = gts
     msk = masks
-    # pred_vox = torch.tensor([np.unravel_index(torch.argmax(gts[i, 0]), gts.size()[2:]) for i in range(gts.size(0))]).type(torch.FloatTensor)
-    # gt_vox = torch.tensor([np.unravel_index(torch.argmax(masks[i, 0]), masks.size()[2:]) for i in range(masks.size(0))]).type(torch.FloatTensor)
-    # print(pred_vox, gt_vox)
-    # print("vox_coord dff: ",torch.abs(gt_vox[2]-pred_vox[2]))
     gts = gt.cpu().detach().numpy()[0]
     masks = msk.cpu().detach().numpy()[0]
   distances = []
   for i in range(len(gts)):
-    gt_coords = GetTargetCoords(gts[i])
-    msk_coords = GetTargetCoords(masks[i])
-    distance = np.abs(gt_coords[2]-msk_coords[2])
+    #gt_z_coords = GetTargetCoords(gts[i])[2]
+    #msk_z_coords = GetTargetCoords(masks[i])[2]
+    gt_z_coords = GetSliceNumber(gts[i])
+    msk_z_coords = GetSliceNumber(masks[i])
+    distance = np.abs(gt_z_coords-msk_z_coords)
     if len(gts) == 1: 
       distances = distance
     else: 
       distances.append(distance)
   distances = np.array(distances)
-  print(np.average(distances))
+  #print(np.average(distances))
   return distances
 
-def GetVoxelDims():
-  path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
-  data = np.load(path)
-  vox_dims = data[1]
-  return vox_dims
-
-# def euclid_diff_mm(gts, msks, dims,is_tensor = False):
-#   distances = euclid_dis(gts, msks, is_tensor)
-#   dims = dims
-#   print(dims.shape)
-#   mm_distances = dims[:,2]*distances #might have to do a for loop
-#   return distances, mm_distances
-
-def euclid_diff_mm(gts_no, msks_no, dims):
-  mm_distances = []
-  distances = []
-  for i in range(len(gts_no)):
-    gt_no = gts_no[i]
-    msk_no = msks_no[i]
-    distance = np.abs(gt_no-msk_no)
-    print(distance)
-    print(dims[i,2])
-    mm_distance = dims[i,2]*distance #mm?
-    if len(gts_no) == 1: 
-      mm_distances = mm_distance
-      distances = distance
-    else: 
-      mm_distances.append(mm_distance)
-      distances.append(distance)
-  distances = np.array(distances)
-  mm_distances = np.array(mm_distances)
-  return distances, mm_distances
-
-
-def threeD_euclid_diff(gts_coords, msks_coords, dims):
+def threeD_euclid_diff(gts, msks, dims):
   mm_distances = []
   distances = []
   pythag_dist = []
-  for i in range(len(gts_coords)):
-    gt_coords = gts_coords[i]
-    msk_coords = msks_coords[i]
+  #have to do backwards processing on images to use this. or just input coords
+  for i in range(len(gts)):
+    gt_coords = GetTargetCoords(gts[i])
+    msk_coords = GetTargetCoords(msks[i])
     distance = np.abs(gt_coords-msk_coords)
     print(distance)
     print(dims[i])
     mm_distance = dims[i]*distance #mm?
     pythag = pythagoras(mm_distance)
-    if len(gts_coords) == 1: 
+
+    if len(gts) == 1: 
       mm_distances = mm_distance
       distances = distance
       pythag_dist = pythag
@@ -211,8 +156,6 @@ def threeD_euclid_diff(gts_coords, msks_coords, dims):
   distances = np.array(distances)
   mm_distances = np.array(mm_distances)
   pythag_dist = np.array(pythag_dist)
-  #print(np.average(mm_distances, axis = [0,1,2]))
-  #print(np.average(distances, axis = [0,1,2]))
   return distances, mm_distances, pythag_dist
 
 def z_euclid_dist(gts, msks, dims):
@@ -260,8 +203,6 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
         #undo scale
         net_slice[i] *= 14/16
 
-        #print(net_slice[i], transforms[i][1][0])
-
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
         z = net_slice[i] + transforms[i][1][0]
@@ -271,14 +212,14 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
             x += transforms[i][1][2]
             y += transforms[i][1][4]
             x_arr.append(x)
+
         #undo flip if necessary
             if (transforms[i][0]==True):
                 y = shape - y
             y_arr.append(y)
+
         if (transforms[i][0]==True):
             z = shape - z
-
-        #print(z)
 
         z_arr.append(z)
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
@@ -483,44 +424,54 @@ def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = F
   inps = inp_data[0]
   msks = inp_data[1]
   ids = inp_data[2]
+  slice_no_gts = inp_data[4]
   data_size = len(inps)
-  #slice_no_gts = slice_preds(msks)
-  images = []
-  targets = []
+  #images = []
+  #targets = []
   if type == "tensor":
      inp = inps.cpu().detach().squeeze().numpy()
      msk = msks.cpu().detach().squeeze().numpy().astype(float)
        
-  for j in range(data_size):
-    inp = inps[j]
-    msk = msks[j]
-    image, mask = base_projections(inp, msk)
-    images.append(image)
-    targets.append(mask)
-
-  print(np.asarray(images).shape, np.asarray(targets).shape)
-  fig = plt.figure(figsize=(30, 150))
+  # for j in range(data_size):
+  #   inp = inps[j]
+  #   msk = msks[j]
+  #   image, mask = base_projections(inp, msk)
+  #   images.append(image)
+  #   targets.append(mask)
+  #print(np.asarray(images).shape, np.asarray(targets).shape)
+  fig = plt.figure(figsize=(100, 400))
   ax = []
-  columns = 3
-  rows = int(1 + data_size/3)
+  columns = 6
+  rows = int(1 + data_size/2)
   j=0
-  for l in range(1, data_size +1):#data_size +1
-    #inp = inps[l-1]
-    #msk = msks[l-1]
-    #image, target = base_projections(inp, msk)
-    image = images[l-1]
-    target =  targets[l-1]
-    id = ids[l-1]
-    for i in range(3,4):
+  for l in range(0, data_size):
+    coords = GetTargetCoords(msks[l])
+    slice_no_gt = GetSliceNumber(msks[l])
+    image, target = base_projections(inps[l], msks[l])
+    # image = images[l-1]
+    # target =  targets[l-1]
+    id = ids[l]
+    slice_no = 128 - np.round(slice_no_gt)
+    for i in range(1,4):
       # create subplot and append to ax
       j+=1
       print(l,i)
-      label = str(l) + ', ID: ' + id
+      label = str(l+1) + ', ID: ' + id
       ax.append(fig.add_subplot(rows, columns, j))
       ax[-1].set_title(label)
       plt.imshow(image[i-1])
       target[i-1][target[i-1] == 0] = np.nan
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
+      #displaying c3
+      if (i==1):
+        plt.scatter(coords[i-1], (128 - coords[i]), c ='r', s=10) #x,y
+      elif (i==2):
+        plt.scatter(coords[i-1], (128 - coords[i]), c ='r', s = 10) #x,z
+      elif (i==3):
+        ax[-1].axhline(slice_no, linewidth=2, c='y')
+        ax[-1].text(0, slice_no-5, "C3: " + str(slice_no), color='w')
+        plt.scatter(coords[i-2], (128 - coords[i-1]), c = 'r', s=10) #y,z
+        
       plt.axis('off')
       
   path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/pic_'
@@ -555,8 +506,8 @@ def display_net_test(inps, msks, gts, ids, shape = 128):
     target =  targets[l-1]
     pred = preds[l-1]
     id = ids[l-1]
-    slice_pred = shape - np.int(slice_no_preds[l-1]) #upside fucking down dear god
-    slice_gt = shape - np.int(slice_no_gts[l-1])
+    slice_pred = shape - np.round(slice_no_preds[l-1]) #upside fucking down dear god
+    slice_gt = shape - np.round(slice_no_gts[l-1])
     for i in range(3,4):
       #create gt subplot 
       j+=1

@@ -51,6 +51,9 @@ def main():
     # get data
     #data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/fold_info/c3_loc.xlsx'#' +str(i) + '
+    xl_writer = pd.ExcelWriter(save_path)
+
     data = get_data(data_path)
     inputs = data[0]
     targets = data[1]
@@ -107,6 +110,25 @@ def main():
     df.to_excel(excel_writer = save_path, index=False,
              sheet_name="data")
     print("Saved predictions")
+
+     #####*** POST-PROCESSING ***#####
+    #     slice_no_preds = slice_preds(segments)  
+    #     slice_no_gts = slice_preds(GTs)
+    #     x,y,z = mrofsnart(slice_no_preds, transforms, test_inds = test_array[i])
+    #     _,_,z_test  = mrofsnart(slice_no_gts, transforms, test_inds = test_array[i])
+
+    #     difference_old = euclid_dis(GTs, segments)
+    #     difference, mm_distance= euclid_diff_mm(test_org_slices, z, test_vox_dims)
+       
+    #     ###*** SAVING TEST INFO ***###
+    #     df = pd.DataFrame({"IDs": ids[test_array[i]], "Out_Slice_Numbers": slice_no_preds, "GT_ProcessedSliceNo": slice_no_gts, "PostProcessSliceNo": z, 
+    #     "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test, "SliceDifferences": difference,"OldSliceDifferences": difference_old, "z_distance": mm_distance}) 
+    #         #"y_distance": mm_threeD_distance[1], "z_disance":mm_threeD_distance[2], "pythag_dist_abs": pythagoras_dist})
+    #     df.to_excel(excel_writer = xl_writer, index=False,
+    #             sheet_name=f'fold{i+1}')
+    #     xl_writer.save()
+        
+    # xl_writer.close()
 
 
     return
