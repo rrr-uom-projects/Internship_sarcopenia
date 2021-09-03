@@ -262,13 +262,9 @@ def projections(inp, msk, order, type = "numpy", show = False, save_name = None,
      if len(inp.shape) == 4:
        inp = inp[0]
        msk = msk[0]
-     #print(msk.shape)
   if vmax == None:
     vmax = np.max(msk)
   print(np.max(msk))
-  #elif vmax <= 0.01:
-    #vmax = np.max(msk)
-  #else: vmax = np.max(vmax)
   images, masks = base_projections(inp, msk)
   fig = plt.figure(figsize=(150, 50))
   ax = []
@@ -432,13 +428,6 @@ def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = F
      inp = inps.cpu().detach().squeeze().numpy()
      msk = msks.cpu().detach().squeeze().numpy().astype(float)
        
-  # for j in range(data_size):
-  #   inp = inps[j]
-  #   msk = msks[j]
-  #   image, mask = base_projections(inp, msk)
-  #   images.append(image)
-  #   targets.append(mask)
-  #print(np.asarray(images).shape, np.asarray(targets).shape)
   fig = plt.figure(figsize=(100, 400))
   ax = []
   columns = 6
@@ -448,8 +437,6 @@ def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = F
     coords = GetTargetCoords(msks[l])
     slice_no_gt = GetSliceNumber(msks[l])
     image, target = base_projections(inps[l], msks[l])
-    # image = images[l-1]
-    # target =  targets[l-1]
     id = ids[l]
     slice_no = 128 - np.round(slice_no_gt)
     for i in range(1,4):
@@ -464,13 +451,13 @@ def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = F
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       #displaying c3
       if (i==1):
-        plt.scatter(coords[i-1], (128 - coords[i]), c ='r', s=10) #x,y
+        plt.scatter((128-coords[1]), (128 - coords[2]), c ='r', s=10) #x,y
       elif (i==2):
-        plt.scatter(coords[i-1], (128 - coords[i]), c ='r', s = 10) #x,z
+        plt.scatter((128-coords[1]), (128 - coords[0]), c ='r', s = 10) #x,z
       elif (i==3):
         ax[-1].axhline(slice_no, linewidth=2, c='y')
         ax[-1].text(0, slice_no-5, "C3: " + str(slice_no), color='w')
-        plt.scatter(coords[i-2], (128 - coords[i-1]), c = 'r', s=10) #y,z
+        plt.scatter((128 - coords[2]), (128 - coords[0]), c = 'r', s=10) #y,z
         
       plt.axis('off')
       

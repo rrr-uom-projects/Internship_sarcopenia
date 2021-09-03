@@ -41,7 +41,6 @@ def main():
     setup_argparse()
     global args
 
-    # decide file paths
     #livs paths
     #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
 
