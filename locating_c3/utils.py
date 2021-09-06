@@ -99,13 +99,13 @@ def GetSliceNumber(segment):
   return int(np.average(slice_number, weights = weights))
 
 def GetTargetCoords(target):
-    coords = center_of_mass(target)
-    return coords
+    coords = center_of_mass(target) 
+    return coords #z,x,y
 
 def slice_preds(masks):
   slice_nos = []
   for i in range(len(masks)):
-    #slice_nos.append(GetTargetCoords(masks[i])[2])
+    #slice_nos.append(GetTargetCoords(masks[i])[0])
     slice_nos.append(GetSliceNumber(masks[i]))
   return np.array(slice_nos)
 
@@ -118,10 +118,10 @@ def euclid_dis(gts, masks, is_tensor = False):
     masks = msk.cpu().detach().numpy()[0]
   distances = []
   for i in range(len(gts)):
-    #gt_z_coords = GetTargetCoords(gts[i])[2]
-    #msk_z_coords = GetTargetCoords(masks[i])[2]
-    gt_z_coords = GetSliceNumber(gts[i])
-    msk_z_coords = GetSliceNumber(masks[i])
+    gt_z_coords = GetTargetCoords(gts[i])[0]
+    msk_z_coords = GetTargetCoords(masks[i])[0]
+    #gt_z_coords = GetSliceNumber(gts[i])
+    #msk_z_coords = GetSliceNumber(masks[i])
     distance = np.abs(gt_z_coords-msk_z_coords)
     if len(gts) == 1: 
       distances = distance
@@ -201,11 +201,13 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
     x_arr,y_arr,z_arr = [],[],[]
     for i in range(len(net_slice)):
         #undo scale
+        print(net_slice[i])
         net_slice[i] *= 14/16
-
+        print(net_slice[i])
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
         z = net_slice[i] + transforms[i][1][0]
+        print(z)
         if coords is not None:
             x = coords[i,0]*2
             y = coords[i,1]*2
@@ -220,7 +222,7 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
 
         if (transforms[i][0]==True):
             z = shape - z
-
+        print(z)
         z_arr.append(z)
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
@@ -451,13 +453,13 @@ def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = F
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       #displaying c3
       if (i==1):
-        plt.scatter((128-coords[1]), (128 - coords[2]), c ='r', s=10) #x,y
+        plt.scatter((128-coords[1]), coords[2], c ='r', s=10) #x,y
       elif (i==2):
         plt.scatter((128-coords[1]), (128 - coords[0]), c ='r', s = 10) #x,z
       elif (i==3):
         ax[-1].axhline(slice_no, linewidth=2, c='y')
         ax[-1].text(0, slice_no-5, "C3: " + str(slice_no), color='w')
-        plt.scatter((128 - coords[2]), (128 - coords[0]), c = 'r', s=10) #y,z
+        plt.scatter(coords[2], (128 - coords[0]), c = 'r', s=10) #y,z
         
       plt.axis('off')
       
@@ -509,7 +511,6 @@ def display_net_test(inps, msks, gts, ids, shape = 128):
     for i in range(3,4):
       #mask subplot
       j+=1
-      #print(slice_pred)
       ax.append(fig.add_subplot(rows, columns, j))
       ax[-1].set_title("Pred " + str(l) + ',' + id)
       plt.imshow(image[i-1])
@@ -520,4 +521,4 @@ def display_net_test(inps, msks, gts, ids, shape = 128):
       plt.axis('off')
   path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
   plt.savefig(path + '.png')
-  return slice_no_preds
+  return slice_no_preds, slice_no_gts

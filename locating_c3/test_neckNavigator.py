@@ -1,9 +1,8 @@
 #created by hermione on 16/08/2021
 #to test the model at various stages
 
-from utils import PrintSlice, get_data, projections, euclid_dis, display_net_test, slice_preds, GetSliceNumber
+from utils import get_data, mrofsnart, euclid_dis, display_net_test, slice_preds, GetSliceNumber
 from neckNavigatorTester import neckNavigatorTest2
-from neckNavigatorTester import neckNavigatorTest1
 
 from neckNavigator import neckNavigator
 from neckNavigatorData import neckNavigatorDataset
@@ -13,38 +12,6 @@ import torch
 from neckNavigatorUtils import k_fold_split_train_val_test
 import pandas as pd 
 
-
-def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = None):#transforms backwards
-    #might have get transform indices for test data
-    if test_inds is not None:
-        transforms = [transforms[ind] for ind in test_inds]
-    x_arr,y_arr,z_arr = [],[],[]
-    for i in range(len(net_slice)):
-        #undo scale
-        net_slice[i] *= 14/16
-
-        #print(net_slice[i], transforms[i][1][0])
-
-        #undo crop
-        #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
-        z = net_slice[i] + transforms[i][1][0]
-        if coords is not None:
-            x = coords[i,0]*2
-            y = coords[i,1]*2
-            x += transforms[i][1][2]
-            y += transforms[i][1][4]
-            x_arr.append(x)
-        #undo flip if necessary
-            if (transforms[i][0]==True):
-                y = shape - y
-            y_arr.append(y)
-        if (transforms[i][0]==True):
-            z = shape - z
-
-        #print(z)
-
-        z_arr.append(z)
-    return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 def main():
 
@@ -79,16 +46,13 @@ def main():
     C3s, segments, GTs = tester
 
     difference = euclid_dis(GTs, segments)
-    #print(difference)
-    #projections(C3s[3],segments[3], order = [2,1,0], show=True)
-    #projections(C3s[1],GTs[1], order = [1,2,0], show=True)
-    slice_preds_q = display_net_test(C3s, segments, GTs, ids)
+    slice_no_preds, slice_no_gts = display_net_test(C3s, segments, GTs, ids)
 
-    slice_no_preds = slice_preds(segments)
-    slice_no_gts = slice_preds(GTs)
+    #slice_no_preds = slice_preds(segments)
+    #slice_no_gts = slice_preds(GTs)
+    #sanity check
     slice_no_gts_test = []
-
-    for i in range(len(GTs)): #sanity check
+    for i in range(len(GTs)): 
         slice_no_gt = GetSliceNumber(GTs[i])
         slice_no_gts_test.append(slice_no_gt)
         #if slice_no_gt != slice_no_gts[i]: print("well shit")
