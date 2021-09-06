@@ -165,7 +165,8 @@ class neckNavigator_trainer:
             self.num_iterations += 1
 
         if (self.num_epoch%10 == 0):
-            self._log_images(ct_im, output, name = "Training Data")
+            if (self.num_epoch < 70):
+                self._log_images(ct_im, output, name = "Training Data")
             
         # evaluate on validation set
         self.model.eval()
@@ -215,7 +216,8 @@ class neckNavigator_trainer:
                 difference = euclid_dis(h_target, output, is_tensor=True)  
                 val_slice_diff.append(difference)
             if (self.num_epoch%10 == 0):
-                self._log_images(ct_im, output, name = "Validation Data")
+                if (self.num_epoch < 70):
+                    self._log_images(ct_im, output, name = "Validation Data")
 
             self._log_dist(val_slice_diff)      
             self._log_stats('val', val_losses.avg)
@@ -234,13 +236,6 @@ class neckNavigator_trainer:
             #print(torch.sum(h_target), torch.max(h_target))
             output = flat_softmax(output)
             h_target = flat_softmax(h_target)
-            #print(torch.sum(output), torch.max(output))
-            #output = output/(torch.sum(output))
-            #print(torch.sum(h_target), torch.max(h_target))
-            #h_target = h_target/(torch.sum(h_target))
-            #print(torch.sum(h_target), torch.max(h_target), torch.min(h_target))
-            #print(torch.sum(output), torch.max(output))
-            #assert torch.sum(output) == 1
             #print("network output",h_target.shape, torch.max(h_target), torch.min(h_target), torch.unique(h_target))
             # MSE loss contribution - unchanged for > 1 targets
             #loss = torch.nn.MSELoss()(100*output, 100*h_target)#prob masks
@@ -249,8 +244,6 @@ class neckNavigator_trainer:
             #loss = torch.nn.KLDivLoss(reduction = 'batchmean')(output, h_target)
             loss = kl_reg(output, h_target)
             #loss = L.JointLoss(torch.nn.KLDivLoss(reduction = 'batchmean'), L.SoftBCEWithLogitsLoss(pos_weight=torch.Tensor([10000]).to(self.device)), 1.0, 0.5)(output, h_target)
-            #loss = L.JointLoss(L.BinaryFocalLoss(), torch.nn.KLDivLoss(reduction = 'batchmean'), 1.0, 1.0)(output, h_target)
-            #loss = torch.nn.MSELoss().item()
             # L1 loss contribution
             #output = output.cpu()
             #h_target = h_target.cpu()
