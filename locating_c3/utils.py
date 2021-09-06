@@ -96,7 +96,7 @@ def GetSliceNumber(segment):
     if val != 0:
       slice_number.append(x)
       weights.append(val)
-  return int(np.average(slice_number, weights = weights))
+  return np.round(np.average(slice_number, weights = weights), decimals=3)
 
 def GetTargetCoords(target):
     coords = center_of_mass(target) 
@@ -201,29 +201,32 @@ def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = Non
     x_arr,y_arr,z_arr = [],[],[]
     for i in range(len(net_slice)):
         #undo scale
-        print(net_slice[i])
+        #print("Net slice: ",net_slice[i])
         net_slice[i] *= 14/16
-        print(net_slice[i])
+        #print("Undo Scale: ", net_slice[i])
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
         z = net_slice[i] + transforms[i][1][0]
-        print(z)
+        #print("Undo Crop: ",z)
         if coords is not None:
             x = coords[i,0]*2
             y = coords[i,1]*2
-            x += transforms[i][1][2]
-            y += transforms[i][1][4]
+            x += transforms[i][1][3]
+            y += transforms[i][1][6]
             x_arr.append(x)
 
         #undo flip if necessary
             if (transforms[i][0]==True):
-                y = shape - y
+                y_shape = transforms[i][1][8]
+                y = y_shape - y #change this!!
             y_arr.append(y)
 
+        z_shape = transforms[i][1][2] -1 # cause arrays count from 0
+        #print(z_shape)
         if (transforms[i][0]==True):
-            z = shape - z
-        print(z)
-        z_arr.append(z)
+            z = z_shape - z
+        #print("Final z: ", z)
+        z_arr.append(np.round(z))
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 def arrange(input, ax, proj_order):

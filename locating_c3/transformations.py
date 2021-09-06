@@ -10,7 +10,7 @@ import random
 from scipy.ndimage.measurements import center_of_mass
 from scipy.ndimage import gaussian_filter
 import torch
-from utils import GetSliceNumber, projections, PrintSlice, display_input_data
+from utils import GetSliceNumber, GetTargetCoords, projections, mrofsnart, display_input_data, slice_preds
 import cv2
 import os
 import matplotlib.pyplot as plt
@@ -75,14 +75,15 @@ def normalize(inp: np.ndarray, mean: float, std: float):
 
 def cropping(inp: np.ndarray, tar: np.ndarray ):
     #working one but z axis crop needs improving
+    #print("original shape: ",inp.shape)
     x, y= inp, tar
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
     coords = center_of_mass(threshold)
     size =126
-    x_min = int(((coords[1] - size)+126)/2)
-    x_max = int(((coords[1] + size)+386)/2)
-    y_min = int(((coords[2] - size)+126)/2)
-    y_max = int(((coords[2] + size)+386)/2)
+    x_min = round(((coords[1] - size)+126)/2)
+    x_max = round(((coords[1] + size)+386)/2)
+    y_min = round(((coords[2] - size)+126)/2)
+    y_max = round(((coords[2] + size)+386)/2)
     #z crop
     z_size = 112
     z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
@@ -90,23 +91,20 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         
     if (z_size < x.shape[0]):
         #print("bigger", x.shape[0])
-        if(x.shape[0] > int(coords[0])+z_size): #190>87+112=199
+        if(x.shape[0] > round(coords[0])+z_size): #190>87+112=199
             print("crop")
-            z_coords = {"z_min": int(coords[0]), "z_max": int(coords[0])+z_size}
+            z_coords = {"z_min": round(coords[0]), "z_max": round(coords[0])+z_size}
 
     else:
         #print("too small: ", x.shape[0])
-        padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
-        padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
+        padded_arr = np.pad(x, ((round((z_size-x.shape[0])/2), round((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
+        padded_tar = np.pad(y, ((round((z_size-x.shape[0])/2), round((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         inp, tar =padded_arr, padded_tar
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
     
-    #print("y pre chopped: ", np.max(y), np.min(y))   
-    #print("z_coords: ",z_coords["z_min"], z_coords["z_max"], x_min, x_max, y_min, y_max, org_inp_size)
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-    cropped_info = [z_coords["z_min"],org_inp_size[0] - z_coords["z_max"],x_min,org_inp_size[1] - x_max,y_min,org_inp_size[2] - y_max ]
-    #print(x.shape, y.shape)
-    #print("y chopped: ", np.max(y), np.min(y))
+    cropped_info = [z_coords["z_min"], z_coords["z_max"], org_inp_size[0], x_min, x_max, org_inp_size[1], y_min, y_max, org_inp_size[2]]
+    
     return x, y, np.array(cropped_info)
 
 def sphereMask(tar: np.ndarray):
@@ -119,7 +117,7 @@ def sphereMask(tar: np.ndarray):
     sphere_center = center_of_mass(tar)
     r=5
     sphere = create_bin_sphere(arr_size, sphere_center, r)
-    print("sphere details", sphere.shape, np.unique(sphere))
+    #print("sphere details", sphere.shape, np.unique(sphere))
     #Plot the result
     # fig =plt.figure(figsize=(6,6))
     # ax = plt.axes(projection='3d')
@@ -130,7 +128,7 @@ def sphereMask(tar: np.ndarray):
 def gaussian(msk):
     msk *= 100
     gauss = gaussian_filter(msk, (1,3,3) ,truncate=100)
-    print("g: ",np.max(gauss), np.min(gauss))
+    #print("g: ",np.max(gauss), np.min(gauss))
     #gauss = 1/(1 + np.exp(-gauss))
     return gauss
 
@@ -189,7 +187,7 @@ def path_list2():
     return path_list_inputs, path_list_targets, ids
 
 def save_preprocessed(inputs, targets, ids, org_slice_nos, voxel_dims, transforms = None):
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_TFinal_gauss.npz'
     vox_path =  '/home/hermione/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
     #path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
     ids = np.array(ids)
@@ -240,12 +238,8 @@ class preprocessing():
         y = sitk.ReadImage(target_ID, imageIO="NiftiImageIO")
         # check if flip required
         need_flip = False
-        #need_flipy = False
         if x.GetDirection()[-1] == -1:
             need_flip = True
-        # if y.GetDirection()[-1] == -1:
-        #     need_flipy = True
-        #x,y = flip(x), flip(y)
 
         #saving the spacing
         voxel_dim = [(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
@@ -255,22 +249,23 @@ class preprocessing():
         x-=1024
 
         #save original slice number
-        slice_no = GetSliceNumber(y)
+        #slice_no = GetSliceNumber(y)
+        slice_no = GetTargetCoords(y)[0]
+        #print("\nOriginal Slice No: ", slice_no)
         self.slices_gt.append(slice_no)
 
         # Preprocessing
         if need_flip == True:
             x,y = flip(x), flip(y)
 
-        # if need_flipy == True:
-        #     y = flip(y)
+        #print("\nPost flip: ", GetSliceNumber(y), GetTargetCoords(y)[0])
 
         if self.transform is not None:
             x = self.transform(x)
     
         if self.cropping is not None:
             x, y, crop_info = self.cropping(x, y)
-
+        #print("\nPost cropping: ", GetSliceNumber(y), GetTargetCoords(y)[0])
         if self.sphere is not None:
             y = self.sphere(y)
 
@@ -286,7 +281,7 @@ class preprocessing():
         #downsampling to size -> [128,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
-       
+        #print("\nPost scale: ", GetSliceNumber(y), GetTargetCoords(y)[0])
         assert np.min(y) >= 0
         assert np.max(y) > 0
         data = {'input': x, 'mask': y}  
@@ -322,15 +317,15 @@ org_slices = preprocessed_data.original_slices()
 voxel_dims = preprocessed_data.voxel_dims()
 print(org_slices)
 projections(CTs[1], masks[1], order=[1,2,0])
-#PrintSlice(CTs[10], masks[10], show = True)
 
-#print(transforms.shape, transforms)
-#print("crop info:", transforms[:,1])
+final_transformed_slices = slice_preds(masks)
+x, y, z = mrofsnart(final_transformed_slices, transforms)
+print(z)
 #%%
 #save the preprocessed masks and cts for the dataset
 save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
 
 #%%
-path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
-display_input_data(path)
+#path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+#display_input_data(path)
 
