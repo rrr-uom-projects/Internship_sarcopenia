@@ -10,7 +10,7 @@ import random
 from scipy.ndimage.measurements import center_of_mass
 from scipy.ndimage import gaussian_filter
 import torch
-from utils import GetSliceNumber, Guassian, projections, PrintSlice, display_input_data
+from utils import GetSliceNumber, projections, PrintSlice, display_input_data
 import cv2
 import os
 import matplotlib.pyplot as plt
@@ -36,6 +36,18 @@ def window_level(inp: np.array):
     inp[inp < vmin] = vmin
     #print("wl: ", inp.shape, np.max(inp), np.min(inp))
     return inp
+
+def windowLevelNormalize(image): #eds
+    window = 350
+    level = 50
+    minval = level - window/2
+    maxval = level + window/2
+    thresh = 1000
+    image[image > thresh] = 0
+    wld = np.clip(image, minval, maxval)
+    wld -= minval
+    wld /= window
+    return wld
 
 def normalize_01(inp: np.ndarray):
     """Squash image input to the value range [0, 1] (plus clipping)"""
@@ -120,7 +132,6 @@ def gaussian(msk):
     gauss = gaussian_filter(msk, (1,3,3) ,truncate=100)
     print("g: ",np.max(gauss), np.min(gauss))
     #gauss = 1/(1 + np.exp(-gauss))
-    #print("g sig: ",np.max(gauss), np.min(gauss), np.unique(gauss))
     return gauss
 
 def flip(im):
@@ -321,51 +332,8 @@ projections(CTs[1], masks[1], order=[1,2,0])
 save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
 
 #%%
-#path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
-#display_input_data(path)
-"""
-def cropping(inp: np.ndarray, tar: np.ndarray ):
-    #want to crop all CT scans to be [177,260,260]
-    x, y= inp, tar
-    print("ct max: ", np.max(x))
-    _,threshold = cv2.threshold(x,500,0,cv2.THRESH_TOZERO)
-    coords = center_of_mass(threshold)
-    print("coords: ", coords)
-    size =130
-    #x, y direction cropping
-    x_min = int(((coords[1] - size)+126)/2)
-    x_max = int(((coords[1] + size)+386)/2)
-    y_min = int(((coords[2] - size)+126)/2)
-    y_max = int(((coords[2] + size)+386)/2)
-    if (x.shape[0]>=117):
-        print("True", x.shape[0])
-    else:
-        print("too small ffs")
-    
-    #z axis cropping
-    inds = x < -500
-    im = x
-    im[...] = 1
-    im[inds] = 0
-    im = binary_fill_holes(im).astype(int)
-    filled_inds = np.nonzero(im)
-    print("im shape: ", im.shape, np.unique(im))
-    for z in range(len(im)-1,0, -1):
-        seg_slice = im[z,...]
-        val = np.sum(seg_slice)
-        if val != 0:
-            high_cc_cut = z
-            print(z)
-            break
-    high_cc_cut = filled_inds[0][-1]
-    im = x[(high_cc_cut-116):high_cc_cut,:,:]
-    #y = y[(high_cc_cut-116):high_cc_cut,:,:]
 
-    # Cuts complete
-    cutdown_shape = np.array(im.shape)
-    print("cropped shape: ", cutdown_shape)
-    x, y = x[(high_cc_cut-116):high_cc_cut,x_min:x_max,y_min:y_max], tar[(high_cc_cut-116):high_cc_cut,x_min:x_max,y_min:y_max]
-   
-    #x, y = im[(im.shape[0]-117):,x_min:x_max,y_min:y_max], tar[(im.shape[0]-117):,x_min:x_max,y_min:y_max]
-    return x, y"""
-# %%
+path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
+display_input_data(path)
+
+

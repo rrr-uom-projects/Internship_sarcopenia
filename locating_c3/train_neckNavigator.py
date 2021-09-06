@@ -12,28 +12,18 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 import numpy as np
 import os
-#from scipy.stats import norm
 #from scipy.ndimage import distance_transform_edt as dist_xfm
-#import random
-#import sys
 import argparse as ap
-#import tensorflow as tf
-import matplotlib.pyplot as plt
-import pickle
 import pandas as pd
 
-from neckNavigatorData import neckNavigatorDataset, head_augmentations#, get_data
+from neckNavigatorData import neckNavigatorDataset, head_augmentations
 from neckNavigator import neckNavigator
-#from NeckNavigatorHotMess import neckNavigator, neckNavigatorShrinkWrapped
+#from NeckNavigatorHotMess import neckNavigator
 from neckNavigatorTrainer import neckNavigator_trainer
-from neckNavigatorUtils import k_fold_split_train_val_test
-from neckNavigatorTrainerUtils import get_logger, get_number_of_learnable_parameters, dataset_TVTsplit
+from neckNavigatorTrainerUtils import k_fold_cross_val, get_logger, get_number_of_learnable_parameters, dataset_TVTsplit
 from neckNavigatorTester import neckNavigatorTest2
 
-from utils import pythagoras, setup_model, projections, euclid_dis, get_data, threeD_euclid_diff
-from utils import k_fold_cross_val, slice_preds, GetSliceNumber, euclid_diff_mm, z_euclid_dist
-from utils import mrofsnart
-
+from utils import setup_model, get_data, mrofsnart
 
 def setup_argparse():
     parser = ap.ArgumentParser(prog="Main training program for 3D location-finding network \"headhunter\"")
@@ -51,18 +41,18 @@ def main():
     setup_argparse()
     global args
 
-    # decide file paths
     #livs paths
     data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tsphere.npz'
     checkpoint = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
     save_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/fold_info/c3_loc.xlsx'
     #herms paths
+
+
     #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     #checkpoint = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
     #save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/fold_info/c3_loc.xlsx'#' +str(i) + '
-    
-    xl_writer = pd.ExcelWriter(save_path)
 
+    
     # Create main logger
     logger = get_logger('NeckNavigator_Training')
 
@@ -86,8 +76,6 @@ def main():
 
     # allocate ims to train, val and test
     dataset_size = len(inputs)
-    #train_inds, val_inds, test_inds = k_fold_split_train_val_test(dataset_size, fold_num= 2)
-    #train_inputs, train_targets, val_inputs, val_targets, test_inputs, test_targets = dataset_TVTsplit(inputs, targets, train_inds, val_inds, test_inds)
     train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
     
     #######*** K FOLD CROSS VALIDATION LOOP ***#######
@@ -96,11 +84,12 @@ def main():
         checkpoint_dir = checkpoint + "_fold" + str(i+1)
         try:
             os.makedirs(checkpoint_dir)
-        except OSError: #already there
+        except OSError: #if already exists
             pass
 
-        val_spli, train_spli = np.split(train_array[i], [round(0.2*len(train_array[i]))], axis= 0)#[16]
-        train_inputs, train_targets, val_inputs, val_targets, test_inputs, test_targets = dataset_TVTsplit(inputs, targets, train_spli, val_spli, test_array[i])
+        ###*** CREATE DATALOADERS ***###
+        val_split, train_split = np.split(train_array[i], [round(0.2*len(train_array[i]))], axis= 0)#[16]
+        train_inputs, train_targets, val_inputs, val_targets, test_inputs, test_targets = dataset_TVTsplit(inputs, targets, train_split, val_split, test_array[i])
         
         training_dataset = neckNavigatorDataset(inputs=train_inputs, targets=train_targets, transform = head_augmentations)
         training_dataloader = DataLoader(dataset=training_dataset, batch_size= train_BS,  shuffle=True, pin_memory=True, num_workers=train_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))#worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1))
@@ -108,19 +97,19 @@ def main():
         validation_dataset = neckNavigatorDataset(inputs=val_inputs, targets=val_targets)
         validation_dataloader = DataLoader(dataset=validation_dataset, batch_size= val_BS,  shuffle=True, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
-
         test_dataset = neckNavigatorDataset(inputs = test_inputs, targets = test_targets)
         test_dataloader = DataLoader(dataset= test_dataset, batch_size = 1, shuffle=False, pin_memory=True, num_workers=val_workers, worker_init_fn=lambda _: np.random.seed(int(torch.initial_seed())%(2**32-1)))
 
-        #torch.save(test_dataloader, dataloader_dir, pickle_protocol= pickle.HIGHEST_PROTOCOL)
-        # create model
+        ###*** INITIALISE MODEL ***###
         model = neckNavigator()
 
-        # put the model on GPU(s)
-        device = 'cuda:2'
-        # model.to(device)
+        device = 'cuda:0'
+
+
+
         load_prev=False
-        model=setup_model(model, checkpoint_dir, device, load_prev= False, load_best = load_prev)
+        model = setup_model(model, checkpoint_dir, device)
+
         # Log the number of learnable parameters
         logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
     
@@ -132,6 +121,7 @@ def main():
 
         # Parallelize model
         #model = nn.DataParallel(model) #runs on multiple gpus if we want a larger batch size
+        
         epoch = 0 
         iteration = 0
 
@@ -143,44 +133,28 @@ def main():
         
         # Create model trainer
         trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                    val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1, num_iterations = iteration, 
-                                    num_epoch = epoch ,patience=50, iters_to_accumulate=4)
+                                    val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
+                                    num_epoch = epoch, patience=50, iters_to_accumulate=4)
 
         
-        # Start training
+        ###*** TRAINING ***###
         trainer.fit()
 
-
-        #########TESTING##########
+        #####*** TESTING ***#####
         tester = neckNavigatorTest2(checkpoint_dir, test_dataloader, device)
         C3s, segments, GTs = tester
-        #difference = euclid_dis(GTs, segments)
 
-        slice_no_preds = slice_preds(segments)
-        slice_no_gts = slice_preds(GTs)
+        test_inds = test_array[i]
+        test_org_slices = org_slices[test_inds]
+        test_vox_dims = voxel_dims[test_inds]
+        test_processing_info = transforms[test_inds]
+        test_ids = ids[test_inds]
 
+        ####*** SAVE MODEL PREDICTIONS ***####
+        pred_save_path = checkpoint_dir + "/trained_net_tests.npz"
+        np.savez(pred_save_path, images = C3s, preds = segments, gts = GTs, index = test_inds, ids = test_ids, 
+            test_processing = test_processing_info, test_preprocessed_gt_slices = test_org_slices, test_vox_dims = test_vox_dims)
 
-        test_org_slices = org_slices[test_array[i]]
-        test_vox_dims = voxel_dims[test_array[i]]
-
-        ###*** POST-PROCESSING ***###
-        x,y,z = mrofsnart(slice_no_preds, transforms, test_inds = test_array[i])
-        _,_,z_test  = mrofsnart(slice_no_gts,transforms,test_inds = test_array[i])
-
-        difference_old = euclid_dis(GTs, segments)
-        difference, mm_distance= euclid_diff_mm(test_org_slices, z, test_vox_dims)
-       
-        ###*** SAVING TEST INFO ***###
-        df = pd.DataFrame({"IDs": ids[test_array[i]], "Out_Slice_Numbers": slice_no_preds, "PostProcessSliceNo": z, "GT_Org_Slice_No": test_org_slices, 
-            "GT_ProcessedSliceNo": slice_no_gts, "GT_z_test": z_test, "SliceDifferences": difference,"OldSliceDifferences": difference_old, "z_distance": mm_distance}) 
-            #"y_distance": mm_threeD_distance[1], "z_disance":mm_threeD_distance[2], "pythag_dist_abs": pythagoras_dist})
-        df.to_excel(excel_writer = xl_writer, index=False,
-                sheet_name=f'fold{i+1}')
-        xl_writer.save()
-        
-        
-
-    xl_writer.close()
 
     return
         

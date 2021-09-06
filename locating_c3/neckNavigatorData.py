@@ -58,16 +58,6 @@ class neckNavigatorDataset(Dataset):
         return x.unsqueeze(0), y.unsqueeze(0)
 
 
-# functions and definitions
-def get_data(path): 
-    data = np.load(path, allow_pickle=True)
-    inputs = data['inputs']
-    print(len(inputs))
-    targets = data['masks']
-    ids = data['ids']
-    return np.asarray(inputs), np.asarray(targets), np.asarray(ids)
-
-
 #augmentation
 head_augmentations = AugmentationSequential(K.RandomHorizontalFlip3D(p = 0.5),
                             K.RandomRotation3D([0, 5, 20], p = 0.5),
