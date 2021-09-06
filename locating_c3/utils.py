@@ -29,6 +29,8 @@ from functools import reduce
 import torch
 import torch.nn.functional
 
+
+
 #LOSSES
 def js_reg(p, q):
     #~ Jensen-Shannon Divergence

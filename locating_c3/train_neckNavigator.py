@@ -42,11 +42,16 @@ def main():
     global args
 
     #livs paths
-    #data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_sphere.npz'
-
+    data_path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tsphere.npz'
+    checkpoint = "/home/olivia/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    save_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/fold_info/c3_loc.xlsx'
     #herms paths
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
-    checkpoint = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+
+
+    #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
+    #checkpoint = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
+    #save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/fold_info/c3_loc.xlsx'#' +str(i) + '
+
     
     # Create main logger
     logger = get_logger('NeckNavigator_Training')
@@ -97,7 +102,11 @@ def main():
 
         ###*** INITIALISE MODEL ***###
         model = neckNavigator()
+
         device = 'cuda:0'
+
+
+
         load_prev=False
         model = setup_model(model, checkpoint_dir, device)
 
