@@ -15,6 +15,7 @@ import torch
 import torchvision.transforms as T
 import torchvision.io.image as tim
 from operator import mul
+from collections import deque
 
 from PIL import Image
 from matplotlib.colors import Normalize
@@ -133,24 +134,25 @@ def threeD_euclid_diff(gts, msks, dims, transform_info = None):
   mm_distances = []
   distances = []
   pythag_dist = []
+  NetPostProcessCoords = mrofsnart(msks, transform_info)
+  GTPostProcessCoords = mrofsnart(gts, transform_info)
+  distances = np.abs(GTPostProcessCoords - NetPostProcessCoords) #x,y,z
   #have to do backwards processing on images to use this. or just input coords
   for i in range(len(gts)):
-    gt_coords = GetTargetCoords(gts[i])
-    msk_coords = GetTargetCoords(msks[i])
-    distance = np.abs(gt_coords-msk_coords)#z,x,y
-    NetPostProcessCoords = mrofsnart(msk_coords[0],transform_info[i], coords=msk_coords)
-    GTPostProcessCoords = mrofsnart(gt_coords[0], transform_info[i], coords=gt_coords)
-    distance = np.abs(GTPostProcessCoords-NetPostProcessCoords) #x,y,z
-    mm_distance = dims[i]*distance
+    #gt_coords = GetTargetCoords(gts[i])
+    #msk_coords = GetTargetCoords(msks[i])
+    #distance = np.abs(gt_coords-msk_coords)#z,x,y
+    
+    mm_distance = dims[i]*distances[i]
     pythag = pythagoras(mm_distance)
 
-    if len(gts) == 1: 
+    if (gts.ndim == 1): 
       mm_distances = mm_distance
-      distances = distance
+      #distances = distance
       pythag_dist = pythag
     else: 
       mm_distances.append(np.array(mm_distance))
-      distances.append(distance)
+      #distances.append(distance)
       pythag_dist.append(pythag)
   distances = np.array(distances)
   mm_distances = np.array(mm_distances)
@@ -164,6 +166,42 @@ def z_euclid_dist(gts, msks, dims):
 def pythagoras(three_distance):
   pythag = np.sqrt(pow(three_distance[0],2)+pow(three_distance[1],2)+pow(three_distance[2],2))
   return pythag
+
+###*** UNDO PREPROCESSING ***###
+def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backwards
+    x_arr,y_arr,z_arr = [],[],[]
+    
+    if test_inds is not None:
+        transforms = [transforms[ind] for ind in test_inds]
+        
+    for i in range(len(msks)):
+        #undo scale
+        coords = GetTargetCoords(msks[i])
+        #print(coords)
+        z_coord = (coords[0]+1)*14/16
+        #print("Undo Scale: ", coords[0])
+        #undo crop
+        #eg z crop [46,1] z=12  [[true, crop array] <- crop[zmin, zmax, xmin,...],]
+        #print(transforms[i][1])
+        z = z_coord + transforms[i][1][0]
+        x = (coords[1]+1)*2
+        y = (coords[2]+1)*2
+        x += transforms[i][1][3]
+        y += transforms[i][1][6]
+        x_arr.append(x)
+        #print("Undo Crop:", z, x, y)
+        #undo flip if necessary
+        if (transforms[i][0]==True):
+            y_shape = transforms[i][1][8]
+            y = y_shape - y
+        y_arr.append(y)
+
+        if (transforms[i][0]==True):
+          z_shape = transforms[i][1][2]
+          z = z_shape - z
+        #print("Final Coords: ", x,y,z)
+        z_arr.append(np.round(z))
+    return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 #MODEL SETUP
 def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = False, eval_mode = False):
@@ -191,39 +229,6 @@ def PrintSlice(input, targets, show = False):
     if show:
       plt.show()
       plt.savefig("Slice.png")
-
-def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backwards
-    if test_inds is not None:
-        transforms = [transforms[ind] for ind in test_inds]
-        
-    x_arr,y_arr,z_arr = [],[],[]
-    for i in range(len(msks)):
-        #undo scale
-        coords = GetTargetCoords(msks[i])
-        print(coords)
-        z_coord = (coords[0]+1)*14/16
-        print("Undo Scale: ", coords[0])
-        #undo crop
-        #eg z crop [46,1] z=12  [[true, crop array] <- crop[zmin, zmax, xmin,...],]
-        z = z_coord + transforms[i][1][0]
-        x = (coords[1]+1)*2
-        y = (coords[2]+1)*2
-        x += transforms[i][1][3]
-        y += transforms[i][1][6]
-        x_arr.append(x)
-        print("Undo Crop:", z, x, y)
-        #undo flip if necessary
-        if (transforms[i][0]==True):
-            y_shape = transforms[i][1][8]
-            y = y_shape - y
-        y_arr.append(y)
-
-        if (transforms[i][0]==True):
-          z_shape = transforms[i][1][2]
-          z = z_shape - z
-        print("Final Coords: ", x,y,z)
-        z_arr.append(np.round(z))
-    return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 def arrange(input, ax, proj_order):
     #to return the projection in whatever order.
@@ -521,6 +526,6 @@ def display_net_test(inps, msks, gts, ids, shape = 128, fold_num = None):
   if fold_num == None:
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
   else:
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'+f'fold_{fold_num}'+'test_pic'
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_outputs'+f'_fold{fold_num+1}/'+f'test_pic{fold_num+1}'
   plt.savefig(path + '.png')
   return slice_no_preds, slice_no_gts
