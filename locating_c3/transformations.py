@@ -249,23 +249,22 @@ class preprocessing():
         x-=1024
 
         #save original slice number
-        #slice_no = GetSliceNumber(y)
         slice_no = GetTargetCoords(y)[0]
-        #print("\nOriginal Slice No: ", slice_no)
+        print("Original Slice No: ", GetTargetCoords(y))
         self.slices_gt.append(slice_no)
 
         # Preprocessing
         if need_flip == True:
             x,y = flip(x), flip(y)
 
-        #print("\nPost flip: ", GetSliceNumber(y), GetTargetCoords(y)[0])
+        print("Post flip: ", GetTargetCoords(y))
 
         if self.transform is not None:
             x = self.transform(x)
     
         if self.cropping is not None:
             x, y, crop_info = self.cropping(x, y)
-        #print("\nPost cropping: ", GetSliceNumber(y), GetTargetCoords(y)[0])
+        print("Post cropping: ", GetTargetCoords(y))
         if self.sphere is not None:
             y = self.sphere(y)
 
@@ -281,7 +280,7 @@ class preprocessing():
         #downsampling to size -> [128,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
-        #print("\nPost scale: ", GetSliceNumber(y), GetTargetCoords(y)[0])
+        print("Post scale: ", GetTargetCoords(y))
         assert np.min(y) >= 0
         assert np.max(y) > 0
         data = {'input': x, 'mask': y}  
@@ -292,9 +291,9 @@ class preprocessing():
 #get the file names
 PathList =  path_list2()
 no_patients = 2
-inputs = PathList[0]#[:no_patients]
-targets = PathList[1]#[:no_patients]
-ids = PathList[2]#[:no_patients]
+inputs = PathList[0][:no_patients]
+targets = PathList[1][:no_patients]
+ids = PathList[2][:no_patients]
 
 print("no of patients: ",len(inputs))
 #apply preprocessing
@@ -316,14 +315,13 @@ transforms = preprocessed_data.transforms()
 org_slices = preprocessed_data.original_slices()
 voxel_dims = preprocessed_data.voxel_dims()
 print(org_slices)
-projections(CTs[1], masks[1], order=[1,2,0])
 
-final_transformed_slices = slice_preds(masks)
-x, y, z = mrofsnart(final_transformed_slices, transforms)
-print(z)
+#final_transformed_slices = slice_preds(masks)
+#x, y, z = mrofsnart(masks, transforms)
+#print(z)
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
+#save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
 
 #%%
 #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 

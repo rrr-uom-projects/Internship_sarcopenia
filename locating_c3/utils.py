@@ -99,8 +99,8 @@ def GetSliceNumber(segment):
   return np.round(np.average(slice_number, weights = weights), decimals=3)
 
 def GetTargetCoords(target):
-    coords = center_of_mass(target) 
-    return coords #z,x,y
+  coords = center_of_mass(target) 
+  return coords #z,x,y
 
 def slice_preds(masks):
   slice_nos = []
@@ -120,8 +120,6 @@ def euclid_dis(gts, masks, is_tensor = False):
   for i in range(len(gts)):
     gt_z_coords = GetTargetCoords(gts[i])[0]
     msk_z_coords = GetTargetCoords(masks[i])[0]
-    #gt_z_coords = GetSliceNumber(gts[i])
-    #msk_z_coords = GetSliceNumber(masks[i])
     distance = np.abs(gt_z_coords-msk_z_coords)
     if len(gts) == 1: 
       distances = distance
@@ -131,7 +129,7 @@ def euclid_dis(gts, masks, is_tensor = False):
   #print(np.average(distances))
   return distances
 
-def threeD_euclid_diff(gts, msks, dims):
+def threeD_euclid_diff(gts, msks, dims, transform_info = None):
   mm_distances = []
   distances = []
   pythag_dist = []
@@ -139,10 +137,11 @@ def threeD_euclid_diff(gts, msks, dims):
   for i in range(len(gts)):
     gt_coords = GetTargetCoords(gts[i])
     msk_coords = GetTargetCoords(msks[i])
-    distance = np.abs(gt_coords-msk_coords)
-    print(distance)
-    print(dims[i])
-    mm_distance = dims[i]*distance #mm?
+    distance = np.abs(gt_coords-msk_coords)#z,x,y
+    NetPostProcessCoords = mrofsnart(msk_coords[0],transform_info[i], coords=msk_coords)
+    GTPostProcessCoords = mrofsnart(gt_coords[0], transform_info[i], coords=gt_coords)
+    distance = np.abs(GTPostProcessCoords-NetPostProcessCoords) #x,y,z
+    mm_distance = dims[i]*distance
     pythag = pythagoras(mm_distance)
 
     if len(gts) == 1: 
@@ -150,7 +149,7 @@ def threeD_euclid_diff(gts, msks, dims):
       distances = distance
       pythag_dist = pythag
     else: 
-      mm_distances.append(mm_distance)
+      mm_distances.append(np.array(mm_distance))
       distances.append(distance)
       pythag_dist.append(pythag)
   distances = np.array(distances)
@@ -160,12 +159,11 @@ def threeD_euclid_diff(gts, msks, dims):
 
 def z_euclid_dist(gts, msks, dims):
   three_diff, three_mm_dist,_ = threeD_euclid_diff(gts, msks, dims)
-  return three_diff[2], three_mm_dist[2]
+  return three_diff[0], three_mm_dist[0]
 
 def pythagoras(three_distance):
   pythag = np.sqrt(pow(three_distance[0],2)+pow(three_distance[1],2)+pow(three_distance[2],2))
   return pythag
-
 
 #MODEL SETUP
 def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = False, eval_mode = False):
@@ -194,38 +192,36 @@ def PrintSlice(input, targets, show = False):
       plt.show()
       plt.savefig("Slice.png")
 
-def mrofsnart(net_slice, transforms, shape = 128, coords = None, test_inds = None):#transforms backwards
-    #might have get transform indices for test data
+def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backwards
     if test_inds is not None:
         transforms = [transforms[ind] for ind in test_inds]
+        
     x_arr,y_arr,z_arr = [],[],[]
-    for i in range(len(net_slice)):
+    for i in range(len(msks)):
         #undo scale
-        #print("Net slice: ",net_slice[i])
-        net_slice[i] *= 14/16
-        #print("Undo Scale: ", net_slice[i])
+        coords = GetTargetCoords(msks[i])
+        print(coords)
+        z_coord = (coords[0]+1)*14/16
+        print("Undo Scale: ", coords[0])
         #undo crop
-        #eg z crop [46,1] z=12  [[true, crop array]<- crop[zmin, zmax, xmin,...],]
-        z = net_slice[i] + transforms[i][1][0]
-        #print("Undo Crop: ",z)
-        if coords is not None:
-            x = coords[i,0]*2
-            y = coords[i,1]*2
-            x += transforms[i][1][3]
-            y += transforms[i][1][6]
-            x_arr.append(x)
-
+        #eg z crop [46,1] z=12  [[true, crop array] <- crop[zmin, zmax, xmin,...],]
+        z = z_coord + transforms[i][1][0]
+        x = (coords[1]+1)*2
+        y = (coords[2]+1)*2
+        x += transforms[i][1][3]
+        y += transforms[i][1][6]
+        x_arr.append(x)
+        print("Undo Crop:", z, x, y)
         #undo flip if necessary
-            if (transforms[i][0]==True):
-                y_shape = transforms[i][1][8]
-                y = y_shape - y #change this!!
-            y_arr.append(y)
-
-        z_shape = transforms[i][1][2] -1 # cause arrays count from 0
-        #print(z_shape)
         if (transforms[i][0]==True):
-            z = z_shape - z
-        #print("Final z: ", z)
+            y_shape = transforms[i][1][8]
+            y = y_shape - y
+        y_arr.append(y)
+
+        if (transforms[i][0]==True):
+          z_shape = transforms[i][1][2]
+          z = z_shape - z
+        print("Final Coords: ", x,y,z)
         z_arr.append(np.round(z))
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
@@ -474,7 +470,7 @@ def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = F
 #data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_gauss.npz'
 #display_input_data(data_path)
 
-def display_net_test(inps, msks, gts, ids, shape = 128):
+def display_net_test(inps, msks, gts, ids, shape = 128, fold_num = None):
   images, targets, preds = [],[],[]
   data_size = len(inps)
   slice_no_preds = slice_preds(msks)
@@ -522,6 +518,9 @@ def display_net_test(inps, msks, gts, ids, shape = 128):
         ax[-1].axhline(slice_pred, linewidth=2, c='y')
         ax[-1].text(0, slice_pred-5, "C3: "+ str(slice_pred), color='w')
       plt.axis('off')
-  path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
+  if fold_num == None:
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
+  else:
+    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/'+f'fold_{fold_num}'+'test_pic'
   plt.savefig(path + '.png')
   return slice_no_preds, slice_no_gts
