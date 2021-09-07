@@ -134,25 +134,21 @@ def threeD_euclid_diff(gts, msks, dims, transform_info = None):
   mm_distances = []
   distances = []
   pythag_dist = []
-  NetPostProcessCoords = mrofsnart(msks, transform_info)
-  GTPostProcessCoords = mrofsnart(gts, transform_info)
-  distances = np.abs(GTPostProcessCoords - NetPostProcessCoords) #x,y,z
+  NetPostProcessCoords = np.array(mrofsnart(msks, transform_info))
+  GTPostProcessCoords =np.array(mrofsnart(gts, transform_info))
+  for j in range(3):
+    distances.append(np.abs(GTPostProcessCoords[j] - NetPostProcessCoords[j])) #x,y,z
+  distances = np.array(distances)
   #have to do backwards processing on images to use this. or just input coords
   for i in range(len(gts)):
-    #gt_coords = GetTargetCoords(gts[i])
-    #msk_coords = GetTargetCoords(msks[i])
-    #distance = np.abs(gt_coords-msk_coords)#z,x,y
-    
-    mm_distance = dims[i]*distances[i]
+    mm_distance = dims[i]*distances[:,i]
     pythag = pythagoras(mm_distance)
 
     if (gts.ndim == 1): 
       mm_distances = mm_distance
-      #distances = distance
       pythag_dist = pythag
     else: 
       mm_distances.append(np.array(mm_distance))
-      #distances.append(distance)
       pythag_dist.append(pythag)
   distances = np.array(distances)
   mm_distances = np.array(mm_distances)
