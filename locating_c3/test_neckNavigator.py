@@ -87,12 +87,16 @@ def main():
         three_difference, three_mm_distance, pythagoras = threeD_euclid_diff(GTs, segments, test_vox_dims, test_processing_info)
         
         ###*** SAVING TEST INFO ***###
+        print("debugging: ", len(test_ids), len(slice_no_preds), len(slice_no_gts), len(z))
+        print(len(test_org_slices), len(z_test), len(three_difference[0]), len(three_mm_distance[0]))
+        print(len(three_mm_distance[1]), len(three_mm_distance[2]),len(pythagoras))
         df = pd.DataFrame({"IDs": test_ids, "Out_Slice_Numbers": slice_no_preds, "GT_ProcessedSliceNo": slice_no_gts, "PostProcessSliceNo": z, 
-        "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test,"SliceDifference": three_difference[0] ,"SliceDistances": three_mm_distance[0], 
-            "x_distance": three_mm_distance[1], "y_disance": three_mm_distance[2], "pythag_dist_abs": pythagoras})
+        "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test,"ZSliceDifference": three_difference[0] ,"ZSliceDistances_mm": three_mm_distance[:,0], 
+            "x_distance": three_mm_distance[:,1], "y_disance": three_mm_distance[:,2], "pythag_dist_abs": pythagoras})
         df.to_excel(excel_writer = xl_writer, index=False,
                 sheet_name=f'fold{i+1}')
         xl_writer.save()
+        print("Saved Test Info.")
         
     xl_writer.close()
 

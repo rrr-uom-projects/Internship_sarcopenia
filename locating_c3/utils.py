@@ -144,16 +144,17 @@ def threeD_euclid_diff(gts, msks, dims, transform_info = None):
     mm_distance = dims[i]*distances[:,i]
     pythag = pythagoras(mm_distance)
 
-    if (gts.ndim == 1): 
+    if (gts.ndim == 3): 
       mm_distances = mm_distance
       pythag_dist = pythag
     else: 
       mm_distances.append(np.array(mm_distance))
       pythag_dist.append(pythag)
-  distances = np.array(distances)
-  mm_distances = np.array(mm_distances)
-  pythag_dist = np.array(pythag_dist)
-  return distances, mm_distances, pythag_dist
+
+      def make_arr(a): 
+        return np.round(np.array(a),decimals = 3)
+      #output shape (54,3)
+  return make_arr(distances), make_arr(mm_distances), make_arr(pythag_dist)
 
 def z_euclid_dist(gts, msks, dims):
   three_diff, three_mm_dist,_ = threeD_euclid_diff(gts, msks, dims)
