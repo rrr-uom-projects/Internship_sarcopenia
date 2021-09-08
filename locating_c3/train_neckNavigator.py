@@ -103,7 +103,7 @@ def main():
         ###*** INITIALISE MODEL ***###
         model = neckNavigator()
 
-        device = 'cuda:0'
+        device = 'cuda:1'
 
 
 

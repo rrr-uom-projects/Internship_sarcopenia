@@ -41,7 +41,7 @@ from albumentations.pytorch import ToTensor
 from torch.utils.tensorboard import SummaryWriter
 from functools import partial
 import pandas as pd
-
+from muscleMapper_utils import k_fold_cross_val
 """"
 import tensorflow as tf
 tf.test.gpu_device_name()
@@ -250,11 +250,16 @@ slices_processed, masks_processed = preprocess(slices, masks_slb)
 slice_test, slice_val, masks_test, masks_val, ids_test, ids_val = train_test_split(slice_test, masks_test, ids_test, test_size = 0.5, random_state = 5 )
 
 print(slice_train.shape)
+
+"""
+dataset_size = len(slices)
+train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
 """
 slice_train, slice_val, slice_test = splitandstick(slices_processed)
 masks_train, masks_val, masks_test = splitandstick(masks_processed)
 ids_train, ids_val, ids_test = splitandstick(ids)
 bone_masks_train, bone_masks_val, bone_masks_test = splitandstick(bone_masks)
+"""
 
 print(slice_test.shape, slice_train.shape)
 #print(ids_test[3])

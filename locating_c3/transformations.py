@@ -75,14 +75,15 @@ def normalize(inp: np.ndarray, mean: float, std: float):
 
 def cropping(inp: np.ndarray, tar: np.ndarray ):
     #working one but z axis crop needs improving
+    #print("original shape: ",inp.shape)
     x, y= inp, tar
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
     coords = center_of_mass(threshold)
     size =126
-    x_min = int(((coords[1] - size)+126)/2)
-    x_max = int(((coords[1] + size)+386)/2)
-    y_min = int(((coords[2] - size)+126)/2)
-    y_max = int(((coords[2] + size)+386)/2)
+    x_min = round(((coords[1] - size)+126)/2)
+    x_max = round(((coords[1] + size)+386)/2)
+    y_min = round(((coords[2] - size)+126)/2)
+    y_max = round(((coords[2] + size)+386)/2)
     #z crop
     z_size = 112
     z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
@@ -90,23 +91,20 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         
     if (z_size < x.shape[0]):
         #print("bigger", x.shape[0])
-        if(x.shape[0] > int(coords[0])+z_size): #190>87+112=199
+        if(x.shape[0] > round(coords[0])+z_size): #190>87+112=199
             print("crop")
-            z_coords = {"z_min": int(coords[0]), "z_max": int(coords[0])+z_size}
+            z_coords = {"z_min": round(coords[0]), "z_max": round(coords[0])+z_size}
 
     else:
         #print("too small: ", x.shape[0])
-        padded_arr = np.pad(x, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
-        padded_tar = np.pad(y, ((int((z_size-x.shape[0])/2),int((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
+        padded_arr = np.pad(x, ((round((z_size-x.shape[0])/2), round((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
+        padded_tar = np.pad(y, ((round((z_size-x.shape[0])/2), round((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
         inp, tar =padded_arr, padded_tar
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
     
-    #print("y pre chopped: ", np.max(y), np.min(y))   
-    #print("z_coords: ",z_coords["z_min"], z_coords["z_max"], x_min, x_max, y_min, y_max, org_inp_size)
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-    cropped_info = [z_coords["z_min"],org_inp_size[0] - z_coords["z_max"],x_min,org_inp_size[1] - x_max,y_min,org_inp_size[2] - y_max ]
-    #print(x.shape, y.shape)
-    #print("y chopped: ", np.max(y), np.min(y))
+    cropped_info = [z_coords["z_min"], z_coords["z_max"], org_inp_size[0], x_min, x_max, org_inp_size[1], y_min, y_max, org_inp_size[2]]
+    
     return x, y, np.array(cropped_info)
 
 def sphereMask(tar: np.ndarray):
@@ -192,7 +190,7 @@ def save_preprocessed(inputs, targets, ids, org_slice_nos, voxel_dims, transform
     #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     #vox_path =  '/home/hermione/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
     vox_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/vox_dims.npz'
-    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tsphere.npz' 
+    path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tfinalsphere.npz' 
     ids = np.array(ids)
     print("final shape: ", inputs.shape, targets.shape, ids.shape, len(org_slice_nos), len(voxel_dims))
     np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos.astype(int), dims = voxel_dims.astype(np.float32))
@@ -333,7 +331,7 @@ save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
 
 #%%
 
-path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
-display_input_data(path)
+#path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tfinalsphere.npz' 
+#display_input_data(path)
 
 
