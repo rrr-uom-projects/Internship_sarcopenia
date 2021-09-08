@@ -90,13 +90,17 @@ def main():
         ZDistances_mm = three_mm_distance[:,0]
         Zfold_distances.append(ZDistances_mm)
         ###*** SAVING TEST INFO ***###
+        pd.set_option("max_colwidth", 100)
         df = pd.DataFrame({"IDs": test_ids, "Out_Slice_Numbers": slice_no_preds, "GT_ProcessedSliceNo": slice_no_gts, "PostProcessSliceNo": z, 
         "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test,"ZSliceDifference": three_difference[0] ,"ZSliceDistances_mm": ZDistances_mm, 
             "x_distance": three_mm_distance[:,1], "y_disance": three_mm_distance[:,2], "pythag_dist_abs": pythagoras})
-        #pd.set_option("max_colwidth", 50)
         df.to_excel(excel_writer = xl_writer, index=False, sheet_name=f'fold{i+1}')
+        for column in df:
+            column_length = max(df[column].astype(str).map(len).max(), len(column))
+            col_idx = df.columns.get_loc(column)
+            xl_writer.sheets[f'fold{i+1}'].set_column(col_idx, col_idx, column_length+2)
+    
     xl_writer.save()
-
     xl_writer.close()
 
     #box plot 
