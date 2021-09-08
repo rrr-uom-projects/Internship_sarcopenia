@@ -1,4 +1,4 @@
-#sarcopenia_model_train
+###sarcopenia_model_train
 #update: 07/07/2021
 
 #!pip install segmentation-models-pytorch
@@ -157,6 +157,7 @@ def train(model, train_dataloader, device):
     #train_accuracy = train_running_correct/len(train_dataloader.dataset)
     #train_accuracy = diceCoeff(output["out"], masks_train)
     writer.add_scalar('training loss', train_loss, epoch)
+
     #print(f'Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.2f}')
     #writer.add_scalar('training accuracy', train_accuracy, epoch)
     return train_loss
@@ -231,7 +232,7 @@ def getDensity(image, mask, area, label=1):#pixel density
 
 #%%
 #loading the data
-data_path = "/home/hermione/Documents/Internship_sarcopenia/total_abstract_training_data 1.npz"
+data_path = "/home/olivia/Documents/Internship_sarcopenia/sarcopenia_model/total_abstract_training_data 1.npz"
 #data_path = "C:\\Users\\hermi\\OneDrive\\Documents\\physics year 4\\Mphys\\Mphys sem 2\\training data\\total_abstract_training_data.npz"
 data = np.load(data_path, allow_pickle=True)
 print([*data.keys()])
@@ -351,7 +352,7 @@ train_loss , train_accuracy = [], []
 val_loss , val_accuracy = [], []
 start = time.time()
 num_epochs = 10
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
 #training the model
@@ -383,11 +384,11 @@ loss = {'Training': train_loss, 'Validation': val_loss}
 print(loss)
 #loss_table = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/loss_08_07.csv", loss, delimiter=',')
 l_df = pd.DataFrame(loss)
-l_df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/loss.xlsx")
+l_df.to_excel(excel_writer = "/home/olivia/Documents/Internship_sarcopenia/sarcopenia_model/loss.xlsx")
 
 #%%
 #testing the model
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 model.to(device)
 c3s, test_predictions = test(model, test_dataloader)
 print(test_predictions.shape, c3s.shape)
@@ -468,5 +469,5 @@ print(mean_density, "HU" ,"sd", den_sd)
 #saving to an excel file
 array = np.transpose(np.array(feature_list_net))
 print(array)
-df = pd.DataFrame(array, index= feat_list, columns=ids).T
+#df = pd.DataFrame(array, index= feat_list, columns=ids).T
 #df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/muscle_area_and_density_training_data_07_07.xlsx")
