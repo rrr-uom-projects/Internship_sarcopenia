@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
-import neckNavigatorUtils as utils
+import neckNavigatorTrainerUtils as utils
 import time
 from pytorch_toolbelt import losses as L
 from utils import projections, euclid_dis, plot_to_image, kl_reg, flat_softmax, sharpen_heatmaps, pil_flow

@@ -11,47 +11,47 @@ import shutil
 import os
 from torch.utils import data
 
-def k_fold_split_train_val_test(dataset_size, fold_num):
-    k = int(fold_num-1)
-    #train_ims, val_ims, test_ims = 192, 24, 22
-    train_ims, val_ims, test_ims = round(0.8*dataset_size), round(0.1*dataset_size), round(0.1*dataset_size)
-    print(train_ims,val_ims,test_ims, dataset_size)
-    assert(train_ims+val_ims+test_ims == dataset_size)
-    train_inds, val_inds, test_inds = [], [], []
-    # initial shuffle
-    np.random.seed(2305)
-    shuffled_ind_list = np.random.permutation(dataset_size)
-    # allocate dataset indices based upon the fold number --> not the prettiest or most efficient implementation, but functional
-    cyclic_ind_list = cycle(shuffled_ind_list)
-    for i in range(k*test_ims):
-        next(cyclic_ind_list)   # shift start pos
-    for i in range(test_ims):
-        test_inds.append(next(cyclic_ind_list))
-    for i in range(train_ims):
-        train_inds.append(next(cyclic_ind_list))
-    for i in range(val_ims):
-        val_inds.append(next(cyclic_ind_list))
-    return train_inds, val_inds, test_inds
+# def k_fold_split_train_val_test(dataset_size, fold_num):
+#     k = int(fold_num-1)
+#     #train_ims, val_ims, test_ims = 192, 24, 22
+#     train_ims, val_ims, test_ims = round(0.8*dataset_size), round(0.1*dataset_size), round(0.1*dataset_size)
+#     print(train_ims,val_ims,test_ims, dataset_size)
+#     assert(train_ims+val_ims+test_ims == dataset_size)
+#     train_inds, val_inds, test_inds = [], [], []
+#     # initial shuffle
+#     np.random.seed(2305)
+#     shuffled_ind_list = np.random.permutation(dataset_size)
+#     # allocate dataset indices based upon the fold number --> not the prettiest or most efficient implementation, but functional
+#     cyclic_ind_list = cycle(shuffled_ind_list)
+#     for i in range(k*test_ims):
+#         next(cyclic_ind_list)   # shift start pos
+#     for i in range(test_ims):
+#         test_inds.append(next(cyclic_ind_list))
+#     for i in range(train_ims):
+#         train_inds.append(next(cyclic_ind_list))
+#     for i in range(val_ims):
+#         val_inds.append(next(cyclic_ind_list))
+#     return train_inds, val_inds, test_inds
 
-def k_fold_split_testset_inds(dataset_size, fold_num):
-    k = int(fold_num-1)
-    train_ims, val_ims, test_ims = 192, 24, 22
-    assert(train_ims+val_ims+test_ims == dataset_size)
-    train_inds, val_inds, test_inds = [], [], []
-    # initial shuffle
-    np.random.seed(2305)
-    shuffled_ind_list = np.random.permutation(dataset_size)
-    # allocate dataset indices based upon the fold number --> not the prettiest or most efficient implementation, but functional
-    cyclic_ind_list = cycle(shuffled_ind_list)
-    for i in range(k*test_ims):
-        next(cyclic_ind_list)   # shift start pos
-    for i in range(test_ims):
-        test_inds.append(next(cyclic_ind_list))
-    for i in range(train_ims):
-        train_inds.append(next(cyclic_ind_list))
-    for i in range(val_ims):
-        val_inds.append(next(cyclic_ind_list))
-    return test_inds
+# def k_fold_split_testset_inds(dataset_size, fold_num):
+#     k = int(fold_num-1)
+#     train_ims, val_ims, test_ims = 192, 24, 22
+#     assert(train_ims+val_ims+test_ims == dataset_size)
+#     train_inds, val_inds, test_inds = [], [], []
+#     # initial shuffle
+#     np.random.seed(2305)
+#     shuffled_ind_list = np.random.permutation(dataset_size)
+#     # allocate dataset indices based upon the fold number --> not the prettiest or most efficient implementation, but functional
+#     cyclic_ind_list = cycle(shuffled_ind_list)
+#     for i in range(k*test_ims):
+#         next(cyclic_ind_list)   # shift start pos
+#     for i in range(test_ims):
+#         test_inds.append(next(cyclic_ind_list))
+#     for i in range(train_ims):
+#         train_inds.append(next(cyclic_ind_list))
+#     for i in range(val_ims):
+#         val_inds.append(next(cyclic_ind_list))
+#     return test_inds
 
 class RunningAverage:
     # Computes and stores the average

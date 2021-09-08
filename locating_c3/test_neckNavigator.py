@@ -2,7 +2,7 @@
 #to test the model at various stages
 
 from torch.nn.functional import fold
-from utils import get_data, mrofsnart, euclid_dis, pythagoras, threeD_euclid_diff, display_net_test, slice_preds, GetSliceNumber
+from utils import get_data, mrofsnart, threeD_euclid_diff, display_net_test, slice_preds, GetSliceNumber
 from neckNavigatorTester import neckNavigatorTest2
 
 from neckNavigator import neckNavigator
@@ -10,7 +10,6 @@ from neckNavigatorData import neckNavigatorDataset
 from torch.utils.data import DataLoader
 import numpy as np
 import torch
-#from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import k_fold_cross_val
 import pandas as pd 
 import matplotlib.pyplot as plt
@@ -18,7 +17,7 @@ import matplotlib.pyplot as plt
 
 def main():
 
-    # get data
+    ###*** GET DATA ***###
     #data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
     data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_TFinal_gauss.npz'
     save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/fold_info/c3_loc.xlsx'#' +str(i) + '
@@ -40,6 +39,7 @@ def main():
     #train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
     fold_num = 3
     Zfold_distances = []
+
     for i in range(0,fold_num):
 
         ###*** LOAD SAVED PREDICTIONS ***###
@@ -71,7 +71,7 @@ def main():
         #tester = neckNavigatorTest2(model_dir, test_dataloader, device)#load_best = true
         #C3s, segments, GTs = tester
 
-        #slice_no_preds, slice_no_gts = display_net_test(C3s, segments, GTs, test_ids, fold_num = i)
+        slice_no_preds, slice_no_gts = display_net_test(C3s, segments, GTs, test_ids, fold_num = i)
 
         #print("Net Preds: ",slice_no_preds.shape)
         

@@ -16,6 +16,7 @@ import torchvision.transforms as T
 import torchvision.io.image as tim
 from operator import mul
 from collections import deque
+from decimal import Decimal
 
 from PIL import Image
 from matplotlib.colors import Normalize
@@ -165,6 +166,20 @@ def pythagoras(three_distance):
   return pythag
 
 ###*** UNDO PREPROCESSING ***###
+def do_it_urself_round_i_guess(number, decimals = None, is_array = False):
+  float_num = number
+  dec_num =  Decimal(str(number))
+  Ddecimal = Decimal(str(decimals))
+  round_num = round(dec_num, decimals)
+  diff = np.abs(dec_num - round_num)
+  print(diff)
+  round_diff = 0.5
+  if decimals is not None: round_diff /= (10**decimals)
+  print(round_diff)
+  if (diff == Decimal(str(round_diff)) and dec_num >= round_num):
+    round_num += (1/(10**(Ddecimal))) 
+  return round_num
+
 def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backwards
     x_arr,y_arr,z_arr = [],[],[]
     
@@ -175,14 +190,14 @@ def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backw
         #undo scale
         coords = GetTargetCoords(msks[i])
         #print(coords)
-        z_coord = (coords[0]+1)*14/16
+        z_coord = (coords[0])*14/16
         #print("Undo Scale: ", coords[0])
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array] <- crop[zmin, zmax, xmin,...],]
         #print(transforms[i][1])
         z = z_coord + transforms[i][1][0]
-        x = (coords[1]+1)*2
-        y = (coords[2]+1)*2
+        x = (coords[1])*2
+        y = (coords[2])*2
         x += transforms[i][1][3]
         y += transforms[i][1][6]
         x_arr.append(x)
@@ -197,7 +212,7 @@ def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backw
           z_shape = transforms[i][1][2]
           z = z_shape - z
         #print("Final Coords: ", x,y,z)
-        z_arr.append(np.round(z))
+        #z_arr.append(do_it_urself_round_i_guess(z))
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 #MODEL SETUP
@@ -523,6 +538,6 @@ def display_net_test(inps, msks, gts, ids, shape = 128, fold_num = None):
   if fold_num == None:
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
   else:
-    path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_outputs'+f'_fold{fold_num+1}/'+f'test_pic{fold_num+1}'
+    path = f'/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold{fold_num+1}/test_pic{fold_num+1}'
   plt.savefig(path + '.png')
   return slice_no_preds, slice_no_gts
