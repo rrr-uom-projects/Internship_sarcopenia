@@ -166,19 +166,22 @@ def pythagoras(three_distance):
   return pythag
 
 ###*** UNDO PREPROCESSING ***###
-def do_it_urself_round_i_guess(number, decimals = None, is_array = False):
+def do_it_urself_round(number, decimals = 0, is_array = False):
   float_num = number
   dec_num =  Decimal(str(number))
   Ddecimal = Decimal(str(decimals))
   round_num = round(dec_num, decimals)
   diff = np.abs(dec_num - round_num)
-  print(diff)
-  round_diff = 0.5
-  if decimals is not None: round_diff /= (10**decimals)
-  print(round_diff)
-  if (diff == Decimal(str(round_diff)) and dec_num >= round_num):
+  round_diff = Decimal(str(0.5/(10**decimals)))
+  if (diff == round_diff and dec_num >= round_num):
     round_num += (1/(10**(Ddecimal))) 
-  return round_num
+  if decimals == 0:
+    return int(round_num)
+  else:
+    return float(round_num)
+
+# num = 128.456
+# print(do_it_urself_round(num))
 
 def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backwards
     x_arr,y_arr,z_arr = [],[],[]
@@ -212,7 +215,7 @@ def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backw
           z_shape = transforms[i][1][2]
           z = z_shape - z
         #print("Final Coords: ", x,y,z)
-        #z_arr.append(do_it_urself_round_i_guess(z))
+        #z_arr.append(do_it_urself_round(z))
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 #MODEL SETUP
