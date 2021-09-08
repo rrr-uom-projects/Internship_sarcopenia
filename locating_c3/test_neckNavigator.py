@@ -13,6 +13,7 @@ import torch
 #from neckNavigatorUtils import k_fold_split_train_val_test
 from neckNavigatorTrainerUtils import k_fold_cross_val
 import pandas as pd 
+import matplotlib.pyplot as plt
 
 
 def main():
@@ -37,8 +38,9 @@ def main():
     # allocate ims to train, val and test
     #dataset_size = len(inputs)
     #train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
-
-    for i in range(0,2):
+    fold_num = 3
+    Zfold_distances = []
+    for i in range(0,fold_num):
 
         ###*** LOAD SAVED PREDICTIONS ***###
         model_dir = checkpoint + "_fold" + str(i+1)
@@ -85,21 +87,32 @@ def main():
         _,_,z_test  = mrofsnart(GTs, test_processing_info)
 
         three_difference, three_mm_distance, pythagoras = threeD_euclid_diff(GTs, segments, test_vox_dims, test_processing_info)
-        
+        ZDistances_mm = three_mm_distance[:,0]
+        Zfold_distances.append(ZDistances_mm)
         ###*** SAVING TEST INFO ***###
-        print("debugging: ", len(test_ids), len(slice_no_preds), len(slice_no_gts), len(z))
-        print(len(test_org_slices), len(z_test), len(three_difference[0]), len(three_mm_distance[0]))
-        print(len(three_mm_distance[1]), len(three_mm_distance[2]),len(pythagoras))
         df = pd.DataFrame({"IDs": test_ids, "Out_Slice_Numbers": slice_no_preds, "GT_ProcessedSliceNo": slice_no_gts, "PostProcessSliceNo": z, 
-        "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test,"ZSliceDifference": three_difference[0] ,"ZSliceDistances_mm": three_mm_distance[:,0], 
+        "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test,"ZSliceDifference": three_difference[0] ,"ZSliceDistances_mm": ZDistances_mm, 
             "x_distance": three_mm_distance[:,1], "y_disance": three_mm_distance[:,2], "pythag_dist_abs": pythagoras})
-        df.to_excel(excel_writer = xl_writer, index=False,
-                sheet_name=f'fold{i+1}')
-        xl_writer.save()
-        print("Saved Test Info.")
-        
+        #pd.set_option("max_colwidth", 50)
+        df.to_excel(excel_writer = xl_writer, index=False, sheet_name=f'fold{i+1}')
+    xl_writer.save()
+
     xl_writer.close()
 
+    #box plot 
+    cols = []
+    dict = {}
+    Zfold_distances = np.array(Zfold_distances)
+    for j in range(fold_num):
+        cols.append(f'fold{j+1}')
+        dict[f'fold{j+1}'] = Zfold_distances[j]
+    dfbp = pd.DataFrame(dict)
+    plt.figure()
+    boxplot = dfbp.boxplot(column=cols)
+    plt.ylabel("Distance from C3 [mm]")
+    plt.savefig("box_plot.png")
+    print("Saved Test Info.")
+    
 
     return
 
