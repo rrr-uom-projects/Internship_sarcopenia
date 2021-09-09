@@ -71,7 +71,7 @@ def main():
         #tester = neckNavigatorTest2(model_dir, test_dataloader, device)#load_best = true
         #C3s, segments, GTs = tester
 
-        slice_no_preds, slice_no_gts = display_net_test(C3s, segments, GTs, test_ids, fold_num = i)
+        #slice_no_preds, slice_no_gts = display_net_test(C3s, segments, GTs, test_ids, fold_num = i)
 
         #print("Net Preds: ",slice_no_preds.shape)
         

@@ -318,7 +318,7 @@ CTs, masks = np.array(CTs), np.array(masks)
 transforms = preprocessed_data.transforms()
 org_slices = preprocessed_data.original_slices()
 voxel_dims = preprocessed_data.voxel_dims()
-print(org_slices)
+#print(org_slices)
 
 #final_transformed_slices = slice_preds(masks)
 #x, y, z = mrofsnart(masks, transforms)
