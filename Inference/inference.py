@@ -29,7 +29,7 @@ def main():
             - unflip, resample on the way
     """  
     ###*** PRE-PROCESSING 1 ***###
-    #load in and preprocess. save voxel dims for calculating SMA later.
+    #load in and preprocess <- hmm seperate?. save voxel dims for calculating SMA later.
 
     ###*** RUN NECK NAVIGATOR MODEL ***###
     #load in model weigts and run model over one image. need dataloader
@@ -42,7 +42,7 @@ def main():
 
     ###*** PRE-PROCESSING 2 ***###
     #hmm the scale for the other model might be and issue maybe save the image before the scale is applied and use that.
-    #or might have to load it in again to select the right slice.
+    #or might have to use the loaded in image and preprocessing again to select the right slice.
     
     ###*** MUSCLE MAPPER MODEL ***###
 
