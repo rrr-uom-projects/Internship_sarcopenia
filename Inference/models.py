@@ -1,6 +1,6 @@
-# 27/07/2021
+# 27/07/2021 added to inference: 09/09/2021
 # Hermione Warr and Olivia Murray
-# Neck Navigator Model
+# Neck Navigator Model, maybe also put muscle mapper here too - not much to add. 
 # Code taken and adapted from https://github.com/rrr-uom-projects/3DSegmentationNetwork/blob/master/headHunter/models.py with permission
 
 #imports
