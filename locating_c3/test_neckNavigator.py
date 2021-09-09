@@ -19,7 +19,7 @@ def main():
 
     ###*** GET DATA ***###
     #data_path =  '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz'
-    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_TFinal_gauss.npz'
+    data_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_TFinal2_gauss.npz'
     save_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/fold_info/c3_loc.xlsx'#' +str(i) + '
     checkpoint = "/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs"
     xl_writer = pd.ExcelWriter(save_path)
@@ -37,7 +37,7 @@ def main():
     # allocate ims to train, val and test
     #dataset_size = len(inputs)
     #train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
-    fold_num = 3
+    fold_num = 4
     Zfold_distances = []
 
     for i in range(0,fold_num):
@@ -54,7 +54,7 @@ def main():
         test_inds = fold_data['index']
         test_ids = fold_data['ids']
         test_processing_info = [transforms[ind] for ind in test_inds]
-        test_org_slices = fold_data['test_preprocessed_gt_slices']
+        test_org_slices = [org_slices[ind]for ind in test_inds]
         test_vox_dims = fold_data['test_vox_dims']
 
     
@@ -86,14 +86,14 @@ def main():
         x,y,z = mrofsnart(segments, test_processing_info)
         _,_,z_test  = mrofsnart(GTs, test_processing_info)
 
-        three_difference, three_mm_distance, pythagoras = threeD_euclid_diff(GTs, segments, test_vox_dims, test_processing_info)
-        ZDistances_mm = three_mm_distance[:,0]
+        three_difference, three_mm_distance, pythagoras = threeD_euclid_diff(GTs, segments, test_vox_dims,test_processing_info)
+        ZDistances_mm = three_mm_distance[:,2]
         Zfold_distances.append(ZDistances_mm)
         ###*** SAVING TEST INFO ***###
         pd.set_option("max_colwidth", 100)
         df = pd.DataFrame({"IDs": test_ids, "Out_Slice_Numbers": slice_no_preds, "GT_ProcessedSliceNo": slice_no_gts, "PostProcessSliceNo": z, 
-        "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test,"ZSliceDifference": three_difference[0] ,"ZSliceDistances_mm": ZDistances_mm, 
-            "x_distance": three_mm_distance[:,1], "y_disance": three_mm_distance[:,2], "pythag_dist_abs": pythagoras})
+        "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test,"ZSliceDifference": three_difference[2] ,"ZSliceDistances_mm": ZDistances_mm, 
+            "x_distance": three_mm_distance[:,0], "y_disance": three_mm_distance[:,1], "pythag_dist_abs": pythagoras})
         df.to_excel(excel_writer = xl_writer, index=False, sheet_name=f'fold{i+1}')
         for column in df:
             column_length = max(df[column].astype(str).map(len).max(), len(column))
@@ -114,7 +114,7 @@ def main():
     plt.figure()
     boxplot = dfbp.boxplot(column=cols)
     plt.ylabel("Distance from C3 [mm]")
-    plt.savefig("box_plot.png")
+    plt.savefig("fold_info/box_plot.png")
     print("Saved Test Info.")
     
 

@@ -98,7 +98,8 @@ def GetSliceNumber(segment):
     if val != 0:
       slice_number.append(x)
       weights.append(val)
-  return np.round(np.average(slice_number, weights = weights), decimals=3)
+  slice_no = do_it_urself_round(np.average(slice_number, weights = weights), decimals=3)
+  return slice_no
 
 def GetTargetCoords(target):
   coords = center_of_mass(target) 
@@ -152,14 +153,14 @@ def threeD_euclid_diff(gts, msks, dims, transform_info = None):
       mm_distances.append(np.array(mm_distance))
       pythag_dist.append(pythag)
 
-      def make_arr(a): 
-        return np.round(np.array(a),decimals = 3)
-      #output shape of mm_distances (54,3)
+  def make_arr(a): 
+   return np.round(np.array(a), decimals=5)
+    #output shape of mm_distances (54,3) x,y,z
   return make_arr(distances), make_arr(mm_distances), make_arr(pythag_dist)
 
 def z_euclid_dist(gts, msks, dims):
   three_diff, three_mm_dist,_ = threeD_euclid_diff(gts, msks, dims)
-  return three_diff[0], three_mm_dist[0]
+  return three_diff[2], three_mm_dist[2]
 
 def pythagoras(three_distance):
   pythag = np.sqrt(pow(three_distance[0],2)+pow(three_distance[1],2)+pow(three_distance[2],2))
@@ -181,7 +182,7 @@ def do_it_urself_round(number, decimals = 0, is_array = False):
     return float(round_num)
 
 # num = 128.456
-# print(do_it_urself_round(num))
+# print(do_it_urself_round(num,3))
 
 def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backwards
     x_arr,y_arr,z_arr = [],[],[]
@@ -192,30 +193,30 @@ def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backw
     for i in range(len(msks)):
         #undo scale
         coords = GetTargetCoords(msks[i])
-        #print(coords)
-        z_coord = (coords[0])*14/16
-        #print("Undo Scale: ", coords[0])
+        print(coords)
+        z_coord = (coords[0])*transforms[i][2][0]#*14/16
         #undo crop
-        #eg z crop [46,1] z=12  [[true, crop array] <- crop[zmin, zmax, xmin,...],]
+        #eg z crop [46,1] z=12  [[true, crop array, scale_info] <- crop[zmin, zmax, xmin,...],]
         #print(transforms[i][1])
         z = z_coord + transforms[i][1][0]
-        x = (coords[1])*2
-        y = (coords[2])*2
+        x = (coords[1])*transforms[i][2][1]#*2
+        y = (coords[2])*transforms[i][2][2]#*2
+        print("Undo Scale: ", z_coord,x,y)
         x += transforms[i][1][3]
         y += transforms[i][1][6]
         x_arr.append(x)
-        #print("Undo Crop:", z, x, y)
+        print("Undo Crop:", z, x, y)
         #undo flip if necessary
         if (transforms[i][0]==True):
-            y_shape = transforms[i][1][8]
+            y_shape = transforms[i][1][8] -1
             y = y_shape - y
         y_arr.append(y)
 
         if (transforms[i][0]==True):
-          z_shape = transforms[i][1][2]
+          z_shape = transforms[i][1][2] -1 
           z = z_shape - z
-        #print("Final Coords: ", x,y,z)
-        #z_arr.append(do_it_urself_round(z))
+        print("Final Coords: ", z,x,y)
+        z_arr.append(z)
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 
 #MODEL SETUP
@@ -459,7 +460,7 @@ def display_input_data(path, type = 'numpy', save_name = 'Tgauss_data', show = F
     slice_no_gt = GetSliceNumber(msks[l])
     image, target = base_projections(inps[l], msks[l])
     id = ids[l]
-    slice_no = 128 - np.round(slice_no_gt)
+    slice_no = 128 - do_it_urself_round(slice_no_gt)
     for i in range(1,4):
       # create subplot and append to ax
       j+=1
@@ -495,52 +496,52 @@ def display_net_test(inps, msks, gts, ids, shape = 128, fold_num = None):
   data_size = len(inps)
   slice_no_preds = slice_preds(msks)
   slice_no_gts = slice_preds(gts)
-  print("test data size: ", data_size)
-  for i in range(data_size):
-    image, gt = base_projections(inps[i], gts[i])
-    images.append(image)
-    targets.append(gt)
-    _, pred = base_projections(inps[i], msks[i])
-    preds.append(pred)
-  
+  print("test data size: ", data_size)  
   #make the figure
-  fig = plt.figure(figsize = (100, 400))
+  fig = plt.figure(figsize = (50, 200))
   ax = []
   columns = 6
   rows = (2*data_size)/6
   j = 0
-  for l in range(1, data_size + 1):
-    image = images[l-1]
-    target =  targets[l-1]
-    pred = preds[l-1]
-    id = ids[l-1]
-    slice_pred = shape - np.round(slice_no_preds[l-1]) #upside fucking down dear god
-    slice_gt = shape - np.round(slice_no_gts[l-1])
+  for l in range(0, data_size):
+    image, target = base_projections(inps[l], gts[l])
+    _, pred = base_projections(inps[l], msks[l])
+    id = ids[l]
+    coords_gt = GetTargetCoords(gts[l])
+    coords_pred = GetTargetCoords(msks[l])
+    slice_pred = shape - do_it_urself_round(GetSliceNumber(msks[l])) #upside fucking down dear god
+    slice_gt = shape - do_it_urself_round(GetSliceNumber(gts[l]))
     for i in range(3,4):
       #create gt subplot 
       j+=1
       ax.append(fig.add_subplot(rows, columns, j))
-      ax[-1].set_title("GT " + str(l) + ',' + id)
+      ax[-1].set_title("GT " + str(l+1) + ',' + id)
       plt.imshow(image[i-1])
+      target[i-1][target[i-1] == 0] = np.nan
       plt.imshow(target[i-1], cmap="cool", alpha=0.5)
       if (i%3==0):
         ax[-1].axhline(slice_gt, linewidth=2, c='y')
         ax[-1].text(0, slice_gt-5, "C3: " + str(slice_gt), color='w')
+        plt.scatter(coords_gt[1], (128 - coords_gt[0]), c = 'r', s=10) #y,z
       plt.axis('off')
     for i in range(3,4):
       #mask subplot
       j+=1
       ax.append(fig.add_subplot(rows, columns, j))
-      ax[-1].set_title("Pred " + str(l) + ',' + id)
+      ax[-1].set_title("Pred " + str(l+1) + ',' + id)
       plt.imshow(image[i-1])
-      plt.imshow(pred[i-1], cmap="cool", alpha=0.5)
+      pred[i-1][pred[i-1] <= (np.max(pred[i-1])/4)] = np.nan
+      pred[i-1][pred[i-1] >= (np.max(pred[i-1])/4)] = 1
+      plt.imshow(pred[i-1], cmap = 'cool', alpha=0.5)
       if (i%3==0):
         ax[-1].axhline(slice_pred, linewidth=2, c='y')
         ax[-1].text(0, slice_pred-5, "C3: "+ str(slice_pred), color='w')
+        plt.scatter(coords_pred[1], (128 - coords_pred[0]), c = 'r', s=40) #y,z
       plt.axis('off')
   if fold_num == None:
     path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/test_pic'
   else:
     path = f'/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold{fold_num+1}/test_pic{fold_num+1}'
   plt.savefig(path + '.png')
+  plt.close()
   return slice_no_preds, slice_no_gts

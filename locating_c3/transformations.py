@@ -102,7 +102,6 @@ def cropping(inp: np.ndarray, tar: np.ndarray ):
         inp, tar =padded_arr, padded_tar
         z_coords = {"z_min": 0, "z_max": inp.shape[0]}
     
-    print(z_coords["z_min"],z_coords["z_max"],x_min)
     x, y = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max], tar[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
     cropped_info = [z_coords["z_min"], z_coords["z_max"], org_inp_size[0], x_min, x_max, org_inp_size[1], y_min, y_max, org_inp_size[2]]
     
@@ -193,7 +192,7 @@ def save_preprocessed(inputs, targets, ids, org_slice_nos, voxel_dims, transform
     #path = '/home/olivia/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
     ids = np.array(ids)
     print("final shape: ", inputs.shape, targets.shape, ids.shape, len(org_slice_nos), len(voxel_dims))
-    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos.astype(int), dims = voxel_dims.astype(np.float32))
+    np.savez(path, inputs = inputs.astype(np.float32), masks = targets.astype(np.float32), ids = ids, transforms = transforms, org_nos = org_slice_nos, dims = voxel_dims.astype(np.float32))
     #sep file for voxels
     np.savez(vox_path, ids = ids, dims = voxel_dims.astype(np.float32))
     print("Saved preprocessed data") 
@@ -215,6 +214,7 @@ class preprocessing():
         self.transform_list = []
         self.slices_gt = []
         self.voxel_dims_list = []
+        self.scale_list = []
 
     def __len__(self):
         return len(self.inputs)
@@ -252,7 +252,7 @@ class preprocessing():
         #save original slice number
         slice_no = GetTargetCoords(y)[0]
         #print("Original Slice No: ", GetTargetCoords(y))
-        self.slices_gt.append(slice_no)
+        self.slices_gt.append(do_it_urself_round(slice_no))
 
         # Preprocessing
         if need_flip == True:
@@ -265,7 +265,8 @@ class preprocessing():
     
         if self.cropping is not None:
             x, y, crop_info = self.cropping(x, y)
-       # print("Post cropping: ", GetTargetCoords(y))
+        post_crop = GetTargetCoords(y)
+        #print("Post cropping: ", GetTargetCoords(y))
         if self.sphere is not None:
             y = self.sphere(y)
 
@@ -275,13 +276,15 @@ class preprocessing():
         if self.normalise is not None:
             x, y = self.normalise(x), self.normalise(y)
 
-        #save transforms and gt slice
-        transform_list_item = [need_flip, crop_info]
-        self.transform_list.append(np.array(transform_list_item))
         #downsampling to size -> [128,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         #print("Post scale: ", GetTargetCoords(y))
+        scale_info = np.array(post_crop)/np.array(GetTargetCoords(y))
+        #print("Scale info: ", scale_info)
+        #save transforms and gt slice
+        transform_list_item = [need_flip, crop_info, scale_info]
+        self.transform_list.append(np.array(transform_list_item))
         assert np.min(y) >= 0
         assert np.max(y) > 0
         data = {'input': x, 'mask': y}  
@@ -319,7 +322,6 @@ print(org_slices)
 
 #final_transformed_slices = slice_preds(masks)
 #x, y, z = mrofsnart(masks, transforms)
-#print(z)
 #%%
 #save the preprocessed masks and cts for the dataset
 save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
