@@ -14,6 +14,9 @@ import sklearn
 from decimal import Decimal
 import matplotlib.pyplot as plt
 from torchvision import models
+from scipy import ndimage
+import albumentations as A
+from albumentations.pytorch import ToTensor
 
 from model import neckNavigator
 
@@ -302,18 +305,28 @@ def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldma
     
     return np.logical_not(sitk.GetArrayFromImage(dilated_mask)[slice_number])#10
 
-def preprocessing_2(slice_no, ct):
+def three_channel(ct_slice):
+  size = len(ct_slice)
+  slices_3chan = np.repeat(ct_slice[...,np.newaxis], 3, axis=-1)
+  # apply filters to two channels
+  slices_3chan[...,1] = ndimage.gaussian_laplace(slices_3chan[...,1], sigma=1)
+  slices_3chan[...,2] = ndimage.sobel(slices_3chan[...,2])
+  transform_slice = slices_3chan.astype(np.float32)
+  return transform_slice
+
+transform = A.Compose([A.Resize(260, 260), A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), ToTensor()])
+
+def preprocessing_2(slice_no, ct, is_worldmatch = True):
   #extract slice
   slice_no = do_it_urself_round(slice_no)
-  bone_mask = extract_bone_masks(ct,slice_no, worldmatch=True)#see if need to change this
+  bone_mask = extract_bone_masks(ct,slice_no, worldmatch=is_worldmatch)
   ct_slice = sitk.GetArrayFromImage(ct)[slice_no,:,:]
-  ct_slice -=1024 #check that this is still needed
+  if is_worldmatch: ct_slice -=1024
   ct_slice = ct_slice.astype(float)
   cropped_slice = cropping(ct_slice, bone_mask, threeD=False)
   wl_slice = window_level(cropped_slice)
   shape = wl_slice.shape
   image_scaled = np.round(sklearn.preprocessing.minmax_scale(wl_slice.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
-  #do three channels with filters
   return image_scaled, bone_mask
 
 ###*** MUSCLE MAPPER MODEL ***###
@@ -326,7 +339,11 @@ def set_up_MuscleMapper(model_path, device):
   return model
 
 def MuscleMapperRun(ct_slice, model_path, device):
-  slice = ct_slice.to(device)
+  #do three channels with filters # should this be before scaling
+  three_chan = three_channel(ct_slice)
+  transformed = transform(three_channel)
+  print(transformed.shape)
+  slice = transformed.unsqueeze(0).to(device)
   slice = slice.type(torch.float32)
   model = set_up_MuscleMapper(model_path, device)
   output = model(slice)["out"] 

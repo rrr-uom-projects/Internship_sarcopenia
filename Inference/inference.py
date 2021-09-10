@@ -10,7 +10,7 @@
 from matplotlib.pyplot import savefig
 from sklearn import preprocessing
 from utils_2 import load, postprocessing_2, preprocessing_1, NeckNavigatorRun, mrofsnart, display_net_test
-from utils_2 import preprocessing_2, postprocessing_2, display_slice, save_figs
+from utils_2 import preprocessing_2, MuscleMapperRun, postprocessing_2, display_slice, save_figs
 
 ###*** GLOBAL VARIABLES ***###
 #paths
@@ -59,11 +59,11 @@ def main():
     ###*** PRE-PROCESSING 2 ***###
     #hmm the scale for the other model might be and issue maybe save the image before the scale is applied and use that.
     #or might have to use the loaded in image and preprocessing again to select the right slice.
-    preprocessed_slice, bone_mask = preprocessing_2(z, image)
-    print(preprocessed_slice.shape)
+    processed_slice, bone_mask = preprocessing_2(z, image)
+    print(processed_slice.shape)
 
     ###*** MUSCLE MAPPER MODEL ***###
-    segment = None
+    segment = MuscleMapperRun(processed_ct, MM_model_weights_path, device)
 
     ###*** POST-PROCESSING 2 ***###
     #use image here not processed.remove bone from segmentation
@@ -72,7 +72,7 @@ def main():
 
     ###*** SAVE MUSCLE MAPPER OUTPUT ***###
     #segment and patient ID and SMA/SMI and SMD to excel
-    slice_fig = display_slice(preprocessed_slice, segment)
+    slice_fig = display_slice(processed_slice, segment)
     save_figs(sagital_fig, slice_fig, sanity_check_folder)
     return
 
