@@ -9,12 +9,14 @@
 #from models import neckNavigator
 from sklearn import preprocessing
 from utils_2 import load, preprocessing_1, NeckNavigatorRun, mrofsnart, display_net_test
+from utils_2 import preprocessing_2
 
 ###*** GLOBAL VARIABLES ***###
 #paths
 path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images/100182405.nii.gz'
 #path = 'D:/data/Alex/HeadAndNeckData/Packs_UKCatsFeedingTube' #Alex's data
-model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1'
+NN_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1'
+#MM_model_weights_path =
 sanity_check_folder = '/home/hermione/Documents/Internship_sarcopenia/Inference/sanity_check/'
 #constants
 window = 350
@@ -33,17 +35,18 @@ def main():
         - Write segmentation masks to the output directory
             - unflip, resample on the way
     """  
-    ###*** PRE-PROCESSING 1 ***###
-    #load in and preprocess <- hmm seperate?. save voxel dims for calculating SMA later.
+    ###*** LOAD ***###
     input_data = load(path)
     image = input_data['input']
     voxel_dims = input_data['voxel_dims']
+    ###*** PRE-PROCESSING 1 ***###
+    #load in and preprocess <- hmm seperate?. save voxel dims for calculating SMA later.
     preprocessing_info = preprocessing_1(image)
     preprocessed_ct = preprocessing_info['input']
     transforms = preprocessing_info['transform']
     ###*** RUN NECK NAVIGATOR MODEL ***###
     #load in model weigts and run model over one image. need dataloader
-    pred = NeckNavigatorRun(model_weights_path, preprocessed_ct, device)#load_best = true
+    pred = NeckNavigatorRun(NN_model_weights_path, preprocessed_ct, device)#load_best = true
     ###*** POST-PROCESSING 1 ***###
     #extract predicted slice number (and other coords)
     x,y,z = mrofsnart(pred, transforms)
@@ -54,7 +57,8 @@ def main():
     ###*** PRE-PROCESSING 2 ***###
     #hmm the scale for the other model might be and issue maybe save the image before the scale is applied and use that.
     #or might have to use the loaded in image and preprocessing again to select the right slice.
-    #preprocessed_slice = preprocessing_2()
+    preprocessed_slice = preprocessing_2(z, image)
+    print (preprocessed_slice.shape)
     ###*** MUSCLE MAPPER MODEL ***###
 
     ###*** POST-PROCESSING 2 ***###

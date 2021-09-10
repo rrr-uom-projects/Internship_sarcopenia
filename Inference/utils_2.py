@@ -91,38 +91,45 @@ def normalize_01(inp: np.ndarray):
     inp_out = inp_new
     return inp_out
 
-def cropping(inp: np.ndarray):
+def cropping(inp: np.ndarray, threeD = True):
     #working one but z axis crop needs improving
     x = inp
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
     coords = center_of_mass(threshold)
+    if threeD: x_ind, y_ind = 1, 2
+    else: x_ind, y_ind = 0, 1
     size =126
-    x_min = do_it_urself_round(((coords[1] - size)+126)/2)
-    x_max = do_it_urself_round(((coords[1] + size)+386)/2)
-    y_min = do_it_urself_round(((coords[2] - size)+126)/2)
-    y_max = do_it_urself_round(((coords[2] + size)+386)/2)
-    #z crop
-    z_size = 112
-    z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
-    org_inp_size = x.shape
-        
-    if (z_size < x.shape[0]):
-        #print("bigger", x.shape[0])
-        if(x.shape[0] > do_it_urself_round(coords[0])+z_size): #190>87+112=199
-            print("crop")
-            z_coords = {"z_min": do_it_urself_round(coords[0]), "z_max": do_it_urself_round(coords[0])+z_size}
+    x_min = do_it_urself_round(((coords[x_ind] - size)+126)/2)
+    x_max = do_it_urself_round(((coords[x_ind] + size)+386)/2)
+    y_min = do_it_urself_round(((coords[y_ind] - size)+126)/2)
+    y_max = do_it_urself_round(((coords[y_ind] + size)+386)/2)
+    
+    if threeD == True:
+      #z crop
+      z_size = 112
+      z_coords = {"z_min":x.shape[0]-z_size,"z_max":x.shape[0]}
+      org_inp_size = x.shape
+          
+      if (z_size < x.shape[0]):
+          #print("bigger", x.shape[0])
+          if(x.shape[0] > do_it_urself_round(coords[0])+z_size): #190>87+112=199
+              print("crop")
+              z_coords = {"z_min": do_it_urself_round(coords[0]), "z_max": do_it_urself_round(coords[0])+z_size}
+
+      else:
+          #print("too small: ", x.shape[0])
+          padded_arr = np.pad(x, ((do_it_urself_round((z_size-x.shape[0])/2), do_it_urself_round((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
+          
+          inp = padded_arr
+          z_coords = {"z_min": 0, "z_max": inp.shape[0]}
+      
+      x = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
+      cropped_info = [z_coords["z_min"], z_coords["z_max"], org_inp_size[0], x_min, x_max, org_inp_size[1], y_min, y_max, org_inp_size[2]]
+      return x, np.array(cropped_info)
 
     else:
-        #print("too small: ", x.shape[0])
-        padded_arr = np.pad(x, ((do_it_urself_round((z_size-x.shape[0])/2), do_it_urself_round((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
-        
-        inp = padded_arr
-        z_coords = {"z_min": 0, "z_max": inp.shape[0]}
-    
-    x = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-    cropped_info = [z_coords["z_min"], z_coords["z_max"], org_inp_size[0], x_min, x_max, org_inp_size[1], y_min, y_max, org_inp_size[2]]
-    
-    return x, np.array(cropped_info)
+      x = inp[x_min:x_max,y_min:y_max]
+      return x
 
 def preprocessing_1(image):
     x = image
@@ -246,10 +253,20 @@ def display_net_test(inps, msks, id, shape = 128, z = None):
     plt.text(0, slice_pred-5, "C3: "+ str(slice_no), color='w')
     plt.scatter(coords_pred[1], (128 - coords_pred[0]), c = 'r', s=20) #y,z
     plt.axis('off')
-    plt.show()
+    #plt.show()
     return fig
-###*** PRE-PROCESSING 2 ***###
 
+###*** PRE-PROCESSING 2 ***###
+def preprocessing_2(slice_no, ct):
+  #extract slice
+  ct_slice = sitk.GetArrayFromImage(ct)[do_it_urself_round(slice_no),:,:]
+  ct_slice -=1024 #check that this is still needed
+  ct_slice = ct_slice.astype(float)
+  cropped_slice = cropping(ct_slice, threeD=False)
+  wl_slice = window_level(cropped_slice)
+  shape = wl_slice.shape
+  image_scaled = np.round(sklearn.preprocessing.minmax_scale(wl_slice.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
+  return image_scaled
 ###*** MUSCLE MAPPER MODEL ***###
 
 ###*** POST-PROCESSING 2 ***###
