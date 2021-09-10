@@ -7,16 +7,17 @@
 
 #imports
 #from models import neckNavigator
+from matplotlib.pyplot import savefig
 from sklearn import preprocessing
-from utils_2 import load, preprocessing_1, NeckNavigatorRun, mrofsnart, display_net_test
-from utils_2 import preprocessing_2
+from utils_2 import load, postprocessing_2, preprocessing_1, NeckNavigatorRun, mrofsnart, display_net_test
+from utils_2 import preprocessing_2, postprocessing_2, display_slice, save_figs
 
 ###*** GLOBAL VARIABLES ***###
 #paths
 path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images/100182405.nii.gz'
 #path = 'D:/data/Alex/HeadAndNeckData/Packs_UKCatsFeedingTube' #Alex's data
 NN_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1'
-#MM_model_weights_path =
+MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/model_state_dict_300_FL_testing.pt"
 sanity_check_folder = '/home/hermione/Documents/Internship_sarcopenia/Inference/sanity_check/'
 #constants
 window = 350
@@ -42,30 +43,37 @@ def main():
     ###*** PRE-PROCESSING 1 ***###
     #load in and preprocess <- hmm seperate?. save voxel dims for calculating SMA later.
     preprocessing_info = preprocessing_1(image)
-    preprocessed_ct = preprocessing_info['input']
+    processed_ct = preprocessing_info['input']
     transforms = preprocessing_info['transform']
     ###*** RUN NECK NAVIGATOR MODEL ***###
     #load in model weigts and run model over one image. need dataloader
-    pred = NeckNavigatorRun(NN_model_weights_path, preprocessed_ct, device)#load_best = true
+    pred = NeckNavigatorRun(NN_model_weights_path, processed_ct, device)#load_best = true
     ###*** POST-PROCESSING 1 ***###
     #extract predicted slice number (and other coords)
     x,y,z = mrofsnart(pred, transforms)
     ###*** SAVE NECK NAVIGATOR OUTPUT ***###
     #save slice number and sagital image and patient id <- path end
-    sagital_fig = display_net_test(preprocessed_ct, pred, id = 'test', z= z)
+    sagital_fig = display_net_test(processed_ct, pred, id = 'test', z= z)
     print(z)
+    
     ###*** PRE-PROCESSING 2 ***###
     #hmm the scale for the other model might be and issue maybe save the image before the scale is applied and use that.
     #or might have to use the loaded in image and preprocessing again to select the right slice.
-    preprocessed_slice = preprocessing_2(z, image)
-    print (preprocessed_slice.shape)
+    preprocessed_slice, bone_mask = preprocessing_2(z, image)
+    print(preprocessed_slice.shape)
+
     ###*** MUSCLE MAPPER MODEL ***###
+    segment = None
 
     ###*** POST-PROCESSING 2 ***###
+    #use image here not processed.remove bone from segmentation
+    pixel_area = voxel_dims[0]*voxel_dims[1]
+    SMA, SMD, mask = postprocessing_2(image, segment, bone_mask, pixel_area)
 
     ###*** SAVE MUSCLE MAPPER OUTPUT ***###
     #segment and patient ID and SMA/SMI and SMD to excel
-    
+    slice_fig = display_slice(preprocessed_slice, segment)
+    save_figs(sagital_fig, slice_fig, sanity_check_folder)
     return
 
 if __name__ == '__main__':

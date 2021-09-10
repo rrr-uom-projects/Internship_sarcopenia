@@ -13,8 +13,13 @@ import cv2
 import sklearn
 from decimal import Decimal
 import matplotlib.pyplot as plt
+from torchvision import models
 
-from models import neckNavigator
+from model import neckNavigator
+
+#constants
+window = 350
+level = 50
 
 #general utils functions
 def GetTargetCoords(target):
@@ -72,8 +77,6 @@ def flip(im):
     return im
 
 def window_level(inp: np.array):
-    window = 350
-    level = 50
     vmax = level/2 + window
     vmin = level/2-window
     thresh = 1000
@@ -91,7 +94,7 @@ def normalize_01(inp: np.ndarray):
     inp_out = inp_new
     return inp_out
 
-def cropping(inp: np.ndarray, threeD = True):
+def cropping(inp: np.ndarray, bone_mask = None, threeD = True):
     #working one but z axis crop needs improving
     x = inp
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
@@ -125,7 +128,11 @@ def cropping(inp: np.ndarray, threeD = True):
       
       x = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
       cropped_info = [z_coords["z_min"], z_coords["z_max"], org_inp_size[0], x_min, x_max, org_inp_size[1], y_min, y_max, org_inp_size[2]]
-      return x, np.array(cropped_info)
+      if bone_mask is not None:
+        cropped_bone = bone_mask[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
+        return x, cropped_bone, np.array(cropped_info)
+      else:
+        return x, np.array(cropped_info)
 
     else:
       x = inp[x_min:x_max,y_min:y_max]
@@ -257,19 +264,119 @@ def display_net_test(inps, msks, id, shape = 128, z = None):
     return fig
 
 ###*** PRE-PROCESSING 2 ***###
+def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldmatch=False):
+    """
+    Calculate 3D bone mask and remove from prediction. 
+    Used to account for partial volume effect.
+​
+    Args:
+        dcm_array - 3D volume
+        slice number - slice where segmentation being performed
+        threshold (in HU) - threshold above which values are set to 1 
+        radius (in mm) - Kernel radius for binary dilation
+    """
+    #img = sitk.GetImageFromArray(dcm_array)
+    img = dcm_array
+    #print(img.size)
+    #img = img[slice_number-10:slice_number+10]
+    #print(img.size)
+    # Worldmatch tax
+    if worldmatch:
+        img -= 1024
+    # Apply threshold
+    bin_filt = sitk.BinaryThresholdImageFilter()
+    bin_filt.SetOutsideValue(1)
+    bin_filt.SetInsideValue(0)
+    bin_filt.SetLowerThreshold(-1024)
+    bin_filt.SetUpperThreshold(threshold)
+    bone_mask = bin_filt.Execute(img)
+    pix = bone_mask.GetSpacing()
+    # Convert to pixels
+    pix_rad = [int(radius//elem) for elem in pix]
+    # Dilate mask
+    dil = sitk.BinaryDilateImageFilter()
+    dil.SetKernelType(sitk.sitkBall)
+    dil.SetKernelRadius(pix_rad)
+    dil.SetForegroundValue(1)
+    dilated_mask = dil.Execute(bone_mask)
+    
+    return np.logical_not(sitk.GetArrayFromImage(dilated_mask)[slice_number])#10
+
 def preprocessing_2(slice_no, ct):
   #extract slice
-  ct_slice = sitk.GetArrayFromImage(ct)[do_it_urself_round(slice_no),:,:]
+  slice_no = do_it_urself_round(slice_no)
+  bone_mask = extract_bone_masks(ct,slice_no, worldmatch=True)#see if need to change this
+  ct_slice = sitk.GetArrayFromImage(ct)[slice_no,:,:]
   ct_slice -=1024 #check that this is still needed
   ct_slice = ct_slice.astype(float)
-  cropped_slice = cropping(ct_slice, threeD=False)
+  cropped_slice = cropping(ct_slice, bone_mask, threeD=False)
   wl_slice = window_level(cropped_slice)
   shape = wl_slice.shape
   image_scaled = np.round(sklearn.preprocessing.minmax_scale(wl_slice.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
-  return image_scaled
+  #do three channels with filters
+  return image_scaled, bone_mask
+
 ###*** MUSCLE MAPPER MODEL ***###
+def set_up_MuscleMapper(model_path, device):
+  #initilaise and load the model
+  model = models.segmentation.fcn_resnet50(pretrained=False, num_classes=1)
+  model.load_state_dict(torch.load(model_path, map_location=device))
+  model.to(device)
+  model.eval()
+  return model
+
+def MuscleMapperRun(ct_slice, model_path, device):
+  slice = ct_slice.to(device)
+  slice = slice.type(torch.float32)
+  model = set_up_MuscleMapper(model_path, device)
+  output = model(slice)["out"] 
+  MM_ouput = output.detach().cpu()
+  # sigmoid and thresholding
+  sigmoid = 1/(1 + np.exp(-MM_ouput))
+  segment = (sigmoid > 0.5).float()
+  return np.array(segment)
 
 ###*** POST-PROCESSING 2 ***###
+def getDensity(image, mask, area, label=1):
+  if image.shape != (len(image),1,...):
+    mask = np.squeeze(mask)
+  return float(np.mean(image[np.where(mask == 1)]))
+
+def getArea(image, mask, area, label=1, thresholds = None):
+  sMasks = (mask == label)
+  threshold = np.logical_and(image > (thresholds[0]), image <  (thresholds[1]))
+  tmask = np.logical_and(sMasks, threshold)
+  return np.count_nonzero(tmask) * area
+
+def postprocessing_2(ct_slice, segment, bone_mask, areas):
+  #remove bone masks
+  pred_slb = np.logical_and(segment, bone_mask)#not no?
+  #calc SMA/SMI and SMD
+  SMA = getArea(ct_slice, pred_slb,areas, thresholds=(-30, +130))
+  SMD = getDensity(ct_slice, pred_slb, areas)
+  return SMA, SMD, pred_slb
 
 ###*** SAVE MUSCLE MAPPER OUTPUT ***###
 #segment and patient ID and SMA/SMI and SMD
+def display_slice(ct_slice, segment, save_loc = None):
+  fig = plt.figure()
+  plt.imshow(ct_slice, cmap = plt.cm.gray, vmin = level/2 - window, vmax = level/2 + window)
+  if segment is not None:
+    seg = segment.astype(float)
+    seg[seg == 0] = np.nan
+    plt.imshow(seg, cmap = plt.cm.autumn, alpha = 0.6)
+  #plt.savefig(save_loc)
+  plt.show()
+  return fig
+
+def save_figs(NN_fig, MM_fig, save_loc):
+  fig = plt.figure()
+  ax=[]
+  row = 1
+  column = 2
+  ax.append(fig.subplot(row,column,1))
+  plt.imshow(NN_fig) #can you plot a fig like this?
+  ax.append(fig.subplot(row,column,2))
+  plt.imshow(MM_fig)
+  plt.savefig(save_loc + 'sanity_check_images.png')
+  return
