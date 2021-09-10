@@ -6,16 +6,20 @@
 #need to load best model weights
 
 #imports
-from models import neckNavigator
+#from models import neckNavigator
+from utils_2 import load, preprocessing_1, NeckNavigatorRun
 
 ###*** GLOBAL VARIABLES ***###
 #paths
 path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images/100182405.nii.gz'
+#path = 'D:/data/Alex/HeadAndNeckData/Packs_UKCatsFeedingTube' #Alex's data
 model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1/best_checkpoint.pytorch'
 sanity_check_folder = '/home/hermione/Documents/Internship_sarcopenia/Inference/sanity_check/'
 #constants
 window = 350
 level = 50
+
+device = 'cuda:0'
 
 def main():  
     """
@@ -30,10 +34,12 @@ def main():
     """  
     ###*** PRE-PROCESSING 1 ***###
     #load in and preprocess <- hmm seperate?. save voxel dims for calculating SMA later.
-
+    image = load(path)
     ###*** RUN NECK NAVIGATOR MODEL ***###
     #load in model weigts and run model over one image. need dataloader
-
+     
+    device = 'cuda:1'
+    CT, pred = NeckNavigatorRun(model_weights_path, image, device)#load_best = true
     ###*** POST-PROCESSING 1 ***###
     #extract predicted slice number (and other coords)
     

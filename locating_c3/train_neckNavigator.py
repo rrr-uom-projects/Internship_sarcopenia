@@ -74,7 +74,7 @@ def main():
     train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
     
     #######*** K FOLD CROSS VALIDATION LOOP ***#######
-    for i in range(0,5):
+    for i in range(4,5):
 
         checkpoint_dir = checkpoint + "_fold" + str(i+1)
         try:
@@ -99,7 +99,7 @@ def main():
         model = neckNavigator()
         device = 'cuda:0'
         load_prev=False
-        model = setup_model(model, checkpoint_dir, device)
+        model = setup_model(model, checkpoint_dir, device, load_prev=load_prev)
 
         # Log the number of learnable parameters
         logger.info(f'Number of learnable params {get_number_of_learnable_parameters(model)}')
@@ -117,7 +117,7 @@ def main():
         iteration = 0
 
         if load_prev == True:
-            state = torch.load(os.path.join(checkpoint_dir, 'best_checkpoint.pytorch'))
+            state = torch.load(os.path.join(checkpoint_dir, 'last_checkpoint.pytorch'))
             epoch = state['epoch']
             iteration = state['num_iterations']
             print("starting epoch: ", epoch)

@@ -7,7 +7,7 @@ from SimpleITK.SimpleITK import Modulus
 import numpy as np
 from numpy.core.fromnumeric import argmax
 import scipy.ndimage as nd
-from scipy.ndimage.measurements import center_of_mass, label
+from scipy.ndimage.measurements import center_of_mass
 import matplotlib.pyplot as plt
 import io
 import tensorflow as tf
@@ -17,6 +17,7 @@ import torchvision.io.image as tim
 from operator import mul
 from collections import deque
 from decimal import Decimal
+from skimage.transform import rescale
 
 from PIL import Image
 from matplotlib.colors import Normalize
@@ -193,19 +194,19 @@ def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backw
     for i in range(len(msks)):
         #undo scale
         coords = GetTargetCoords(msks[i])
-        print(coords)
-        z_coord = (coords[0])*transforms[i][2][0]#*14/16
+        #print(coords)
+        mask = rescale(msks[i], scale=((14/16),2,2), order=0, multichannel=False,  anti_aliasing=False)
+        coords = GetTargetCoords(mask)
         #undo crop
         #eg z crop [46,1] z=12  [[true, crop array, scale_info] <- crop[zmin, zmax, xmin,...],]
-        #print(transforms[i][1])
-        z = z_coord + transforms[i][1][0]
-        x = (coords[1])*transforms[i][2][1]#*2
-        y = (coords[2])*transforms[i][2][2]#*2
-        print("Undo Scale: ", z_coord,x,y)
+        z = coords[0] + transforms[i][1][0]
+        x = coords[1]
+        y = coords[2]
+        #print("Undo Scale: ", coords)
         x += transforms[i][1][3]
         y += transforms[i][1][6]
         x_arr.append(x)
-        print("Undo Crop:", z, x, y)
+        #print("Undo Crop:", z, x, y)
         #undo flip if necessary
         if (transforms[i][0]==True):
             y_shape = transforms[i][1][8] -1
@@ -215,7 +216,7 @@ def mrofsnart(msks, transforms, shape = 128, test_inds = None):#transforms backw
         if (transforms[i][0]==True):
           z_shape = transforms[i][1][2] -1 
           z = z_shape - z
-        print("Final Coords: ", z,x,y)
+        #print("Final Coords: ", z,x,y)
         z_arr.append(z)
     return np.array(x_arr),np.array(y_arr),np.array(z_arr)
 

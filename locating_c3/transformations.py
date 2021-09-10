@@ -14,7 +14,6 @@ from utils import GetSliceNumber, GetTargetCoords, projections, mrofsnart, displ
 import cv2
 import os
 import matplotlib.pyplot as plt
-#from scipy.ndimage import binary_fill_holes
 from skimage.transform import rescale
 import sklearn
 from sklearn import preprocessing
@@ -214,7 +213,6 @@ class preprocessing():
         self.transform_list = []
         self.slices_gt = []
         self.voxel_dims_list = []
-        self.scale_list = []
 
     def __len__(self):
         return len(self.inputs)
@@ -251,22 +249,22 @@ class preprocessing():
 
         #save original slice number
         slice_no = GetTargetCoords(y)[0]
-        #print("Original Slice No: ", GetTargetCoords(y))
+        print("Original Slice No: ", GetTargetCoords(y))
         self.slices_gt.append(do_it_urself_round(slice_no))
 
         # Preprocessing
         if need_flip == True:
             x,y = flip(x), flip(y)
 
-        #print("Post flip: ", GetTargetCoords(y))
+        print("Post flip: ", GetTargetCoords(y))
 
         if self.transform is not None:
             x = self.transform(x)
     
         if self.cropping is not None:
             x, y, crop_info = self.cropping(x, y)
-        post_crop = GetTargetCoords(y)
-        #print("Post cropping: ", GetTargetCoords(y))
+        post_crop = GetTargetCoords(x)
+        print("Post cropping: ", GetTargetCoords(y), post_crop)
         if self.sphere is not None:
             y = self.sphere(y)
 
@@ -279,8 +277,8 @@ class preprocessing():
         #downsampling to size -> [128,128,128]
         x = rescale(x, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
         y = rescale(y, scale=((16/14),0.5,0.5), order=0, multichannel=False,  anti_aliasing=False)
-        #print("Post scale: ", GetTargetCoords(y))
-        scale_info = np.array(post_crop)/np.array(GetTargetCoords(y))
+        print("Post scale: ", GetTargetCoords(y), GetTargetCoords(x))
+        scale_info = np.array(post_crop)/np.array(GetTargetCoords(x))
         #print("Scale info: ", scale_info)
         #save transforms and gt slice
         transform_list_item = [need_flip, crop_info, scale_info]
@@ -295,9 +293,9 @@ class preprocessing():
 #get the file names
 PathList =  path_list2()
 no_patients = 2
-inputs = PathList[0]#[:no_patients]
-targets = PathList[1]#[:no_patients]
-ids = PathList[2]#[:no_patients]
+inputs = PathList[0][:no_patients]
+targets = PathList[1][:no_patients]
+ids = PathList[2][:no_patients]
 
 print("no of patients: ",len(inputs))
 #apply preprocessing
@@ -320,11 +318,11 @@ org_slices = preprocessed_data.original_slices()
 voxel_dims = preprocessed_data.voxel_dims()
 #print(org_slices)
 
-#final_transformed_slices = slice_preds(masks)
-#x, y, z = mrofsnart(masks, transforms)
+final_transformed_slices = slice_preds(masks)
+x, y, z = mrofsnart(masks, transforms)
 #%%
 #save the preprocessed masks and cts for the dataset
-save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
+#save_preprocessed(CTs, masks, ids, org_slices, voxel_dims, transforms)
 
 #%%
 #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/preprocessed_Tgauss.npz' 
