@@ -2,7 +2,7 @@
 #to test the model at various stages
 
 from torch.nn.functional import fold
-from utils import get_data, mrofsnart, threeD_euclid_diff, display_net_test, slice_preds, GetSliceNumber
+from utils import do_it_urself_round, get_data, mrofsnart, threeD_euclid_diff, display_net_test, slice_preds, GetSliceNumber
 from neckNavigatorTester import neckNavigatorTest2
 
 from neckNavigator import neckNavigator
@@ -37,10 +37,10 @@ def main():
     # allocate ims to train, val and test
     #dataset_size = len(inputs)
     #train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
-    fold_num = 4
+    fold_num = 5
     Zfold_distances = []
 
-    for i in range(0,fold_num):
+    for i in range(fold_num):
 
         ###*** LOAD SAVED PREDICTIONS ***###
         model_dir = checkpoint + "_fold" + str(i+1)
@@ -70,7 +70,6 @@ def main():
 
         #tester = neckNavigatorTest2(model_dir, test_dataloader, device)#load_best = true
         #C3s, segments, GTs = tester
-
         #slice_no_preds, slice_no_gts = display_net_test(C3s, segments, GTs, test_ids, fold_num = i)
 
         #print("Net Preds: ",slice_no_preds.shape)
@@ -86,34 +85,44 @@ def main():
         x,y,z = mrofsnart(segments, test_processing_info)
         _,_,z_test  = mrofsnart(GTs, test_processing_info)
 
-        three_difference, three_mm_distance, pythagoras = threeD_euclid_diff(GTs, segments, test_vox_dims,test_processing_info)
+        three_difference, three_mm_distance = threeD_euclid_diff(GTs, segments, test_vox_dims,test_processing_info)
         ZDistances_mm = three_mm_distance[:,2]
+        if i == 4: ZDistances_mm = np.append(ZDistances_mm, np.nan)
+        #print(ZDistances_mm.shape)
         Zfold_distances.append(ZDistances_mm)
+        
         ###*** SAVING TEST INFO ***###
-        pd.set_option("max_colwidth", 100)
-        df = pd.DataFrame({"IDs": test_ids, "Out_Slice_Numbers": slice_no_preds, "GT_ProcessedSliceNo": slice_no_gts, "PostProcessSliceNo": z, 
-        "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test,"ZSliceDifference": three_difference[2] ,"ZSliceDistances_mm": ZDistances_mm, 
-            "x_distance": three_mm_distance[:,0], "y_disance": three_mm_distance[:,1], "pythag_dist_abs": pythagoras})
-        df.to_excel(excel_writer = xl_writer, index=False, sheet_name=f'fold{i+1}')
-        for column in df:
-            column_length = max(df[column].astype(str).map(len).max(), len(column))
-            col_idx = df.columns.get_loc(column)
-            xl_writer.sheets[f'fold{i+1}'].set_column(col_idx, col_idx, column_length+2)
+        # pd.set_option("max_colwidth", 100)
+        # df = pd.DataFrame({"IDs": test_ids, "Out_Slice_Numbers": slice_no_preds, "GT_ProcessedSliceNo": slice_no_gts, "PostProcessSliceNo": z, 
+        # "GT_Org_Slice_No": test_org_slices, "GT_z_test": z_test,"ZSliceDifference": three_difference[2] ,"ZSliceDistances_mm": ZDistances_mm, 
+        #     "x_distance": three_mm_distance[:,0], "y_disance": three_mm_distance[:,1], "pythag_dist_abs": pythagoras})
+        # df.to_excel(excel_writer = xl_writer, index=False, sheet_name=f'fold{i+1}')
+        # for column in df:
+        #     column_length = max(df[column].astype(str).map(len).max(), len(column))
+        #     col_idx = df.columns.get_loc(column)
+        #     xl_writer.sheets[f'fold{i+1}'].set_column(col_idx, col_idx, column_length+2)
     
-    xl_writer.save()
+    #xl_writer.save()
     xl_writer.close()
 
     #box plot 
     cols = []
     dict = {}
-    Zfold_distances = np.array(Zfold_distances)
+    median = []
     for j in range(fold_num):
         cols.append(f'fold{j+1}')
         dict[f'fold{j+1}'] = Zfold_distances[j]
+        median.append(do_it_urself_round(np.nanmedian(Zfold_distances[j],),2))
+        print(Zfold_distances[j].shape)
     dfbp = pd.DataFrame(dict)
     plt.figure()
-    boxplot = dfbp.boxplot(column=cols)
+    plt.boxplot(dfbp.dropna().values, 0,  'r')
     plt.ylabel("Distance from C3 [mm]")
+    plt.grid(True, linestyle='-', which='major', color='lightgrey',
+               alpha=0.5)
+    #plt.set( axisbelow=True) # Hide the grid behind plot objects
+    for i in range(len(median)):
+        plt.text(0.5+i, 1, median[i])
     plt.savefig("fold_info/box_plot.png")
     print("Saved Test Info.")
     

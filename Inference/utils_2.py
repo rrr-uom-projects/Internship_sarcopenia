@@ -281,7 +281,8 @@ def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldma
     #img = sitk.GetImageFromArray(dcm_array)
     img = dcm_array
     #print(img.size)
-    #img = img[slice_number-10:slice_number+10]
+    crop_by = 5
+    img = img[slice_number-crop_by:slice_number+crop_by]
     #print(img.size)
     # Worldmatch tax
     if worldmatch:
@@ -303,7 +304,7 @@ def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldma
     dil.SetForegroundValue(1)
     dilated_mask = dil.Execute(bone_mask)
     
-    return np.logical_not(sitk.GetArrayFromImage(dilated_mask)[slice_number])#10
+    return np.logical_not(sitk.GetArrayFromImage(dilated_mask)[crop_by])#slice_number
 
 def three_channel(ct_slice):
   size = len(ct_slice)

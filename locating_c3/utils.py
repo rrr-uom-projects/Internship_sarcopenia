@@ -145,19 +145,19 @@ def threeD_euclid_diff(gts, msks, dims, transform_info = None):
   #have to do backwards processing on images to use this. or just input coords
   for i in range(len(gts)):
     mm_distance = dims[i]*distances[:,i]
-    pythag = pythagoras(mm_distance)
+    #pythag = pythagoras(mm_distance)
 
     if (gts.ndim == 3): 
       mm_distances = mm_distance
-      pythag_dist = pythag
+      #pythag_dist = pythag
     else: 
       mm_distances.append(np.array(mm_distance))
-      pythag_dist.append(pythag)
+      #pythag_dist.append(pythag)
 
   def make_arr(a): 
    return np.round(np.array(a), decimals=5)
     #output shape of mm_distances (54,3) x,y,z
-  return make_arr(distances), make_arr(mm_distances), make_arr(pythag_dist)
+  return make_arr(distances), make_arr(mm_distances)#, make_arr(pythag_dist)
 
 def z_euclid_dist(gts, msks, dims):
   three_diff, three_mm_dist,_ = threeD_euclid_diff(gts, msks, dims)
@@ -502,7 +502,7 @@ def display_net_test(inps, msks, gts, ids, shape = 128, fold_num = None):
   fig = plt.figure(figsize = (50, 200))
   ax = []
   columns = 6
-  rows = (2*data_size)/6
+  rows = int(1+(2*data_size)/6)
   j = 0
   for l in range(0, data_size):
     image, target = base_projections(inps[l], gts[l])
