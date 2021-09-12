@@ -85,7 +85,7 @@ def crop(slices_arr, masks_arr):
       ret,threshold = cv2.threshold(crop_slice,200,250,cv2.THRESH_TOZERO)
       coords = ndimage.measurements.center_of_mass(threshold)
       size = 130
-      x_min = int(((coords[0] - size)+126)/2)
+      x_min = int(((coords[0] - size)+126)/2) #xcrop = (size +386 -(126-size))/2
       x_max = int(((coords[0] + size)+386)/2)
       y_min = int(((coords[1] - size)+126)/2)
       y_max = int(((coords[1] + size)+386)/2)
