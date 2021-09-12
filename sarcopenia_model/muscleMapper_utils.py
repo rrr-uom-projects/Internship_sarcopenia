@@ -1,7 +1,7 @@
+
 import random
 from sklearn.model_selection import KFold
 import numpy as np
-from __future__ import division
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
@@ -33,6 +33,7 @@ from albumentations.pytorch import ToTensor
 from torch.utils.tensorboard import SummaryWriter
 from functools import partial
 import pandas as pd
+from decimal import Decimal
 
 def k_fold_cross_val(dataset_size, num_splits):
     train =[]
@@ -48,17 +49,18 @@ def k_fold_cross_val(dataset_size, num_splits):
           test.append(test_index)
     return train, test
 
-def dataset_TVTsplit(inputs, targets, train_inds, val_inds, test_inds):
+def dataset_TVTsplit(inputs, targets, bone_msks, train_inds, val_inds, test_inds):
     def select_data(im_inds):
         selected_im = [inputs[ind] for ind in im_inds]
         selected_masks = [targets[ind] for ind in im_inds]
-        return selected_im, selected_masks
+        selected_bone_msks = [bone_msks[ind] for ind in im_inds]
+        return np.array(selected_im), np.array(selected_masks), np.array(selected_bone_msks)
 
-    train_inputs, train_masks = select_data(train_inds)
-    val_inputs, val_masks = select_data(val_inds)
-    test_inputs, test_masks = select_data(test_inds)
+    train_inputs, train_masks, train_bone = select_data(train_inds)
+    val_inputs, val_masks, val_bone = select_data(val_inds)
+    test_inputs, test_masks, test_bone = select_data(test_inds)
 
-    return train_inputs, train_masks, val_inputs, val_masks, test_inputs, test_masks
+    return train_inputs, train_masks, val_inputs, val_masks, test_inputs, test_masks, test_bone
 
 #definitions
 def diceCoeff(pred, gt, smooth=1, activation='sigmoid'):
@@ -201,28 +203,30 @@ def test(model, test_dataloader, device):
     model.eval()
     segments = []
     c3s = []
+    sigmoids = []
 
     for int, data in enumerate(test_dataloader):
         slices_test = data[0].to(device)
         slices_test = slices_test.type(torch.float32)
         output = model(slices_test)["out"]
         print("output shape: ", output.shape)
+        print(torch.max(output), torch.min(output))
         test_ouput = output.detach().cpu()
         slices_test = slices_test.detach().cpu()
         sigmoid = 1/(1 + np.exp(-test_ouput))
         segment = (sigmoid > 0.5).float()
         print(np.unique(segment))
-        #print(int)
+
         if int == 0:
-          segments = segment
-          c3s = slices_test
+            segments = segment
+            c3s = slices_test
+            sigmoids = sigmoid.float()
         else:
-          segments = np.append(segments, np.array(segment), axis = 0)
-          c3s = np.append(c3s, np.array(slices_test), axis = 0)
+            segments.append(np.array(segment))
+            c3s.append(np.array(slices_test))
+            sigmoids.append(np.array(sigmoid.float()))
   
-    segments = np.array(segments)
-    c3s = np.array(c3s)
-    return c3s, segments
+    return np.array(c3s), np.array(segments), np.array(sigmoids)
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
@@ -254,3 +258,17 @@ def weight(masks):
     weight = torch.Tensor([weights])
     print(weight)
     return weight
+
+def do_it_urself_round(number, decimals = 0, is_array = False):
+  float_num = number
+  dec_num =  Decimal(str(number))
+  Ddecimal = Decimal(str(decimals))
+  round_num = round(dec_num, decimals)
+  diff = np.abs(dec_num - round_num)
+  round_diff = Decimal(str(0.5/(10**decimals)))
+  if (diff == round_diff and dec_num >= round_num):
+    round_num += (1/(10**(Ddecimal))) 
+  if decimals == 0:
+    return int(round_num)
+  else:
+    return float(round_num)

@@ -15,6 +15,7 @@ import matplotlib as mpl
 import numpy as np
 import os
 import math
+from pytorch_toolbelt.losses import dice
 from scipy import ndimage
 import cv2
 import torch
@@ -42,64 +43,62 @@ from torch.utils.tensorboard import SummaryWriter
 from functools import partial
 import pandas as pd
 
-from muscleMapper_utils import preprocess, splitandstick, k_fold_cross_val, dataset_TVTsplit, transforms
+from muscleMapper_utils import preprocess, do_it_urself_round, splitandstick, k_fold_cross_val, dataset_TVTsplit, transforms
 from muscleMapper_utils import weight, H_custom_Dataset, train, validate, test, get_lr
 from muscleMapper_utils import getArea, getDensity, diceCoeff
 
 #paths
-save_path = "/home/hermione/Documents/Internship_sarcopenia/" 
-data_path = "/home/hermione/Documents/Internship_sarcopenia/total_abstract_training_data 1.npz"
+save_path = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/" 
+data_path = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/total_abstract_training_data 1.npz"
 
 #%%
 #loading the data
 data = np.load(data_path, allow_pickle=True)
 print([*data.keys()])
-slices= data['slices']
-masks = data['masks']
-ids = data['ids']
-masks_slb = data['boneless']
-bone_masks = data['bone_masks']
-pixel_area = data['areas']
+slices= data['slices'][:35]
+masks = data['masks'][:35]
+ids = data['ids'][:35]
+masks_slb = data['boneless'][:35]
+bone_masks = data['bone_masks'][:35]
+pixel_area = data['areas'][:35]
 
 slices_processed, masks_processed = preprocess(slices, masks_slb)
 
 #split into training and testing
+fold_num = 5
 print("Lengths: ", len(masks), len(slices), len(slices_processed), len(masks_processed))
 dataset_size = len(masks)
-train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
+train_array, test_array = k_fold_cross_val(dataset_size, num_splits = fold_num)
 
-for i in range(0, 5):
-  #split_val = test_array[i]
-  val_split, train_split = np.split(train_array[i], [7], axis= 0)#[16]
+test_dice_scores = []
+
+for i in range(fold_num):
+
+  #make fold files to save info
+  save_dir = save_path + "MM_fold" + str(i+1)
+  try:
+      os.makedirs(save_dir)
+  except OSError: #if already exists
+      pass
+
+  #split into train and val
+  val_split, train_split = np.split(train_array[i], [7], axis= 0)#21:7
   ids_test = ids[(test_array[i])]
   ids_val = ids[val_split]
   ids_train = ids[train_split]
   
-  slice_train, masks_train, slice_val, masks_val, slice_test, masks_test = dataset_TVTsplit(slices_processed, masks_processed, train_split, val_split, test_array[i])
-
-  slice_train, slice_val, slice_test = splitandstick(slices_processed)
-  masks_train, masks_val, masks_test = splitandstick(masks_processed)
-  ids_train, ids_val, ids_test = splitandstick(ids)
-  bone_masks_train, bone_masks_val, bone_masks_test = splitandstick(bone_masks)
+  slice_train, masks_train, slice_val, masks_val, slice_test, masks_test, bone_masks_test = dataset_TVTsplit(slices_processed, masks_processed, bone_masks, train_split, val_split, test_array[i])
+   
+  # slice_train, slice_val, slice_test = splitandstick(slices_processed)
+  # masks_train, masks_val, masks_test = splitandstick(masks_processed)
+  # ids_train, ids_val, ids_test = splitandstick(ids)
+  # bone_masks_train, bone_masks_val, bone_masks_test = splitandstick(bone_masks)
 
   print(slice_test.shape, slice_train.shape)
-  #print(ids_test[3])
-  plt.imshow(slice_test[0],cmap = "gray")
-  #masks_test[0][masks_test[0]==0] = np.nan
-  plt.imshow(masks_test[0], cmap = "cool", alpha = 0.5)
-  fig = plt.figure(figsize=(20, 10))
-  ax=[]
-  for i in range(0,10):
-    print(ids_test[i])
-    ax.append(fig.add_subplot(2,5, i+1))
-    plt.imshow(slice_test[i])
-    plt.axis("off")
-  plt.show()
-
   #%%
   #classs inbalence
   #ratio of no of 1s over no of 0s. averaged
-  weight = weight(masks_train)
+  #weight = weight(masks_train)
 
   #transform the data
   train_transform = A.Compose([
@@ -129,7 +128,7 @@ for i in range(0, 5):
   val_dataloader = DataLoader(val_dataset, batch_size = 8, num_workers = 2, shuffle = True)
 
   #set up tensorboard
-  writer = SummaryWriter()
+  writer = SummaryWriter(log_dir=save_dir)
 
   # Load pre-trained model
   pt_model = models.segmentation.fcn_resnet50(pretrained=True)
@@ -166,7 +165,7 @@ for i in range(0, 5):
   train_loss , train_accuracy = [], []
   val_loss , val_accuracy = [], []
   start = time.time()
-  num_epochs = 10
+  num_epochs = 300
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
   model.to(device)
 
@@ -188,52 +187,80 @@ for i in range(0, 5):
   print((end-start)/60, 'minutes')
   #%%
   #save model weights
-  model_stat_dict_300_FL = torch.save(model.cpu().state_dict(), "/home/hermione/Documents/Internship_sarcopenia/model_state_dict.pt")
+  model_path = save_dir + "/model_state_dict.pt"
+  model_stat_dict_300_FL = torch.save(model.cpu().state_dict(), model_path)
   #save the loss
   loss = {'Training': train_loss, 'Validation': val_loss}
-  loss_table = np.transpose(np.array(loss))
+  #loss_table = np.transpose(np.array(loss))
   print(loss)
   #loss_table = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/loss_08_07.csv", loss, delimiter=',')
   l_df = pd.DataFrame(loss)
-  l_df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/loss.xlsx")
+  l_df.to_excel(excel_writer = save_dir + "/loss.xlsx", index=False, sheet_name=f'fold{i+1}')
 
   #%%
   #testing the model
-  device = torch.device("cuda:0" if torch.cuda.is_available() else "cuda:1")
+  #device = torch.device("cuda:0" if torch.cuda.is_available() else "cuda:1")
   model.to(device)
-  c3s, test_predictions = test(model, test_dataloader)
+  c3s, test_predictions, sig = test(model, test_dataloader,device)
   print(test_predictions.shape, c3s.shape)
   test_predictions = torch.from_numpy(test_predictions)
   #removing the bone masks from the models predictions
   segment_pred_slb = np.logical_and(test_predictions, bone_masks_test[:,np.newaxis,...])
   segment_pred_slb = (segment_pred_slb.float())#.numpy()
+  #segment_pred_slb = segment_pred_slb.astype(float)
   print(np.unique(segment_pred_slb))
 
   fig=plt.figure(figsize=(20, 10))
   ax = []
-  rows = 2
+  rows = 3
   columns = 5
   for i in range(0, len(c3s)):
     ax.append(fig.add_subplot(rows,columns, i+1))
     #segment_pred_slb[i][segment_pred_slb[i]==0] = np.nan #uncomment to get pretty images
     plt.imshow(c3s[i,0,...], cmap="gray")
     plt.imshow(segment_pred_slb[i,0,...], cmap = "autumn", alpha = 0.5)
+    #plt.imshow(sig[i,0,...], cmap = "cool", alpha = 0.5)
     ax[-1].set_title("Network test:"+str(i))
     plt.axis("off")
+  plt.savefig(save_dir + "/MM_test.png")
+  plt.close()
   #plt.show()
   #%%
   #Dice - comparing our netowrks output to the GTs
   for batch_idx, test_dataset in enumerate(test_dataloader):  
         test_em, test_lab = test_dataset[0], test_dataset[1]
         break
-  dice_net_v_pred = diceCoeff(segment_pred_slb, test_lab, smooth=1, activation=None)
+  dice_net_v_pred = []
+  for i in range(len(segment_pred_slb)):
+    dice_net_v_pred.append(diceCoeff(segment_pred_slb[i], test_lab[i], smooth=1, activation=None))
 
   print("Dice ", dice_net_v_pred)
-  mean = np.mean(dice_net_v_pred.item())
-  print("Dice: ", mean)
+  mean = np.mean(dice_net_v_pred)
+  print("Dice mean: ", mean)
+  test_dice_scores.append(dice_net_v_pred)
+  #dice_df = pd.DataFrame({"Dice Score": dice_net_v_pred})
 
 #Dice scores box plot of the different test folds here.
-
+cols = []
+dict = {}
+median = []
+test_dice_scores = np.array(test_dice_scores)
+print(test_dice_scores.shape)
+for j in range(fold_num):
+    cols.append(f'fold{j+1}')
+    dict[f'fold{j+1}'] = test_dice_scores[j]
+    median.append(do_it_urself_round(np.nanmedian(test_dice_scores[j]),2))
+    print(test_dice_scores[j].shape)
+dfbp = pd.DataFrame(dict)
+plt.figure()
+plt.boxplot(dfbp.dropna().values, 0,  'r')
+plt.ylabel("Test Dice Scores")
+plt.grid(True, linestyle='-', which='major', color='lightgrey',
+            alpha=0.5)
+for i in range(len(median)):
+    plt.text(0.5+i, 1, median[i])
+plt.savefig("MM_fold_info/box_plot.png")
+print("Saved Test Info.")
 
 # #Area and Density of SM in the tests
 # ct_scans = np.array(slice_test)

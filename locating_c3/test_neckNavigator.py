@@ -122,7 +122,7 @@ def main():
                alpha=0.5)
     #plt.set( axisbelow=True) # Hide the grid behind plot objects
     for i in range(len(median)):
-        plt.text(0.5+i, 1, median[i])
+        plt.text(0.5+i, 0, median[i])
     plt.savefig("fold_info/box_plot.png")
     print("Saved Test Info.")
     
