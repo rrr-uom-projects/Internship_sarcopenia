@@ -104,7 +104,8 @@ def cropping(inp: np.ndarray, bone_mask = None, threeD = True):
     coords = center_of_mass(threshold)
     if threeD: x_ind, y_ind = 1, 2
     else: x_ind, y_ind = 0, 1
-    size =126
+    if threeD: size =126
+    else: size = 130
     x_min = do_it_urself_round(((coords[x_ind] - size)+126)/2)
     x_max = do_it_urself_round(((coords[x_ind] + size)+386)/2)
     y_min = do_it_urself_round(((coords[y_ind] - size)+126)/2)
@@ -131,15 +132,15 @@ def cropping(inp: np.ndarray, bone_mask = None, threeD = True):
       
       x = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
       cropped_info = [z_coords["z_min"], z_coords["z_max"], org_inp_size[0], x_min, x_max, org_inp_size[1], y_min, y_max, org_inp_size[2]]
-      if bone_mask is not None:
-        cropped_bone = bone_mask[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
-        return x, cropped_bone, np.array(cropped_info)
-      else:
-        return x, np.array(cropped_info)
+      return x, np.array(cropped_info)
 
     else:
       x = inp[x_min:x_max,y_min:y_max]
-      return x
+      if bone_mask is not None:
+        cropped_bone = bone_mask[x_min:x_max,y_min:y_max]
+        return x, cropped_bone
+      else:
+        return x
 
 def preprocessing_1(image):
     x = image
@@ -248,23 +249,22 @@ def base_projections(inp, msk):
   mask = (ax_mask,cor_mask, sag_mask)
   return image, mask
 
-def display_net_test(inps, msks, id, shape = 128, z = None):
+def display_net_test(inps, msks,ax, shape = 128, z = None):
     coords_pred = GetTargetCoords(msks)  
     #make the figure
-    fig = plt.figure()
+    # fig = plt.figure()
     image, pred = base_projections(inps, msks)
     slice_pred = shape - do_it_urself_round(GetSliceNumber(msks)) #as projections have different origin
-    plt.title('C3 pred: ' + id)
-    plt.imshow(image[2])
+    ax.set_title('C3 Location')
+    ax.imshow(image[2])
     #plt.imshow(pred[2], cmap = 'cool', alpha=0.5) #maybe take this out
-    plt.axhline(slice_pred, linewidth=2, c='y')
+    ax.axhline(slice_pred, linewidth=2, c='y')
     if z is None: slice_no = slice_pred
     else: slice_no = do_it_urself_round(z)
-    plt.text(0, slice_pred-5, "C3: "+ str(slice_no), color='w')
-    plt.scatter(coords_pred[1], (128 - coords_pred[0]), c = 'r', s=20) #y,z
-    plt.axis('off')
-    #plt.show()
-    return fig
+    ax.text(0, slice_pred-5, "C3: "+ str(slice_no), color='w')
+    ax.scatter(coords_pred[1], (128 - coords_pred[0]), c = 'r', s=20) #y,z
+    ax.axis('off')
+  
 
 ###*** PRE-PROCESSING 2 ***###
 def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldmatch=False):
@@ -282,7 +282,7 @@ def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldma
     img = dcm_array
     #print(img.size)
     crop_by = 5
-    img = img[slice_number-crop_by:slice_number+crop_by]
+    img = img[...,(slice_number-crop_by):(slice_number+crop_by)]
     #print(img.size)
     # Worldmatch tax
     if worldmatch:
@@ -306,14 +306,14 @@ def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldma
     
     return np.logical_not(sitk.GetArrayFromImage(dilated_mask)[crop_by])#slice_number
 
-def three_channel(ct_slice):
+def three_channel(ct_slice, bone_mask):
   size = len(ct_slice)
   slices_3chan = np.repeat(ct_slice[...,np.newaxis], 3, axis=-1)
+  bone_3chan = np.repeat(ct_slice[...,np.newaxis], 3, axis=-1)
   # apply filters to two channels
   slices_3chan[...,1] = ndimage.gaussian_laplace(slices_3chan[...,1], sigma=1)
   slices_3chan[...,2] = ndimage.sobel(slices_3chan[...,2])
-  transform_slice = slices_3chan.astype(np.float32)
-  return transform_slice
+  return slices_3chan.astype(np.float32), bone_3chan.astype(np.float32)
 
 transform = A.Compose([A.Resize(260, 260), A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), ToTensor()])
 
@@ -321,14 +321,17 @@ def preprocessing_2(slice_no, ct, is_worldmatch = True):
   #extract slice
   slice_no = do_it_urself_round(slice_no)
   bone_mask = extract_bone_masks(ct,slice_no, worldmatch=is_worldmatch)
-  ct_slice = sitk.GetArrayFromImage(ct)[slice_no,:,:]
+  ct_slice = sitk.GetArrayFromImage(ct)[slice_no]
+  print("ct slice: ", ct_slice.shape)
+  print(bone_mask.shape)
   if is_worldmatch: ct_slice -=1024
   ct_slice = ct_slice.astype(float)
-  cropped_slice = cropping(ct_slice, bone_mask, threeD=False)
+  cropped_slice, cropped_bone = cropping(ct_slice, bone_mask, threeD=False)
+  #print("crop: ",cropped_slice.shape)
   wl_slice = window_level(cropped_slice)
   shape = wl_slice.shape
   image_scaled = np.round(sklearn.preprocessing.minmax_scale(wl_slice.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
-  return image_scaled, bone_mask
+  return image_scaled, cropped_bone
 
 ###*** MUSCLE MAPPER MODEL ***###
 def set_up_MuscleMapper(model_path, device):
@@ -339,20 +342,26 @@ def set_up_MuscleMapper(model_path, device):
   model.eval()
   return model
 
-def MuscleMapperRun(ct_slice, model_path, device):
+def MuscleMapperRun(ct_slice, bone_mask, model_path, device):
   #do three channels with filters # should this be before scaling
-  three_chan = three_channel(ct_slice)
-  transformed = transform(three_channel)
-  print(transformed.shape)
-  slice = transformed.unsqueeze(0).to(device)
-  slice = slice.type(torch.float32)
+  three_chan, bone_three = three_channel(ct_slice, bone_mask)
+  print(three_chan.shape)
+  transformed = transform(False, image = three_chan, mask = bone_three)
+  transformed_im = transformed["image"]
+  transformed_bmsk = transformed["mask"].squeeze()
+  print(transformed_im.shape)
+  #transformed = torch.from_numpy(three_chan)
+  input_slice = transformed_im.unsqueeze(0).to(device)
+  input_slice = input_slice.type(torch.float32)
   model = set_up_MuscleMapper(model_path, device)
-  output = model(slice)["out"] 
-  MM_ouput = output.detach().cpu()
+  output = model(input_slice)["out"] 
+  MM_ouput = output.detach().cpu().squeeze()
   # sigmoid and thresholding
   sigmoid = 1/(1 + np.exp(-MM_ouput))
-  segment = (sigmoid > 0.5).float()
-  return np.array(segment)
+  segment = (sigmoid > 0.5).float().numpy()
+  #remove bone masks
+  pred_slb = np.logical_and(segment, bone_mask)#not no? transformed_bmsk[...,0].numpy()
+  return np.array(pred_slb).astype(int)
 
 ###*** POST-PROCESSING 2 ***###
 def getDensity(image, mask, area, label=1):
@@ -363,38 +372,48 @@ def getDensity(image, mask, area, label=1):
 def getArea(image, mask, area, label=1, thresholds = None):
   sMasks = (mask == label)
   threshold = np.logical_and(image > (thresholds[0]), image <  (thresholds[1]))
-  tmask = np.logical_and(sMasks, threshold)
+  tmask = np.logical_and(sMasks, threshold)#sMasks
+  #print(np.unique(tmask))
   return np.count_nonzero(tmask) * area
 
-def postprocessing_2(ct_slice, segment, bone_mask, areas):
-  #remove bone masks
-  pred_slb = np.logical_and(segment, bone_mask)#not no?
+def postprocessing_2(ct, slice_no, pred_slb, dims, is_worldmatch = True):
   #calc SMA/SMI and SMD
-  SMA = getArea(ct_slice, pred_slb,areas, thresholds=(-30, +130))
-  SMD = getDensity(ct_slice, pred_slb, areas)
-  return SMA, SMD, pred_slb
+  ct = sitk.GetArrayFromImage(ct).astype(float)
+  ct_slice = ct[do_it_urself_round(slice_no)] #to get the correct intensities
+  if is_worldmatch: ct_slice -= 1024
+  cropped_slice = cropping(ct_slice, threeD=False)
+  print("ct slice shape",ct_slice.shape)
+  pixel_area = dims[0]*dims[1]*(0.1*0.1) #mm^2 -> cm^2
+  print(pixel_area)
+  SMA = getArea(cropped_slice, pred_slb, pixel_area, thresholds=(-30, +130))
+  SMD = getDensity(cropped_slice, pred_slb, pixel_area)
+  return SMA, SMD
 
 ###*** SAVE MUSCLE MAPPER OUTPUT ***###
 #segment and patient ID and SMA/SMI and SMD
-def display_slice(ct_slice, segment, save_loc = None):
-  fig = plt.figure()
-  plt.imshow(ct_slice, cmap = plt.cm.gray, vmin = level/2 - window, vmax = level/2 + window)
-  if segment is not None:
-    seg = segment.astype(float)
-    seg[seg == 0] = np.nan
-    plt.imshow(seg, cmap = plt.cm.autumn, alpha = 0.6)
+def display_slice(ct_slice, segment, ax):
+  #fig = plt.figure()
+  ax.imshow(ct_slice, cmap = plt.cm.gray)#, vmin = level/2 - window, vmax = level/2 + window
+  seg = segment.astype(float)
+  seg[seg == 0.0] = np.nan
+  ax.imshow(seg, cmap = plt.cm.autumn, alpha = 0.5)
+  ax.set_title("Skeletal Muscle")
   #plt.savefig(save_loc)
-  plt.show()
-  return fig
+  ax.axis('off')
 
-def save_figs(NN_fig, MM_fig, save_loc):
-  fig = plt.figure()
-  ax=[]
-  row = 1
-  column = 2
-  ax.append(fig.subplot(row,column,1))
-  plt.imshow(NN_fig) #can you plot a fig like this?
-  ax.append(fig.subplot(row,column,2))
-  plt.imshow(MM_fig)
+def save_figs(ct, ct_slice, segment, slice_pred, save_loc, id):
+  fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+  fig.suptitle('Patient: '+ id)
+  #ax=[]
+  # row = 1
+  # column = 2
+  # ax.append(fig.add_subplot(row,column,1))
+  # plt.imshow(NN_fig) #can you plot a fig like this?
+  # ax.append(fig.add_subplot(row,column,2))
+  # plt.imshow(MM_fig)
+  display_net_test(ct, slice_pred, ax1)
+  display_slice(ct_slice, segment, ax2)
+  #plt.axis('off')
+  plt.show()
   plt.savefig(save_loc + 'sanity_check_images.png')
   return

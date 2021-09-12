@@ -23,6 +23,8 @@ sanity_check_folder = '/home/hermione/Documents/Internship_sarcopenia/Inference/
 window = 350
 level = 50
 
+#patient_id = 
+
 device = 'cuda:1'
 
 def main():  
@@ -47,13 +49,13 @@ def main():
     transforms = preprocessing_info['transform']
     ###*** RUN NECK NAVIGATOR MODEL ***###
     #load in model weigts and run model over one image. need dataloader
-    pred = NeckNavigatorRun(NN_model_weights_path, processed_ct, device)#load_best = true
+    NN_pred = NeckNavigatorRun(NN_model_weights_path, processed_ct, device)#load_best = true
     ###*** POST-PROCESSING 1 ***###
     #extract predicted slice number (and other coords)
-    x,y,z = mrofsnart(pred, transforms)
+    x,y,z = mrofsnart(NN_pred, transforms)
     ###*** SAVE NECK NAVIGATOR OUTPUT ***###
     #save slice number and sagital image and patient id <- path end
-    sagital_fig = display_net_test(processed_ct, pred, id = 'test', z= z)
+    # sagital_fig = display_net_test(processed_ct, pred, id = 'test', z= z)
     print(z)
     
     ###*** PRE-PROCESSING 2 ***###
@@ -63,17 +65,17 @@ def main():
     print(processed_slice.shape)
 
     ###*** MUSCLE MAPPER MODEL ***###
-    segment = MuscleMapperRun(processed_ct, MM_model_weights_path, device)
-
+    MM_segment = MuscleMapperRun(processed_slice, bone_mask, MM_model_weights_path, device)
+    import numpy as np
+    print(MM_segment.shape, np.unique(MM_segment))
     ###*** POST-PROCESSING 2 ***###
     #use image here not processed.remove bone from segmentation
-    pixel_area = voxel_dims[0]*voxel_dims[1]
-    SMA, SMD, mask = postprocessing_2(image, segment, bone_mask, pixel_area)
-
+    SMA, SMD = postprocessing_2(image, z, MM_segment, voxel_dims)
+    print("SMA: ",SMA, "SMD", SMD)
     ###*** SAVE MUSCLE MAPPER OUTPUT ***###
     #segment and patient ID and SMA/SMI and SMD to excel
-    slice_fig = display_slice(processed_slice, segment)
-    save_figs(sagital_fig, slice_fig, sanity_check_folder)
+    # slice_fig = display_slice(processed_slice, segment)
+    save_figs(processed_ct, processed_slice, MM_segment, NN_pred, sanity_check_folder, id ='test')
     return
 
 if __name__ == '__main__':
