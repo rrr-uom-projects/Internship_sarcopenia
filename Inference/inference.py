@@ -6,11 +6,12 @@
 #need to load best model weights
 
 #imports
-#from models import neckNavigator
 from matplotlib.pyplot import savefig
+import pandas as pd
 from sklearn import preprocessing
-from utils_2 import load, postprocessing_2, preprocessing_1, NeckNavigatorRun, mrofsnart, display_net_test
-from utils_2 import preprocessing_2, MuscleMapperRun, postprocessing_2, display_slice, save_figs
+
+from utils_2 import load, postprocessing_2, preprocessing_1, NeckNavigatorRun, mrofsnart
+from utils_2 import preprocessing_2, MuscleMapperRun, postprocessing_2, save_figs, append_df_to_excel
 
 ###*** GLOBAL VARIABLES ***###
 #paths
@@ -19,6 +20,7 @@ path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images/100182
 NN_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1'
 MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/model_state_dict_300_FL_testing.pt"
 sanity_check_folder = '/home/hermione/Documents/Internship_sarcopenia/Inference/sanity_check/'
+xl_writer = sanity_check_folder + 'skeletal_muscle_info.xlsx'
 #constants
 window = 350
 level = 50
@@ -55,7 +57,6 @@ def main():
     x,y,z = mrofsnart(NN_pred, transforms)
     ###*** SAVE NECK NAVIGATOR OUTPUT ***###
     #save slice number and sagital image and patient id <- path end
-    # sagital_fig = display_net_test(processed_ct, pred, id = 'test', z= z)
     print(z)
     
     ###*** PRE-PROCESSING 2 ***###
@@ -74,8 +75,13 @@ def main():
     print("SMA: ",SMA, "SMD", SMD)
     ###*** SAVE MUSCLE MAPPER OUTPUT ***###
     #segment and patient ID and SMA/SMI and SMD to excel
-    # slice_fig = display_slice(processed_slice, segment)
     save_figs(processed_ct, processed_slice, MM_segment, NN_pred, sanity_check_folder, id ='test')
+    
+
+    df = pd.DataFrame({"IDs": ['p ID here'], "SMA": [SMA] ,"SMD":[SMD]})
+    #df.to_excel(excel_writer = xl_writer, index=False, sheet_name='SM_data')
+    append_df_to_excel(xl_writer, df,sheet_name='SM_data')
+    
     return
 
 if __name__ == '__main__':
