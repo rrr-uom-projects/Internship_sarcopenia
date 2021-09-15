@@ -55,15 +55,15 @@ data_path = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/tot
 #loading the data
 data = np.load(data_path, allow_pickle=True)
 print([*data.keys()])
-slices= data['slices'][:35]
-masks = data['masks'][:35]
-ids = data['ids'][:35]
-masks_slb = data['boneless'][:35]
-bone_masks = data['bone_masks'][:35]
-pixel_area = data['areas'][:35]
+slices, slices2 = np.split(data['slices'],2)
+masks, masks2 = np.split(data['masks'],2)
+ids, ids2 = np.split(data['ids'],2)
+masks_slb, masks_slb2 = np.split(data['boneless'],2)
+bone_masks, bone_masks2 = np.split(data['bone_masks'],2)
+pixel_area, pixel_area2 = np.split(data['areas'],2)
 
 slices_processed, masks_processed = preprocess(slices, masks_slb)
-
+slices_processed2, masks_processed2 = preprocess(slices2, masks_slb2)
 #split into training and testing
 fold_num = 5
 print("Lengths: ", len(masks), len(slices), len(slices_processed), len(masks_processed))
@@ -75,7 +75,7 @@ test_dice_scores = []
 for i in range(fold_num):
 
   #make fold files to save info
-  save_dir = save_path + "MM_fold" + str(i+1)
+  save_dir = save_path + "MM2_fold" + str(i+1)
   try:
       os.makedirs(save_dir)
   except OSError: #if already exists
@@ -83,12 +83,20 @@ for i in range(fold_num):
 
   #split into train and val
   val_split, train_split = np.split(train_array[i], [7], axis= 0)#21:7
-  ids_test = ids[(test_array[i])]
-  ids_val = ids[val_split]
-  ids_train = ids[train_split]
+  ids_test = np.concatenate((ids[(test_array[i])], ids2[(test_array[i])]))
+  ids_val = np.concatenate((ids[val_split], ids2[val_split]))
+  ids_train = np.concatenate((ids[train_split], ids2[train_split]))
   
   slice_train, masks_train, slice_val, masks_val, slice_test, masks_test, bone_masks_test = dataset_TVTsplit(slices_processed, masks_processed, bone_masks, train_split, val_split, test_array[i])
-   
+  slice_train2, masks_train2, slice_val2, masks_val2, slice_test2, masks_test2, bone_masks_test2 = dataset_TVTsplit(slices_processed2, masks_processed2, bone_masks2, train_split, val_split, test_array[i])
+  
+  slice_train = np.concatenate((slice_train, slice_train2))
+  masks_train = np.concatenate((masks_train, masks_train2))
+  slice_val = np.concatenate((slice_val, slice_val2))
+  masks_val = np.concatenate((masks_val, masks_val2))
+  slice_test = np.concatenate((slice_test, slice_test2))
+  masks_test = np.concatenate((masks_test, masks_test2))
+  bone_masks_test = np.concatenate((bone_masks_test, bone_masks_test2))
   # slice_train, slice_val, slice_test = splitandstick(slices_processed)
   # masks_train, masks_val, masks_test = splitandstick(masks_processed)
   # ids_train, ids_val, ids_test = splitandstick(ids)
@@ -164,6 +172,8 @@ for i in range(fold_num):
   #%%
   train_loss , train_accuracy = [], []
   val_loss , val_accuracy = [], []
+  running_average = []
+  patience = 0
   start = time.time()
   num_epochs = 300
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -179,6 +189,19 @@ for i in range(fold_num):
     print("train loss: ", train_epoch_loss) 
     val_loss.append(val_epoch_loss)
     print("val loss: ", val_epoch_loss) 
+    # new_average = {"train_loss": np.mean(train_loss), "val_loss": np.mean(val_loss)}
+    # #difference = new_average["train_loss"] - new_average["val_loss"]
+    # #if new_average["val_loss"] > running_average["val_loss"]:
+    # if (epoch >= 200 and difference > old_diff):
+    #   patience +=1
+    #   if patience == 20:
+    #     #terminate
+    #     #print(difference, old_diff)
+    #     print(f'Implementing early stopping after {epoch} of {num_epochs}' )
+    #     break
+    # running_average.append(new_average)
+    # old_diff = running_average["train_loss"] - running_average["val_loss"]
+    # print(old_diff, difference)
     scheduler.step()
 
   print("train loss: ", train_loss)
@@ -199,17 +222,32 @@ for i in range(fold_num):
 
   #%%
   #testing the model
-  #device = torch.device("cuda:0" if torch.cuda.is_available() else "cuda:1")
+  device = torch.device("cuda:0" if torch.cuda.is_available() else "cuda:1")
   model.to(device)
   c3s, test_predictions, sig = test(model, test_dataloader,device)
   print(test_predictions.shape, c3s.shape)
   test_predictions = torch.from_numpy(test_predictions)
   #removing the bone masks from the models predictions
   segment_pred_slb = np.logical_and(test_predictions, bone_masks_test[:,np.newaxis,...])
-  segment_pred_slb = (segment_pred_slb.float())#.numpy()
+  segment_pred_slb = (segment_pred_slb.float())
   #segment_pred_slb = segment_pred_slb.astype(float)
   print(np.unique(segment_pred_slb))
 
+  #%%
+  #Dice - comparing our netowrks output to the GTs
+  for batch_idx, test_dataset in enumerate(test_dataloader):  
+        test_em, test_lab = test_dataset[0], test_dataset[1]
+        break
+  dice_net_v_pred = []
+  for i in range(len(segment_pred_slb)):
+    dice_net_v_pred.append(diceCoeff(segment_pred_slb[i], test_lab[i], smooth=1, activation=None))
+
+  print("Dice ", dice_net_v_pred)
+  mean = np.mean(dice_net_v_pred)
+  print("Dice mean: ", mean)
+  test_dice_scores.append(dice_net_v_pred)
+
+  #display the test images
   fig=plt.figure(figsize=(20, 10))
   ax = []
   rows = 3
@@ -225,20 +263,6 @@ for i in range(fold_num):
   plt.savefig(save_dir + "/MM_test.png")
   plt.close()
   #plt.show()
-  #%%
-  #Dice - comparing our netowrks output to the GTs
-  for batch_idx, test_dataset in enumerate(test_dataloader):  
-        test_em, test_lab = test_dataset[0], test_dataset[1]
-        break
-  dice_net_v_pred = []
-  for i in range(len(segment_pred_slb)):
-    dice_net_v_pred.append(diceCoeff(segment_pred_slb[i], test_lab[i], smooth=1, activation=None))
-
-  print("Dice ", dice_net_v_pred)
-  mean = np.mean(dice_net_v_pred)
-  print("Dice mean: ", mean)
-  test_dice_scores.append(dice_net_v_pred)
-  #dice_df = pd.DataFrame({"Dice Score": dice_net_v_pred})
 
 #Dice scores box plot of the different test folds here.
 cols = []
@@ -258,8 +282,8 @@ plt.ylabel("Test Dice Scores")
 plt.grid(True, linestyle='-', which='major', color='lightgrey',
             alpha=0.5)
 for i in range(len(median)):
-    plt.text(0.5+i, 1, median[i])
-plt.savefig("MM_fold_info/box_plot.png")
+    plt.text(i+0.75, median[i], median[i]+0.001)
+plt.savefig("MM2_fold_info/box_plot.png")
 print("Saved Test Info.")
 
 # #Area and Density of SM in the tests

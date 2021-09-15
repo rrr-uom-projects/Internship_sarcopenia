@@ -75,6 +75,12 @@ def load(path):
     input_data = {'input': x, 'voxel_dims': np.array(voxel_dim).astype(np.float32)}  
     return input_data
 
+def get_patient_id(dir):
+  #_,name = os.path.split()
+  patients_path = [os.path.abspath(x) for x in os.listdir(dir)]
+  names = [os.path.splitext(y)[0] for y in  os.listdir(dir)]
+  return patients_path, names
+
 ###*** PRE-PROCESSING 1 ***###
 def flip(im):
     im = np.flip(im, axis=0)        # flip CC
