@@ -75,7 +75,7 @@ test_dice_scores = []
 for i in range(fold_num):
 
   #make fold files to save info
-  save_dir = save_path + "MM2_fold" + str(i+1)
+  save_dir = save_path + "2MM_fold" + str(i+1)
   try:
       os.makedirs(save_dir)
   except OSError: #if already exists
@@ -229,7 +229,7 @@ for i in range(fold_num):
   test_predictions = torch.from_numpy(test_predictions)
   #removing the bone masks from the models predictions
   segment_pred_slb = np.logical_and(test_predictions, bone_masks_test[:,np.newaxis,...])
-  segment_pred_slb = (segment_pred_slb.float())
+  segment_pred_slb = segment_pred_slb.float()
   #segment_pred_slb = segment_pred_slb.astype(float)
   print(np.unique(segment_pred_slb))
 
@@ -254,13 +254,13 @@ for i in range(fold_num):
   columns = 5
   for i in range(0, len(c3s)):
     ax.append(fig.add_subplot(rows,columns, i+1))
-    #segment_pred_slb[i][segment_pred_slb[i]==0] = np.nan #uncomment to get pretty images
+    segment_pred_slb[i][segment_pred_slb[i]==0] = np.nan #uncomment to get pretty images
     plt.imshow(c3s[i,0,...], cmap="gray")
     plt.imshow(segment_pred_slb[i,0,...], cmap = "autumn", alpha = 0.5)
     #plt.imshow(sig[i,0,...], cmap = "cool", alpha = 0.5)
     ax[-1].set_title("Network test:"+str(i))
     plt.axis("off")
-  plt.savefig(save_dir + "/MM_test.png")
+  plt.savefig(save_dir + "/MM2_test.png")
   plt.close()
   #plt.show()
 
@@ -282,8 +282,8 @@ plt.ylabel("Test Dice Scores")
 plt.grid(True, linestyle='-', which='major', color='lightgrey',
             alpha=0.5)
 for i in range(len(median)):
-    plt.text(i+0.75, median[i], median[i]+0.001)
-plt.savefig("MM2_fold_info/box_plot.png")
+    plt.text(i+0.75, median[i]-0.005, median[i])
+plt.savefig("MM2_fold_info/box_plot2.png")
 print("Saved Test Info.")
 
 # #Area and Density of SM in the tests

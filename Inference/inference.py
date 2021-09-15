@@ -10,22 +10,25 @@ from matplotlib.pyplot import savefig
 import pandas as pd
 from sklearn import preprocessing
 
-from utils_2 import load, postprocessing_2, preprocessing_1, NeckNavigatorRun, mrofsnart
+from utils_2 import load, get_patient_id, postprocessing_2, preprocessing_1, NeckNavigatorRun, mrofsnart
 from utils_2 import preprocessing_2, MuscleMapperRun, postprocessing_2, save_figs, append_df_to_excel
 
 ###*** GLOBAL VARIABLES ***###
 #paths
-path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images/100182405.nii.gz'
-#path = 'D:/data/Alex/HeadAndNeckData/Packs_UKCatsFeedingTube' #Alex's data
+path = '/home/hermione/t/Donal/JP_HNC'
+#path2 = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
+#'D:/data/Alex/HeadAndNeckData/Packs_UKCatsFeedingTube'
 NN_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1'
-MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/model_state_dict_300_FL_testing.pt"
+MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/MM_model_state_dict_fold3.pt"
 sanity_check_folder = '/home/hermione/Documents/Internship_sarcopenia/Inference/sanity_check/'
 xl_writer = sanity_check_folder + 'skeletal_muscle_info.xlsx'
 #constants
 window = 350
 level = 50
 
-#patient_id = 
+path5, patient_id5 = get_patient_id(path)
+print(patient_id5[0])
+#print(path5)
 
 device = 'cuda:1'
 
@@ -40,47 +43,50 @@ def main():
         - Write segmentation masks to the output directory
             - unflip, resample on the way
     """  
-    ###*** LOAD ***###
-    input_data = load(path)
-    image = input_data['input']
-    voxel_dims = input_data['voxel_dims']
-    ###*** PRE-PROCESSING 1 ***###
-    #load in and preprocess <- hmm seperate?. save voxel dims for calculating SMA later.
-    preprocessing_info = preprocessing_1(image)
-    processed_ct = preprocessing_info['input']
-    transforms = preprocessing_info['transform']
-    ###*** RUN NECK NAVIGATOR MODEL ***###
-    #load in model weigts and run model over one image. need dataloader
-    NN_pred = NeckNavigatorRun(NN_model_weights_path, processed_ct, device)#load_best = true
-    ###*** POST-PROCESSING 1 ***###
-    #extract predicted slice number (and other coords)
-    x,y,z = mrofsnart(NN_pred, transforms)
-    ###*** SAVE NECK NAVIGATOR OUTPUT ***###
-    #save slice number and sagital image and patient id <- path end
-    print(z)
-    
-    ###*** PRE-PROCESSING 2 ***###
-    #hmm the scale for the other model might be and issue maybe save the image before the scale is applied and use that.
-    #or might have to use the loaded in image and preprocessing again to select the right slice.
-    processed_slice, bone_mask = preprocessing_2(z, image)
-    print(processed_slice.shape)
+    for patient in range(len(path5)):
+        ###*** LOAD ***###
+        input_data = load(path5[patient])
+        image = input_data['input']
+        voxel_dims = input_data['voxel_dims']
+        ###*** PRE-PROCESSING 1 ***###
+        preprocessing_info = preprocessing_1(image)
+        processed_ct = preprocessing_info['input']
+        transforms = preprocessing_info['transform']
+        
+        ###*** RUN NECK NAVIGATOR MODEL ***###
+        NN_pred = NeckNavigatorRun(NN_model_weights_path, processed_ct, device)#load_best = true
+        
+        ###*** POST-PROCESSING 1 ***###
+        #extract predicted slice number (and other coords)
+        x,y,z = mrofsnart(NN_pred, transforms)
 
-    ###*** MUSCLE MAPPER MODEL ***###
-    MM_segment = MuscleMapperRun(processed_slice, bone_mask, MM_model_weights_path, device)
-    import numpy as np
-    print(MM_segment.shape, np.unique(MM_segment))
-    ###*** POST-PROCESSING 2 ***###
-    #use image here not processed.remove bone from segmentation
-    SMA, SMD = postprocessing_2(image, z, MM_segment, voxel_dims)
-    print("SMA: ",SMA, "SMD", SMD)
-    ###*** SAVE MUSCLE MAPPER OUTPUT ***###
-    #segment and patient ID and SMA/SMI and SMD to excel
-    save_figs(processed_ct, processed_slice, MM_segment, NN_pred, sanity_check_folder, id ='test')
-    
+        ###*** SAVE NECK NAVIGATOR OUTPUT ***###
+        #save slice number and sagital image and patient id <- path end
+        print(z)
+        
+        ###*** PRE-PROCESSING 2 ***###
+        #hmm the scale for the other model might be and issue maybe save the image before the scale is applied and use that.
+        #or might have to use the loaded in image and preprocessing again to select the right slice.
+        processed_slice, bone_mask = preprocessing_2(z, image)
 
-    df = pd.DataFrame({"IDs": ['p ID here'], "SMA": [SMA] ,"SMD":[SMD]})
-    #df.to_excel(excel_writer = xl_writer, index=False, sheet_name='SM_data')
-    append_df_to_excel(xl_writer, df,sheet_name='SM_data')
+
+        ###*** MUSCLE MAPPER MODEL ***###
+        MM_segment = MuscleMapperRun(processed_slice, bone_mask, MM_model_weights_path, device)
+        import numpy as np
+        #print(MM_segment.shape, np.unique(MM_segment))
+
+        ###*** POST-PROCESSING 2 ***###
+        #use image here not processed.remove bone from segmentation
+        SMA, SMD = postprocessing_2(image, z, MM_segment, voxel_dims)
+        print("SMA: ",SMA, "SMD", SMD)
+
+        ###*** SAVE MUSCLE MAPPER OUTPUT ***###
+        #segment and patient ID and SMA/SMI and SMD to excel
+        id = patient_id5[patient]
+        save_figs(processed_ct, processed_slice, MM_segment, NN_pred, sanity_check_folder, id = id)
+
+        df = pd.DataFrame({"IDs": [id], "SMA": [SMA] ,"SMD":[SMD]})
+        append_df_to_excel(xl_writer, df, sheet_name='SM_data', index = False)
     
     return
 

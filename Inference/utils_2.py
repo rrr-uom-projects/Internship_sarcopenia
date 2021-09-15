@@ -77,9 +77,10 @@ def load(path):
 
 def get_patient_id(dir):
   #_,name = os.path.split()
-  patients_path = [os.path.abspath(x) for x in os.listdir(dir)]
-  names = [os.path.splitext(y)[0] for y in  os.listdir(dir)]
-  return patients_path, names
+  patients_path = [os.path.join(dir, x) for x in os.listdir(dir)]
+  names = [os.path.splitext(y)[0] for y in os.listdir(dir)]
+  names = [os.path.splitext(y)[0] for y in names]
+  return patients_path[:5], names[:5]
 
 ###*** PRE-PROCESSING 1 ***###
 def flip(im):
@@ -353,12 +354,9 @@ def set_up_MuscleMapper(model_path, device):
 def MuscleMapperRun(ct_slice, bone_mask, model_path, device):
   #do three channels with filters # should this be before scaling
   three_chan, bone_three = three_channel(ct_slice, bone_mask)
-  print(three_chan.shape)
   transformed = transform(False, image = three_chan, mask = bone_three)
   transformed_im = transformed["image"]
   transformed_bmsk = transformed["mask"].squeeze()
-  print(transformed_im.shape)
-  #transformed = torch.from_numpy(three_chan)
   input_slice = transformed_im.unsqueeze(0).to(device)
   input_slice = input_slice.type(torch.float32)
   model = set_up_MuscleMapper(model_path, device)
@@ -368,7 +366,7 @@ def MuscleMapperRun(ct_slice, bone_mask, model_path, device):
   sigmoid = 1/(1 + np.exp(-MM_ouput))
   segment = (sigmoid > 0.5).float().numpy()
   #remove bone masks
-  pred_slb = np.logical_and(segment, bone_mask)#not no? transformed_bmsk[...,0].numpy()
+  pred_slb = np.logical_and(segment, bone_mask)
   return np.array(pred_slb).astype(int)
 
 ###*** POST-PROCESSING 2 ***###
@@ -380,8 +378,7 @@ def getDensity(image, mask, area, label=1):
 def getArea(image, mask, area, label=1, thresholds = None):
   sMasks = (mask == label)
   threshold = np.logical_and(image > (thresholds[0]), image <  (thresholds[1]))
-  tmask = np.logical_and(sMasks, threshold)#sMasks
-  #print(np.unique(tmask))
+  tmask = np.logical_and(sMasks, threshold)
   return np.count_nonzero(tmask) * area
 
 def postprocessing_2(ct, slice_no, pred_slb, dims, is_worldmatch = True):
@@ -390,9 +387,8 @@ def postprocessing_2(ct, slice_no, pred_slb, dims, is_worldmatch = True):
   ct_slice = ct[do_it_urself_round(slice_no)] #to get the correct intensities
   if is_worldmatch: ct_slice -= 1024
   cropped_slice = cropping(ct_slice, threeD=False)
-  print("ct slice shape",ct_slice.shape)
   pixel_area = dims[0]*dims[1]*(0.1*0.1) #mm^2 -> cm^2
-  print(pixel_area)
+  #print(pixel_area)
   SMA = getArea(cropped_slice, pred_slb, pixel_area, thresholds=(-30, +130))
   SMD = getDensity(cropped_slice, pred_slb, pixel_area)
   return SMA, SMD
@@ -412,18 +408,12 @@ def display_slice(ct_slice, segment, ax):
 def save_figs(ct, ct_slice, segment, slice_pred, save_loc, id):
   fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
   fig.suptitle('Patient: '+ id)
-  #ax=[]
-  # row = 1
-  # column = 2
-  # ax.append(fig.add_subplot(row,column,1))
-  # plt.imshow(NN_fig) #can you plot a fig like this?
-  # ax.append(fig.add_subplot(row,column,2))
-  # plt.imshow(MM_fig)
   display_net_test(ct, slice_pred, ax1)
   display_slice(ct_slice, segment, ax2)
-  #plt.axis('off')
-  plt.show()
-  plt.savefig(save_loc + 'sanity_check_images.png')
+  #plt.show()
+  plt.savefig(save_loc + f'sanity_check_{id}.png')
+  plt.close()
+  return
 
 
 #saving to excel file
@@ -500,14 +490,12 @@ def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
 
   if startrow is None:
       startrow = 0
+  else:
+    header = None
+    to_excel_kwargs.update({'header':header})
 
   # write out the new sheet
   df.to_excel(writer, sheet_name, startrow=startrow, **to_excel_kwargs)
   
-  for column in df:
-        column_length = max(df[column].astype(str).map(len).max(), len(column))
-        col_idx = df.columns.get_loc(column)
-        filename.sheets['SM_data'].set_column(col_idx, col_idx, column_length+2)
-
   # save the workbook
   writer.save()
