@@ -20,6 +20,7 @@ from albumentations.pytorch import ToTensor
 import os
 from openpyxl import load_workbook
 import pandas as pd
+import math
 from model import neckNavigator
 
 #constants
@@ -114,8 +115,8 @@ def cropping(inp: np.ndarray, bone_mask = None, threeD = True):
     if threeD: x_ind, y_ind = 1, 2
     else: x_ind, y_ind = 0, 1
     if threeD: size =126
-    else: size = 130
-    x_min = do_it_urself_round(((coords[x_ind] - size)+126)/2)
+    else: size = 130 #110 would be nice
+    x_min = do_it_urself_round(((coords[x_ind] - size)+126)/2) #126
     x_max = do_it_urself_round(((coords[x_ind] + size)+386)/2)
     y_min = do_it_urself_round(((coords[y_ind] - size)+126)/2)
     y_max = do_it_urself_round(((coords[y_ind] + size)+386)/2)
@@ -133,14 +134,15 @@ def cropping(inp: np.ndarray, bone_mask = None, threeD = True):
               z_coords = {"z_min": do_it_urself_round(coords[0]), "z_max": do_it_urself_round(coords[0])+z_size}
 
       else:
-          #print("too small: ", x.shape[0])
-          padded_arr = np.pad(x, ((do_it_urself_round((z_size-x.shape[0])/2), do_it_urself_round((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
+          print("too small: ", x.shape[0]) #107 112-107/2
+          padded_arr = np.pad(x,((math.floor((z_size-x.shape[0])/2), math.ceil((z_size-x.shape[0])/2)), (0,0),(0,0)),'mean')
           
           inp = padded_arr
           z_coords = {"z_min": 0, "z_max": inp.shape[0]}
       
       x = inp[z_coords["z_min"]:z_coords["z_max"],x_min:x_max,y_min:y_max]
       cropped_info = [z_coords["z_min"], z_coords["z_max"], org_inp_size[0], x_min, x_max, org_inp_size[1], y_min, y_max, org_inp_size[2]]
+      print(x.shape)
       return x, np.array(cropped_info)
 
     else:
@@ -158,6 +160,7 @@ def preprocessing_1(image):
     if x.GetDirection()[-1] == -1:
         need_flip = True
     x= sitk.GetArrayFromImage(x).astype(float)
+    #print("worldmatch info here:", np.max(x), np.min(x))
     x-=1024 #worldmatch trickery
 
     # Preprocessing
@@ -194,7 +197,7 @@ def NeckNavigatorRun(model_dir, image, device): #put one image through
     # creating channel dimension            
     input_image = input_image.unsqueeze(0).unsqueeze(0)
     input_image = input_image.type(torch.FloatTensor).to(device)
-    #print(input_image.shape)
+    print("NN input: ",input_image.shape)
     output = model(input_image)
     output = flat_softmax(output)
     test_output = output.squeeze().cpu().detach().numpy()
@@ -276,7 +279,18 @@ def display_net_test(inps, msks,ax, shape = 128, z = None):
   
 
 ###*** PRE-PROCESSING 2 ***###
-def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldmatch=False):
+def window_level_norm(inp: np.array):
+  vmax = level/2 + window
+  vmin = level/2-window
+  # thresh = 1000
+  # inp[inp > thresh] = 0
+  inp[inp > vmax] = vmax
+  inp[inp < vmin] = vmin
+  shape = inp.shape
+  image_scaled = np.round(sklearn.preprocessing.minmax_scale(inp.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
+  return image_scaled
+
+def extract_bone_masks(dcm_array, slice_number, threshold=300, radius=2, worldmatch=False):
     """
     Calculate 3D bone mask and remove from prediction. 
     Used to account for partial volume effect.
@@ -316,31 +330,28 @@ def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldma
     return np.logical_not(sitk.GetArrayFromImage(dilated_mask)[crop_by])#slice_number
 
 def three_channel(ct_slice, bone_mask):
-  size = len(ct_slice)
   slices_3chan = np.repeat(ct_slice[...,np.newaxis], 3, axis=-1)
-  bone_3chan = np.repeat(ct_slice[...,np.newaxis], 3, axis=-1)
+  bone_3chan = np.repeat(bone_mask[...,np.newaxis], 3, axis=-1)
   # apply filters to two channels
   slices_3chan[...,1] = ndimage.gaussian_laplace(slices_3chan[...,1], sigma=1)
   slices_3chan[...,2] = ndimage.sobel(slices_3chan[...,2])
   return slices_3chan.astype(np.float32), bone_3chan.astype(np.float32)
 
 transform = A.Compose([A.Resize(260, 260), A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), ToTensor()])
-
+#240 crop would be nice but have to do some train tweaks think
 def preprocessing_2(slice_no, ct, is_worldmatch = True):
   #extract slice
   slice_no = do_it_urself_round(slice_no)
-  bone_mask = extract_bone_masks(ct,slice_no, worldmatch=is_worldmatch)
+  bone_mask = extract_bone_masks(ct, slice_no, worldmatch=is_worldmatch)
   ct_slice = sitk.GetArrayFromImage(ct)[slice_no]
-  print("ct slice: ", ct_slice.shape)
-  print(bone_mask.shape)
   if is_worldmatch: ct_slice -=1024
   ct_slice = ct_slice.astype(float)
   cropped_slice, cropped_bone = cropping(ct_slice, bone_mask, threeD=False)
   #print("crop: ",cropped_slice.shape)
-  wl_slice = window_level(cropped_slice)
-  shape = wl_slice.shape
-  image_scaled = np.round(sklearn.preprocessing.minmax_scale(wl_slice.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
-  return image_scaled, cropped_bone
+  wln_slice = window_level_norm(cropped_slice)
+  # shape = wl_slice.shape
+  # image_scaled = np.round(sklearn.preprocessing.minmax_scale(wl_slice.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
+  return wln_slice, cropped_bone
 
 ###*** MUSCLE MAPPER MODEL ***###
 def set_up_MuscleMapper(model_path, device):
@@ -356,9 +367,10 @@ def MuscleMapperRun(ct_slice, bone_mask, model_path, device):
   three_chan, bone_three = three_channel(ct_slice, bone_mask)
   transformed = transform(False, image = three_chan, mask = bone_three)
   transformed_im = transformed["image"]
-  transformed_bmsk = transformed["mask"].squeeze()
+  #transformed_bmsk = transformed["mask"].squeeze()
   input_slice = transformed_im.unsqueeze(0).to(device)
   input_slice = input_slice.type(torch.float32)
+  print("model input:", input_slice.shape)
   model = set_up_MuscleMapper(model_path, device)
   output = model(input_slice)["out"] 
   MM_ouput = output.detach().cpu().squeeze()
@@ -391,7 +403,7 @@ def postprocessing_2(ct, slice_no, pred_slb, dims, is_worldmatch = True):
   #print(pixel_area)
   SMA = getArea(cropped_slice, pred_slb, pixel_area, thresholds=(-30, +130))
   SMD = getDensity(cropped_slice, pred_slb, pixel_area)
-  return SMA, SMD
+  return do_it_urself_round(SMA,3), do_it_urself_round(SMD,3)
 
 ###*** SAVE MUSCLE MAPPER OUTPUT ***###
 #segment and patient ID and SMA/SMI and SMD
@@ -411,7 +423,7 @@ def save_figs(ct, ct_slice, segment, slice_pred, save_loc, id):
   display_net_test(ct, slice_pred, ax1)
   display_slice(ct_slice, segment, ax2)
   #plt.show()
-  plt.savefig(save_loc + f'sanity_check_{id}.png')
+  plt.savefig(save_loc + f'image_{id}.png')
   plt.close()
   return
 

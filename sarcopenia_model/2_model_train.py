@@ -65,7 +65,7 @@ pixel_area, pixel_area2 = np.split(data['areas'],2)
 slices_processed, masks_processed = preprocess(slices, masks_slb)
 slices_processed2, masks_processed2 = preprocess(slices2, masks_slb2)
 #split into training and testing
-fold_num = 5
+fold_num = 7
 print("Lengths: ", len(masks), len(slices), len(slices_processed), len(masks_processed))
 dataset_size = len(masks)
 train_array, test_array = k_fold_cross_val(dataset_size, num_splits = fold_num)
@@ -75,14 +75,14 @@ test_dice_scores = []
 for i in range(fold_num):
 
   #make fold files to save info
-  save_dir = save_path + "2MM_fold" + str(i+1)
+  save_dir = save_path + "MM3_fold" + str(i+1)
   try:
       os.makedirs(save_dir)
   except OSError: #if already exists
       pass
 
   #split into train and val
-  val_split, train_split = np.split(train_array[i], [7], axis= 0)#21:7
+  val_split, train_split = np.split(train_array[i], [5], axis= 0)#21:7
   ids_test = np.concatenate((ids[(test_array[i])], ids2[(test_array[i])]))
   ids_val = np.concatenate((ids[val_split], ids2[val_split]))
   ids_train = np.concatenate((ids[train_split], ids2[train_split]))
@@ -260,7 +260,7 @@ for i in range(fold_num):
     #plt.imshow(sig[i,0,...], cmap = "cool", alpha = 0.5)
     ax[-1].set_title("Network test:"+str(i))
     plt.axis("off")
-  plt.savefig(save_dir + "/MM2_test.png")
+  plt.savefig(save_dir + "/MM3_test.png")
   plt.close()
   #plt.show()
 
@@ -283,7 +283,7 @@ plt.grid(True, linestyle='-', which='major', color='lightgrey',
             alpha=0.5)
 for i in range(len(median)):
     plt.text(i+0.75, median[i]-0.005, median[i])
-plt.savefig("MM2_fold_info/box_plot2.png")
+plt.savefig("MM3_fold_info/box_plot2.png")
 print("Saved Test Info.")
 
 # #Area and Density of SM in the tests

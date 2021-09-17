@@ -88,6 +88,7 @@ def diceCoeff(pred, gt, smooth=1, activation='sigmoid'):
  
     return loss.sum() / N
 
+####*** Preprocessing ***###
 def preprocess(slice_array, masks_array):
   from sklearn.preprocessing import MinMaxScaler
   scaler = MinMaxScaler()

@@ -19,7 +19,7 @@ path = '/home/hermione/t/Donal/JP_HNC'
 #path2 = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
 #'D:/data/Alex/HeadAndNeckData/Packs_UKCatsFeedingTube'
 NN_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1'
-MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/MM_model_state_dict_fold3.pt"
+MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/MM3_model_state_dict_fold6.pt"
 sanity_check_folder = '/home/hermione/Documents/Internship_sarcopenia/Inference/sanity_check/'
 xl_writer = sanity_check_folder + 'skeletal_muscle_info.xlsx'
 #constants
@@ -27,8 +27,6 @@ window = 350
 level = 50
 
 path5, patient_id5 = get_patient_id(path)
-print(patient_id5[0])
-#print(path5)
 
 device = 'cuda:1'
 
@@ -44,8 +42,12 @@ def main():
             - unflip, resample on the way
     """  
     for patient in range(len(path5)):
+        print("Patient ", patient)
         ###*** LOAD ***###
-        input_data = load(path5[patient])
+        try:
+            input_data = load(path5[patient])
+        except:
+            continue
         image = input_data['input']
         voxel_dims = input_data['voxel_dims']
         ###*** PRE-PROCESSING 1 ***###
@@ -62,7 +64,7 @@ def main():
 
         ###*** SAVE NECK NAVIGATOR OUTPUT ***###
         #save slice number and sagital image and patient id <- path end
-        print(z)
+        print("Slice No:", z)
         
         ###*** PRE-PROCESSING 2 ***###
         #hmm the scale for the other model might be and issue maybe save the image before the scale is applied and use that.
