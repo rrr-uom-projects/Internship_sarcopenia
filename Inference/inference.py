@@ -75,7 +75,7 @@ def main():
         ###*** MUSCLE MAPPER MODEL ***###
         MM_segment = MuscleMapperRun(processed_slice, bone_mask, MM_model_weights_path, device)
         import numpy as np
-        #print(MM_segment.shape, np.unique(MM_segment))
+        print(MM_segment.shape, np.unique(MM_segment))
 
         ###*** POST-PROCESSING 2 ***###
         #use image here not processed.remove bone from segmentation

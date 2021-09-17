@@ -229,7 +229,7 @@ def mrofsnart(msk, transforms, shape = 128):#transforms backwards
         z_shape = transforms[1][2] -1 
         z = z_shape - z
     #print("Final Coords: ", z,x,y)
-    return do_it_urself_round(x,1),do_it_urself_round(y,1),do_it_urself_round(z,1)
+    return do_it_urself_round(x,1),do_it_urself_round(y,1),do_it_urself_round(z)
 
 ###*** SAVE NECK NAVIGATOR OUTPUT ***###
 #slice number and sagital image and patient id
@@ -303,10 +303,8 @@ def extract_bone_masks(dcm_array, slice_number, threshold=300, radius=2, worldma
     """
     #img = sitk.GetImageFromArray(dcm_array)
     img = dcm_array
-    #print(img.size)
     crop_by = 5
-    img = img[...,(slice_number-crop_by):(slice_number+crop_by)]
-    #print(img.size)
+    #img = img[...,(slice_number-crop_by):(slice_number+crop_by)]
     # Worldmatch tax
     if worldmatch:
         img -= 1024
@@ -326,31 +324,33 @@ def extract_bone_masks(dcm_array, slice_number, threshold=300, radius=2, worldma
     dil.SetKernelRadius(pix_rad)
     dil.SetForegroundValue(1)
     dilated_mask = dil.Execute(bone_mask)
-    
-    return np.logical_not(sitk.GetArrayFromImage(dilated_mask)[crop_by])#slice_number
+    im_arr = sitk.GetArrayFromImage(dilated_mask)[slice_number]
+    return np.logical_not(im_arr)
 
-def three_channel(ct_slice, bone_mask):
+def three_channel(ct_slice):
   slices_3chan = np.repeat(ct_slice[...,np.newaxis], 3, axis=-1)
-  bone_3chan = np.repeat(bone_mask[...,np.newaxis], 3, axis=-1)
+  #bone_3chan = np.repeat(bone_mask[...,np.newaxis], 3, axis=-1)
   # apply filters to two channels
   slices_3chan[...,1] = ndimage.gaussian_laplace(slices_3chan[...,1], sigma=1)
   slices_3chan[...,2] = ndimage.sobel(slices_3chan[...,2])
-  return slices_3chan.astype(np.float32), bone_3chan.astype(np.float32)
+  return slices_3chan.astype(np.float32) #, bone_3chan.astype(np.float32)
 
 transform = A.Compose([A.Resize(260, 260), A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), ToTensor()])
 #240 crop would be nice but have to do some train tweaks think
 def preprocessing_2(slice_no, ct, is_worldmatch = True):
   #extract slice
-  slice_no = do_it_urself_round(slice_no)
+  #slice_no = do_it_urself_round(slice_no)
   bone_mask = extract_bone_masks(ct, slice_no, worldmatch=is_worldmatch)
+  print("bone_info",bone_mask.shape, np.max(bone_mask), np.min(bone_mask))
   ct_slice = sitk.GetArrayFromImage(ct)[slice_no]
   if is_worldmatch: ct_slice -=1024
   ct_slice = ct_slice.astype(float)
   cropped_slice, cropped_bone = cropping(ct_slice, bone_mask, threeD=False)
   #print("crop: ",cropped_slice.shape)
+  plt.imshow(cropped_slice)
+  plt.imshow(cropped_bone.astype(float), alpha=0.5, cmap = "cool")
+  plt.show()
   wln_slice = window_level_norm(cropped_slice)
-  # shape = wl_slice.shape
-  # image_scaled = np.round(sklearn.preprocessing.minmax_scale(wl_slice.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
   return wln_slice, cropped_bone
 
 ###*** MUSCLE MAPPER MODEL ***###
@@ -364,8 +364,8 @@ def set_up_MuscleMapper(model_path, device):
 
 def MuscleMapperRun(ct_slice, bone_mask, model_path, device):
   #do three channels with filters # should this be before scaling
-  three_chan, bone_three = three_channel(ct_slice, bone_mask)
-  transformed = transform(False, image = three_chan, mask = bone_three)
+  three_chan = three_channel(ct_slice)
+  transformed = transform(False, image = three_chan)# mask = bone_three
   transformed_im = transformed["image"]
   #transformed_bmsk = transformed["mask"].squeeze()
   input_slice = transformed_im.unsqueeze(0).to(device)
@@ -379,6 +379,7 @@ def MuscleMapperRun(ct_slice, bone_mask, model_path, device):
   segment = (sigmoid > 0.5).float().numpy()
   #remove bone masks
   pred_slb = np.logical_and(segment, bone_mask)
+  #pred_slb = segment
   return np.array(pred_slb).astype(int)
 
 ###*** POST-PROCESSING 2 ***###
@@ -396,7 +397,8 @@ def getArea(image, mask, area, label=1, thresholds = None):
 def postprocessing_2(ct, slice_no, pred_slb, dims, is_worldmatch = True):
   #calc SMA/SMI and SMD
   ct = sitk.GetArrayFromImage(ct).astype(float)
-  ct_slice = ct[do_it_urself_round(slice_no)] #to get the correct intensities
+  #ct_slice = ct[do_it_urself_round(slice_no)] #to get the correct intensities
+  ct_slice = ct[slice_no]
   if is_worldmatch: ct_slice -= 1024
   cropped_slice = cropping(ct_slice, threeD=False)
   pixel_area = dims[0]*dims[1]*(0.1*0.1) #mm^2 -> cm^2
