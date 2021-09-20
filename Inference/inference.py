@@ -15,8 +15,8 @@ from utils_2 import preprocessing_2, MuscleMapperRun, postprocessing_2, save_fig
 
 ###*** GLOBAL VARIABLES ***###
 #paths
-#path = '/home/hermione/t/Donal/JP_HNC'
-path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
+path = '/home/hermione/t/Donal/JP_HNC'
+#path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
 #'D:/data/Alex/HeadAndNeckData/Packs_UKCatsFeedingTube'
 NN_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1'
 MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/MM3_model_state_dict_fold6.pt"
@@ -43,7 +43,7 @@ def main():
     """  
     for patient in range(len(paths)):
         id = patient_ids[patient]
-        print("Patient ", patient, "id ", id)
+        print("\nPatient ", patient, "id ", id)
 
         ###*** LOAD ***###
         try:

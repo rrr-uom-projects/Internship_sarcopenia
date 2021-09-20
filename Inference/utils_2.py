@@ -81,7 +81,7 @@ def get_patient_id(dir):
   patients_path = [os.path.join(dir, x) for x in os.listdir(dir)]
   names = [os.path.splitext(y)[0] for y in os.listdir(dir)]
   names = [os.path.splitext(y)[0] for y in names]
-  return patients_path[:5], names[:5]
+  return patients_path[237:], names[237:]
 
 ###*** PRE-PROCESSING 1 ***###
 def flip(im):
@@ -192,9 +192,9 @@ def setup_model(model, checkpoint_dir, device, load_prev = False, load_best = Fa
     model.eval()
   return model
 
-def NeckNavigatorRun(model_dir, image, device): #put one image through
+def NeckNavigatorRun(model_dir, ct, device): #put one image through
     model = setup_model(neckNavigator(), model_dir, device, load_best = True, eval_mode=True)
-    input_image = torch.from_numpy(image).type(torch.FloatTensor)
+    input_image = torch.from_numpy(ct).type(torch.FloatTensor)
     # creating channel dimension            
     input_image = input_image.unsqueeze(0).unsqueeze(0)
     input_image = input_image.type(torch.FloatTensor).to(device)
@@ -304,7 +304,7 @@ def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldma
     """
     #img = sitk.GetImageFromArray(dcm_array)
     img = dcm_array
-    crop_by = 5
+    #crop_by = 5 #these two lines were meant to make it quicker.
     #img = img[...,(slice_number-crop_by):(slice_number+crop_by)]
     # Worldmatch tax
     if worldmatch:
@@ -395,7 +395,7 @@ def getArea(image, mask, area, label=1, thresholds = None):
   return np.count_nonzero(tmask) * area
 
 def postprocessing_2(org_ct, slice_no, pred, bone_mask, dims, is_worldmatch = False):
-  ct_slice = sitk.GetArrayFromImage(org_ct)[slice_no]
+  ct_slice = (sitk.GetArrayFromImage(org_ct)[slice_no]).astype(float)
   print("postProcessing: ", ct_slice.shape, np.max(ct_slice), np.min(ct_slice))
   if is_worldmatch: ct_slice -= 1024
   cropped_slice = cropping(ct_slice, threeD=False)

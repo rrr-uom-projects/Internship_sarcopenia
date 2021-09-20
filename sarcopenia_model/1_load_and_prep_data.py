@@ -1,14 +1,152 @@
 #File to load in and store nifty images
 #updated: 07/07/2021
 #by hermione
-
+#%%
 import matplotlib.pyplot as plt
 import SimpleITK as sitk
 import numpy as np
 import os
 from scipy import ndimage
 import cv2
+from decimal import Decimal
 
+###*** load in niftis ***###
+def do_it_urself_round(number, decimals = 0, is_array = False):
+  float_num = number
+  dec_num =  Decimal(str(number))
+  Ddecimal = Decimal(str(decimals))
+  round_num = round(dec_num, decimals)
+  diff = np.abs(dec_num - round_num)
+  round_diff = Decimal(str(0.5/(10**decimals)))
+  if (diff == round_diff and dec_num >= round_num):
+    round_num += (1/(10**(Ddecimal))) 
+  if decimals == 0:
+    return int(round_num)
+  else:
+    return float(round_num)
+    
+def GetSliceNumber(segment):
+  slice_number = 0
+  max_range = len(sitk.GetArrayFromImage(segment))
+  for x in range(0,max_range):
+    seg_slice_2 = sitk.GetArrayFromImage(segment)[x,:,:]
+    val = np.sum(seg_slice_2)
+    if val != 0:
+      slice_number = x
+  return slice_number
+
+def crop2(slices_arr, masks_arr, bone_arr, sans_le_bone_arr):
+  #taking a mean of the centre of image and centre of intensity
+  slices_cropped = []
+  masks_cropped = []
+  bone_cropped = []
+  mask_sans_le_bone_cropped = []
+  for i in range(0,len(slices_arr)):
+      crop_slice = slices_arr[i][0:250, 0:512]
+      ret,threshold = cv2.threshold(crop_slice,200,0, cv2.THRESH_TOZERO)
+      coords = ndimage.measurements.center_of_mass(threshold)
+      size = 130
+      x_min = int(((coords[0] - size)+126)/2)
+      x_max = int(((coords[0] + size)+386)/2)
+      y_min = int(((coords[1] - size)+126)/2)
+      y_max = int(((coords[1] + size)+386)/2)
+      crop_image = slices_arr[i][x_min:x_max, y_min:y_max]
+      crop_seg = masks_arr[i][x_min:x_max, y_min:y_max]
+      crop_bone = bone_arr[i][x_min:x_max, y_min:y_max]
+      crop_sans = sans_le_bone_arr[i][x_min:x_max, y_min:y_max]
+      slices_cropped.append(crop_image)
+      masks_cropped.append(crop_seg)
+      bone_cropped.append(crop_bone)
+      mask_sans_le_bone_cropped.append(crop_sans)
+  return np.asarray(slices_cropped), np.asarray(masks_cropped), np.asarray(bone_cropped), np.asarray(mask_sans_le_bone_cropped)
+
+def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldmatch=False):
+    """
+    Calculate 3D bone mask and remove from prediction. 
+    Used to account for partial volume effect.
+​
+    Args:
+        dcm_array - 3D volume
+        slice number - slice where segmentation being performed
+        threshold (in HU) - threshold above which values are set to 1 
+        radius (in mm) - Kernel radius for binary dilation
+    """
+    img = dcm_array
+    # Worldmatch tax
+    if worldmatch:
+        img -= 1024
+    # Apply threshold
+    bin_filt = sitk.BinaryThresholdImageFilter()
+    bin_filt.SetOutsideValue(1)
+    bin_filt.SetInsideValue(0)
+    bin_filt.SetLowerThreshold(-1024)
+    bin_filt.SetUpperThreshold(threshold)
+    bone_mask = bin_filt.Execute(img)
+    pix = bone_mask.GetSpacing()
+    # Convert to pixels
+    pix_rad = [int(radius//elem) for elem in pix]
+    # Dilate mask
+    dil = sitk.BinaryDilateImageFilter()
+    dil.SetKernelType(sitk.sitkBall)
+    dil.SetKernelRadius(pix_rad)
+    dil.SetForegroundValue(1)
+    dilated_mask = dil.Execute(bone_mask)
+    
+    return sitk.GetArrayFromImage(dilated_mask)[slice_number]
+
+def load_n_save(dir, save_path):
+  names = [y.split('_')[0] for y in os.listdir(dir)]
+  patient_paths = [os.path.join(dir, x) for x in os.listdir(dir)]
+  # Load input and target
+  slices = []
+  masks = []
+  pixel_areas = []
+  ids = []
+  bone_masks = []
+  masks_slb = []
+  slice_nos = []
+
+  for i in range(len(patient_paths)):
+    print(i)
+    split = (patient_paths[i].split('_'))[-1]
+    print(split)
+    if split[0] == 'a':
+      path_seg = patient_paths[i]
+      segment = sitk.ReadImage(path_seg, imageIO="NiftiImageIO")
+      slice_no = GetSliceNumber(segment)
+      slice_nos.append(slice_no)
+      mask = sitk.GetArrayFromImage(segment)[slice_no,:,:]
+      masks.append(mask.astype(float))
+    else:
+      path_ct = patient_paths[i]
+      ct_scan = sitk.ReadImage(path_ct, imageIO="NiftiImageIO")
+      pixel_areas.append(((ct_scan.GetSpacing())[0])*((ct_scan.GetSpacing())[1]))
+      ct_slice = sitk.GetArrayFromImage(ct_scan)[slice_nos[-1]]
+      slices.append(ct_slice.astype(float))
+      ids.append(names[i])
+      boneMask = np.logical_not(extract_bone_masks(ct_scan, slice_nos[-1]))
+      bone_masks.append(boneMask)
+
+  print(len(masks), len(bone_masks))
+  
+  for j in range(len(masks)):
+    print(j)
+    masks_slb.append(np.logical_and(masks[j], bone_masks[j]))
+
+  cropped_slices, cropped_masks, cropped_bone, cropped_masks_slb = crop2(slices, masks, bone_masks, masks_slb)
+
+  #data = {'slice': np.array(slices), 'masks': np.array(masks),'masks_slb': np.array(masks_slb), 'bone_masks': np.array(bone_masks), 'areas': np.array(pixel_areas), 'ids':ids}  
+  np.savez(save_path, slices = cropped_slices, masks = cropped_masks, bone = cropped_bone, masks_slb = cropped_masks_slb, ids = ids, areas = pixel_areas )
+  return #data
+
+path = '/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/extra_segs'
+save_path = path + '/save_extras.npz'
+load_n_save(path, save_path)
+data = np.load(save_path)
+print([*data.keys()])
+slices = data['slices']
+print(len(slices))
+#%%
 def sitk_show(img, title=None, margin=0.05, dpi=40 ):
     nda = sitk.GetArrayFromImage(img)
     spacing = img.GetSpacing()
