@@ -107,11 +107,12 @@ def normalize_01(inp: np.ndarray):
     inp_out = inp_new
     return inp_out
 
-def cropping(inp: np.ndarray, bone_mask = None, threeD = True):
+def cropping(inp, bone_mask = None, threeD = True):
     #working one but z axis crop needs improving
     x = inp
     _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
     coords = center_of_mass(threshold)
+    print(coords)
     if threeD: x_ind, y_ind = 1, 2
     else: x_ind, y_ind = 0, 1
     if threeD: size =126
@@ -160,7 +161,7 @@ def preprocessing_1(image):
     if x.GetDirection()[-1] == -1:
         need_flip = True
     x= sitk.GetArrayFromImage(x).astype(float)
-    #print("worldmatch info here:", np.max(x), np.min(x))
+    print("worldmatch info here:",x.shape, np.max(x), np.min(x))
     x-=1024 #worldmatch trickery
 
     # Preprocessing
@@ -290,7 +291,7 @@ def window_level_norm(inp: np.array):
   image_scaled = np.round(sklearn.preprocessing.minmax_scale(inp.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
   return image_scaled
 
-def extract_bone_masks(dcm_array, slice_number, threshold=300, radius=2, worldmatch=False):
+def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldmatch=False):
     """
     Calculate 3D bone mask and remove from prediction. 
     Used to account for partial volume effect.
@@ -339,19 +340,21 @@ transform = A.Compose([A.Resize(260, 260), A.Normalize(mean=(0.485, 0.456, 0.406
 #240 crop would be nice but have to do some train tweaks think
 def preprocessing_2(slice_no, ct, is_worldmatch = True):
   #extract slice
-  #slice_no = do_it_urself_round(slice_no)
-  bone_mask = extract_bone_masks(ct, slice_no, worldmatch=is_worldmatch)
-  print("bone_info",bone_mask.shape, np.max(bone_mask), np.min(bone_mask))
   ct_slice = sitk.GetArrayFromImage(ct)[slice_no]
+  print("ct_info: ", ct_slice.shape, np.max(ct_slice),np.min(ct_slice))
   if is_worldmatch: ct_slice -=1024
   ct_slice = ct_slice.astype(float)
+  #extract bone mask
+  bone_mask = extract_bone_masks(ct, slice_no, worldmatch=is_worldmatch)
+  print("bone_info",bone_mask.shape, np.unique(bone_mask))
   cropped_slice, cropped_bone = cropping(ct_slice, bone_mask, threeD=False)
   #print("crop: ",cropped_slice.shape)
-  plt.imshow(cropped_slice)
-  plt.imshow(cropped_bone.astype(float), alpha=0.5, cmap = "cool")
-  plt.show()
+  # plt.imshow(cropped_slice)
+  # plt.imshow(cropped_bone.astype(float), alpha=0.5, cmap = "cool")
+  # plt.show()
   wln_slice = window_level_norm(cropped_slice)
-  return wln_slice, cropped_bone
+  preprocess2_info = {"slice": wln_slice, "bone":cropped_bone}
+  return preprocess2_info
 
 ###*** MUSCLE MAPPER MODEL ***###
 def set_up_MuscleMapper(model_path, device):
@@ -362,25 +365,22 @@ def set_up_MuscleMapper(model_path, device):
   model.eval()
   return model
 
-def MuscleMapperRun(ct_slice, bone_mask, model_path, device):
+def MuscleMapperRun(ct_slice, model_path, device):
   #do three channels with filters # should this be before scaling
   three_chan = three_channel(ct_slice)
-  transformed = transform(False, image = three_chan)# mask = bone_three
+  transformed = transform(False, image = three_chan)
   transformed_im = transformed["image"]
-  #transformed_bmsk = transformed["mask"].squeeze()
   input_slice = transformed_im.unsqueeze(0).to(device)
   input_slice = input_slice.type(torch.float32)
   print("model input:", input_slice.shape)
+  #put through model
   model = set_up_MuscleMapper(model_path, device)
   output = model(input_slice)["out"] 
   MM_ouput = output.detach().cpu().squeeze()
   # sigmoid and thresholding
   sigmoid = 1/(1 + np.exp(-MM_ouput))
   segment = (sigmoid > 0.5).float().numpy()
-  #remove bone masks
-  pred_slb = np.logical_and(segment, bone_mask)
-  #pred_slb = segment
-  return np.array(pred_slb).astype(int)
+  return np.array(segment).astype(int)
 
 ###*** POST-PROCESSING 2 ***###
 def getDensity(image, mask, area, label=1):
@@ -394,15 +394,15 @@ def getArea(image, mask, area, label=1, thresholds = None):
   tmask = np.logical_and(sMasks, threshold)
   return np.count_nonzero(tmask) * area
 
-def postprocessing_2(ct, slice_no, pred_slb, dims, is_worldmatch = True):
-  #calc SMA/SMI and SMD
-  ct = sitk.GetArrayFromImage(ct).astype(float)
-  #ct_slice = ct[do_it_urself_round(slice_no)] #to get the correct intensities
-  ct_slice = ct[slice_no]
+def postprocessing_2(org_ct, slice_no, pred, bone_mask, dims, is_worldmatch = False):
+  ct_slice = sitk.GetArrayFromImage(org_ct)[slice_no]
+  print("postProcessing: ", ct_slice.shape, np.max(ct_slice), np.min(ct_slice))
   if is_worldmatch: ct_slice -= 1024
   cropped_slice = cropping(ct_slice, threeD=False)
+  #remove bone masks
+  pred_slb = np.logical_and(pred, bone_mask)
+  #calc SMA/SMI and SMD
   pixel_area = dims[0]*dims[1]*(0.1*0.1) #mm^2 -> cm^2
-  #print(pixel_area)
   SMA = getArea(cropped_slice, pred_slb, pixel_area, thresholds=(-30, +130))
   SMD = getDensity(cropped_slice, pred_slb, pixel_area)
   return do_it_urself_round(SMA,3), do_it_urself_round(SMD,3)

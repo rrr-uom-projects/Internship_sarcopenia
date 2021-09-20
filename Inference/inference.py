@@ -15,8 +15,8 @@ from utils_2 import preprocessing_2, MuscleMapperRun, postprocessing_2, save_fig
 
 ###*** GLOBAL VARIABLES ***###
 #paths
-path = '/home/hermione/t/Donal/JP_HNC'
-#path2 = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
+#path = '/home/hermione/t/Donal/JP_HNC'
+path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
 #'D:/data/Alex/HeadAndNeckData/Packs_UKCatsFeedingTube'
 NN_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1'
 MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/MM3_model_state_dict_fold6.pt"
@@ -26,7 +26,7 @@ xl_writer = sanity_check_folder + 'skeletal_muscle_info.xlsx'
 window = 350
 level = 50
 
-path5, patient_id5 = get_patient_id(path)
+paths, patient_ids = get_patient_id(path)
 
 device = 'cuda:1'
 
@@ -41,15 +41,18 @@ def main():
         - Write segmentation masks to the output directory
             - unflip, resample on the way
     """  
-    for patient in range(len(path5)):
-        print("Patient ", patient)
+    for patient in range(len(paths)):
+        id = patient_ids[patient]
+        print("Patient ", patient, "id ", id)
+
         ###*** LOAD ***###
         try:
-            input_data = load(path5[patient])
+            input_data = load(paths[patient])
         except:
             continue
         image = input_data['input']
         voxel_dims = input_data['voxel_dims']
+
         ###*** PRE-PROCESSING 1 ***###
         preprocessing_info = preprocessing_1(image)
         processed_ct = preprocessing_info['input']
@@ -69,22 +72,23 @@ def main():
         ###*** PRE-PROCESSING 2 ***###
         #hmm the scale for the other model might be and issue maybe save the image before the scale is applied and use that.
         #or might have to use the loaded in image and preprocessing again to select the right slice.
-        processed_slice, bone_mask = preprocessing_2(z, image)
+        preprocess2_info = preprocessing_2(z, image)
+        processed_slice = preprocess2_info["slice"]
+        bone_mask = preprocess2_info["bone"]
 
 
         ###*** MUSCLE MAPPER MODEL ***###
-        MM_segment = MuscleMapperRun(processed_slice, bone_mask, MM_model_weights_path, device)
+        MM_segment = MuscleMapperRun(processed_slice, MM_model_weights_path, device)
         import numpy as np
         print(MM_segment.shape, np.unique(MM_segment))
 
         ###*** POST-PROCESSING 2 ***###
         #use image here not processed.remove bone from segmentation
-        SMA, SMD = postprocessing_2(image, z, MM_segment, voxel_dims)
+        SMA, SMD = postprocessing_2(image, z, MM_segment, bone_mask, voxel_dims)
         print("SMA: ",SMA, "SMD", SMD)
 
         ###*** SAVE MUSCLE MAPPER OUTPUT ***###
         #segment and patient ID and SMA/SMI and SMD to excel
-        id = patient_id5[patient]
         save_figs(processed_ct, processed_slice, MM_segment, NN_pred, sanity_check_folder, id = id)
 
         df = pd.DataFrame({"IDs": [id], "SMA": [SMA] ,"SMD":[SMD]})
