@@ -24,7 +24,7 @@ def do_it_urself_round(number, decimals = 0, is_array = False):
     return int(round_num)
   else:
     return float(round_num)
-    
+
 def GetSliceNumber(segment):
   slice_number = 0
   max_range = len(sitk.GetArrayFromImage(segment))
@@ -94,7 +94,7 @@ def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldma
     
     return sitk.GetArrayFromImage(dilated_mask)[slice_number]
 
-def load_n_save(dir, save_path):
+def load_n_save(dir, save_path, is_worldmatch = True):
   names = [y.split('_')[0] for y in os.listdir(dir)]
   patient_paths = [os.path.join(dir, x) for x in os.listdir(dir)]
   # Load input and target
@@ -122,6 +122,7 @@ def load_n_save(dir, save_path):
       ct_scan = sitk.ReadImage(path_ct, imageIO="NiftiImageIO")
       pixel_areas.append(((ct_scan.GetSpacing())[0])*((ct_scan.GetSpacing())[1]))
       ct_slice = sitk.GetArrayFromImage(ct_scan)[slice_nos[-1]]
+      if is_worldmatch: ct_slice -=1024
       slices.append(ct_slice.astype(float))
       ids.append(names[i])
       boneMask = np.logical_not(extract_bone_masks(ct_scan, slice_nos[-1]))

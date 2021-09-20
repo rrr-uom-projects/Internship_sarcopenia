@@ -94,15 +94,15 @@ for i in range(fold_num):
       pass
 
   #split into train and val
-  val_split, train_split = np.split(train_array[i], [5], axis = 0)#5:25
-  Eval_split, Etrain_split = np.split(Etrain_arr[i],[2], axis = 0)#2:5
+  val_split, train_split = np.split(train_array[i], [5], axis = 0)#5,25
+  Eval_split, Etrain_split = np.split(Etrain_arr[i],[2], axis = 0)#2,6
   ids_test = np.concatenate((ids[(test_array[i])], ids2[(test_array[i])]))
   ids_val = np.concatenate((ids[val_split], ids2[val_split]))
   ids_train = np.concatenate((ids[train_split], ids2[train_split]))
   
   slice_train, masks_train, slice_val, masks_val, slice_test, masks_test, bone_masks_test = dataset_TVTsplit(slices_processed, masks_processed, bone_masks, train_split, val_split, test_array[i])
   slice_train2, masks_train2, slice_val2, masks_val2, slice_test2, masks_test2, bone_masks_test2 = dataset_TVTsplit(slices_processed2, masks_processed2, bone_masks2, train_split, val_split, test_array[i])
-  Eslice_train, Emasks_train, Eslice_val, Emasks_val, Eslice_test, Emasks_test, Ebone_test = dataset_TVTsplit(Eslices_processed, Emasks_processed, Ebone,[0,1,2,3,4],[5],[6])
+  Eslice_train, Emasks_train, Eslice_val, Emasks_val, Eslice_test, Emasks_test, Ebone_test = dataset_TVTsplit(Eslices_processed, Emasks_processed, Ebone, Etrain_split, Eval_split, Etest_arr[i])
   
   slice_train = np.concatenate((slice_train, slice_train2, Eslice_train))
   masks_train = np.concatenate((masks_train, masks_train2, Emasks_train))
@@ -245,7 +245,7 @@ for i in range(fold_num):
   segment_pred_slb = np.logical_and(test_predictions, bone_masks_test[:,np.newaxis,...])
   segment_pred_slb = segment_pred_slb.float()
   #segment_pred_slb = segment_pred_slb.astype(float)
-  print(np.unique(segment_pred_slb))
+  print("segment unique values", np.unique(segment_pred_slb))
 
   #%%
   #Dice - comparing our netowrks output to the GTs
@@ -274,7 +274,7 @@ for i in range(fold_num):
     #plt.imshow(sig[i,0,...], cmap = "cool", alpha = 0.5)
     ax[-1].set_title("Network test:"+str(i))
     plt.axis("off")
-  plt.savefig(save_dir + "/MM3_test.png")
+  plt.savefig(save_dir + "/MME_test.png")
   plt.close()
   #plt.show()
 
@@ -297,7 +297,7 @@ plt.grid(True, linestyle='-', which='major', color='lightgrey',
             alpha=0.5)
 for i in range(len(median)):
     plt.text(i+0.75, median[i]-0.005, median[i])
-plt.savefig("MM3_fold_info/box_plot2.png")
+plt.savefig("MME_fold_info/box_plot.png")
 print("Saved Test Info.")
 
 # #Area and Density of SM in the tests
