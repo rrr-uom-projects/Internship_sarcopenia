@@ -62,7 +62,7 @@ masks_slb, masks_slb2 = np.split(data['boneless'],2)
 bone_masks, bone_masks2 = np.split(data['bone_masks'],2)
 pixel_area, pixel_area2 = np.split(data['areas'],2)
 
-extra_data = '/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/extra_segs/save_extras.npz'
+extra_data = '/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/save_extras.npz'
 extra_data = np.load(extra_data, allow_pickle=True)
 Eslices = extra_data['slices']
 Emasks = extra_data['masks']
@@ -218,8 +218,8 @@ for i in range(fold_num):
     # print(old_diff, difference)
     scheduler.step()
 
-  print("train loss: ", train_loss)
-  print("val loss: ", val_loss)
+  #print("train loss: ", train_loss)
+  #print("val loss: ", val_loss)
   end = time.time()
   print((end-start)/60, 'minutes')
   #%%
