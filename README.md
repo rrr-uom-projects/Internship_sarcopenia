@@ -20,4 +20,4 @@ An FCN neural network to automatically delineate the paravertebral and sternocle
 
 **Inference:**
 
-A script to apply Neck Navigator and Muscle Mapper to all the patients in a directory and write the extracted muscel characteristics to an excel file.
+A script to apply Neck Navigator and Muscle Mapper to all the patients in a directory and write the extracted muscle characteristics to an excel file.
