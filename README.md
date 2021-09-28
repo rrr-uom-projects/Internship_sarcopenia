@@ -5,7 +5,7 @@
 
 A U-Net model to select the C3 vetebra from the 3D CT scan (NIFTI file)
 
-<img src="https://user-images.githubusercontent.com/60819221/135115131-b39765e8-a919-4b53-82a1-166d3b13dadb.png" width="100" height="100">
+<img src="https://user-images.githubusercontent.com/60819221/135115131-b39765e8-a919-4b53-82a1-166d3b13dadb.png" width="400" height="800">
 
 **Muscle Mapper:**
 
