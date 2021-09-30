@@ -1,15 +1,15 @@
 # Internship_sarcopenia
 
 
-**Neck Navigator:**
+**Locating_C3: Neck Navigator:**
 
-A U-Net model to select the C3 vetebra from the 3D CT scan (NIFTI file).
+Neck Navigator is a U-Net model to select the C3 vetebra from the 3D CT scan (NIFTI file).
 
 Below: ground truth (left), C3 prediction (right).
 
 <img src="https://user-images.githubusercontent.com/60819221/135115131-b39765e8-a919-4b53-82a1-166d3b13dadb.png" width="600" height="300">
 
-**Muscle Mapper:**
+**Sarcopenia_model: Muscle Mapper:**
 
 An FCN neural network to automatically delineate the paravertebral and sternocleidomastoid muscles at the level of the C3 vertebra. 
 
