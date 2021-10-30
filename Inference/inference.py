@@ -19,8 +19,10 @@ path = '/home/hermione/t/Donal/JP_HNC'
 #path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/images'
 #'D:/data/Alex/HeadAndNeckData/Packs_UKCatsFeedingTube'
 NN_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/locating_c3/model_ouputs_fold1'
-MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/MM3_model_state_dict_fold6.pt"
-sanity_check_folder = '/home/hermione/Documents/Internship_sarcopenia/Inference/sanity_check/'
+#MM_model_weights_path = "/home/hermione/Documents/Internship_sarcopenia/Inference/MM3_model_state_dict_fold6.pt"
+#MM_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/MME_fold4/model_state_dict.pt'
+MM_model_weights_path = '/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/MM_tweak_fold1/model_state_dict.pt'
+sanity_check_folder = '/home/hermione/Documents/Internship_sarcopenia/Inference/sanity_check_test/'
 xl_writer = sanity_check_folder + 'skeletal_muscle_info.xlsx'
 #constants
 window = 350
@@ -52,7 +54,7 @@ def main():
             continue
         image = input_data['input']
         voxel_dims = input_data['voxel_dims']
-
+        print("CT scan voxel size: ", voxel_dims)
         ###*** PRE-PROCESSING 1 ***###
         preprocessing_info = preprocessing_1(image)
         processed_ct = preprocessing_info['input']
@@ -84,13 +86,13 @@ def main():
 
         ###*** POST-PROCESSING 2 ***###
         #use image here not processed.remove bone from segmentation
-        SMA, SMD = postprocessing_2(image, z, MM_segment, bone_mask, voxel_dims)
+        SMA, SMD, MM_segment = postprocessing_2(image, z, MM_segment, bone_mask, voxel_dims)
         print("SMA: ",SMA, "SMD", SMD)
 
         ###*** SAVE MUSCLE MAPPER OUTPUT ***###
         #segment and patient ID and SMA/SMI and SMD to excel
-        save_figs(processed_ct, processed_slice, MM_segment, NN_pred, sanity_check_folder, id = id)
-
+        save_figs(processed_ct, processed_slice, MM_segment, NN_pred, bone_mask, sanity_check_folder, id = id)
+        
         df = pd.DataFrame({"IDs": [id], "SMA": [SMA] ,"SMD":[SMD]})
         append_df_to_excel(xl_writer, df, sheet_name='SM_data', index = False)
     

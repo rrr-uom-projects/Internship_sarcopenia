@@ -1,4 +1,4 @@
-#UTILS FILE
+#INFERENCE UTILS FILE
 #created: 09/09/2021
 
 #imports
@@ -72,16 +72,14 @@ def load(path):
     x = sitk.ReadImage(path, imageIO="NiftiImageIO")
     #saving the spacing
     voxel_dim = [(x.GetSpacing())[0],(x.GetSpacing())[1],(x.GetSpacing())[2]]
-    
     input_data = {'input': x, 'voxel_dims': np.array(voxel_dim).astype(np.float32)}  
     return input_data
 
 def get_patient_id(dir):
-  #_,name = os.path.split()
   patients_path = [os.path.join(dir, x) for x in os.listdir(dir)]
   names = [os.path.splitext(y)[0] for y in os.listdir(dir)]
   names = [os.path.splitext(y)[0] for y in names]
-  return patients_path[237:], names[237:]
+  return patients_path[:10], names[:10]
 
 ###*** PRE-PROCESSING 1 ***###
 def flip(im):
@@ -110,7 +108,7 @@ def normalize_01(inp: np.ndarray):
 def cropping(inp, bone_mask = None, threeD = True):
     #working one but z axis crop needs improving
     x = inp
-    _,threshold = cv2.threshold(x,200,0,cv2.THRESH_TOZERO)
+    _,threshold = cv2.threshold(x,200,250,cv2.THRESH_TOZERO)
     coords = center_of_mass(threshold)
     print(coords)
     if threeD: x_ind, y_ind = 1, 2
@@ -291,7 +289,7 @@ def window_level_norm(inp: np.array):
   image_scaled = np.round(sklearn.preprocessing.minmax_scale(inp.ravel(), feature_range=(0,1)), decimals = 10).reshape(shape)
   return image_scaled
 
-def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldmatch=False):
+def extract_bone_masks(dcm_array, slice_number, threshold=(200+1024), radius=5, worldmatch=False):
     """
     Calculate 3D bone mask and remove from prediction. 
     Used to account for partial volume effect.
@@ -307,8 +305,8 @@ def extract_bone_masks(dcm_array, slice_number, threshold=200, radius=2, worldma
     #crop_by = 5 #these two lines were meant to make it quicker.
     #img = img[...,(slice_number-crop_by):(slice_number+crop_by)]
     # Worldmatch tax
-    if worldmatch:
-        img -= 1024
+    # if worldmatch:
+    #     img -= 1024
     # Apply threshold
     bin_filt = sitk.BinaryThresholdImageFilter()
     bin_filt.SetOutsideValue(1)
@@ -349,9 +347,6 @@ def preprocessing_2(slice_no, ct, is_worldmatch = True):
   print("bone_info",bone_mask.shape, np.unique(bone_mask))
   cropped_slice, cropped_bone = cropping(ct_slice, bone_mask, threeD=False)
   #print("crop: ",cropped_slice.shape)
-  # plt.imshow(cropped_slice)
-  # plt.imshow(cropped_bone.astype(float), alpha=0.5, cmap = "cool")
-  # plt.show()
   wln_slice = window_level_norm(cropped_slice)
   preprocess2_info = {"slice": wln_slice, "bone":cropped_bone}
   return preprocess2_info
@@ -394,7 +389,7 @@ def getArea(image, mask, area, label=1, thresholds = None):
   tmask = np.logical_and(sMasks, threshold)
   return np.count_nonzero(tmask) * area
 
-def postprocessing_2(org_ct, slice_no, pred, bone_mask, dims, is_worldmatch = False):
+def postprocessing_2(org_ct, slice_no, pred, bone_mask, dims, is_worldmatch = True):
   ct_slice = (sitk.GetArrayFromImage(org_ct)[slice_no]).astype(float)
   print("postProcessing: ", ct_slice.shape, np.max(ct_slice), np.min(ct_slice))
   if is_worldmatch: ct_slice -= 1024
@@ -405,7 +400,7 @@ def postprocessing_2(org_ct, slice_no, pred, bone_mask, dims, is_worldmatch = Fa
   pixel_area = dims[0]*dims[1]*(0.1*0.1) #mm^2 -> cm^2
   SMA = getArea(cropped_slice, pred_slb, pixel_area, thresholds=(-30, +130))
   SMD = getDensity(cropped_slice, pred_slb, pixel_area)
-  return do_it_urself_round(SMA,3), do_it_urself_round(SMD,3)
+  return do_it_urself_round(SMA,3), do_it_urself_round(SMD,3), pred_slb
 
 ###*** SAVE MUSCLE MAPPER OUTPUT ***###
 #segment and patient ID and SMA/SMI and SMD
@@ -419,11 +414,20 @@ def display_slice(ct_slice, segment, ax):
   #plt.savefig(save_loc)
   ax.axis('off')
 
-def save_figs(ct, ct_slice, segment, slice_pred, save_loc, id):
-  fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+def display_bone_mask(ct_slice, bone_msk, ax):
+  ax.imshow(ct_slice, cmap = plt.cm.gray)
+  bone_mask = bone_msk.astype(float)
+  bone_mask[bone_mask == 1.0] = np.nan
+  ax.imshow(bone_mask, cmap = plt.cm.cool, alpha = 0.5)
+  ax.set_title("Bone Mask")
+  ax.axis('off')
+
+def save_figs(ct, ct_slice, segment, slice_pred,bone_mask, save_loc, id):
+  fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
   fig.suptitle('Patient: '+ id)
   display_net_test(ct, slice_pred, ax1)
   display_slice(ct_slice, segment, ax2)
+  display_bone_mask(ct_slice, bone_mask,ax3)
   #plt.show()
   plt.savefig(save_loc + f'image_{id}.png')
   plt.close()

@@ -10,6 +10,7 @@
 
 #imports
 from __future__ import division
+from albumentations.augmentations.transforms import Downscale
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
@@ -129,6 +130,7 @@ for i in range(fold_num):
     A.HorizontalFlip(p=0.5),
     A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=20, p=0.5),
     A.ElasticTransform(alpha=120, sigma=120 * 0.8, alpha_affine=120 * 0.05, p= 0.2),
+    A.Downscale(p=0.5), #to reduce image quality could use noise or dropout
     A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ToTensor()
   ])

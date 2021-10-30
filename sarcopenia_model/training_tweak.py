@@ -54,9 +54,9 @@ Emasks_slb = extra_data['masks_slb']
 Eids = extra_data['ids']
 Eareas = extra_data['areas']
 
-Eslices_processed, Emasks_processed = preprocess(Eslices, Emasks)
+Eslices_processed, Emasks_processed = preprocess(Eslices, Emasks,level = 50, window =500)
 
-#split into training and testing  #35 7 42 6 folds
+#split into training and testing  #2 2 6 5 folds
 fold_num = 5
 print(len(Eslices_processed), len(Emasks_processed))
 Etrain_arr, Etest_arr = k_fold_cross_val(len(Emasks_processed), num_splits=fold_num)
@@ -66,7 +66,7 @@ test_dice_scores = []
 for i in range(fold_num):
 
   #make fold files to save info
-  save_dir = save_path + "MM_tweak_fold" + str(i+1)
+  save_dir = save_path + "MM_tweak2_fold" + str(i+1)
   try:
       os.makedirs(save_dir)
   except OSError: #if already exists
@@ -74,6 +74,8 @@ for i in range(fold_num):
 
   #split into train and val
   Eval_split, Etrain_split = np.split(Etrain_arr[i],[2], axis = 0)#2,6
+  test_split_train, Etest_arr[i] = np.split(Etest_arr[i],[1], axis = 0)
+  Etrain_split = np.concatenate((Etrain_split, test_split_train))
   slice_train, masks_train, slice_val, masks_val, slice_test, masks_test, bone_masks_test = dataset_TVTsplit(Eslices_processed, Emasks_processed, Ebone, Etrain_split, Eval_split, Etest_arr[i])
   
   print(slice_train.shape, masks_train.shape)
@@ -82,8 +84,8 @@ for i in range(fold_num):
 
   #transform the data
   train_transform = A.Compose([
-    A.Resize(260, 260),
-    A.RandomSizedCrop(min_max_height=(200, 260), height=260, width=260, p=0.2),
+    A.Resize(240, 240),
+    A.RandomSizedCrop(min_max_height=(200, 240), height=240, width=240, p=0.2),
     A.HorizontalFlip(p=0.5),
     A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=20, p=0.5),
     A.ElasticTransform(alpha=120, sigma=120 * 0.8, alpha_affine=120 * 0.05, p= 0.2),
@@ -92,20 +94,20 @@ for i in range(fold_num):
   ])
 
   val_transform = A.Compose(
-      [A.Resize(260, 260), A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), ToTensor()]
+      [A.Resize(240, 240), A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), ToTensor()]
   )
 
   test_transform = A.Compose(
-      [A.Resize(260, 260), A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), ToTensor()]
+      [A.Resize(240, 240), A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), ToTensor()]
   )
 
   train_dataset = H_custom_Dataset(slice_train, masks_train, transform = train_transform)#transforms = aug
   test_dataset = H_custom_Dataset(slice_test, masks_test, transform = test_transform)
   val_dataset = H_custom_Dataset(slice_val, masks_val, transform = val_transform)
 
-  train_dataloader = DataLoader(train_dataset, batch_size = 8, num_workers = 2, shuffle = True)#used batch size 4 for sem1
+  train_dataloader = DataLoader(train_dataset, batch_size = 4, num_workers = 2, shuffle = True)#used batch size 4 for sem1
   test_dataloader = DataLoader(test_dataset, batch_size = len(slice_test), num_workers = 2, shuffle = False)
-  val_dataloader = DataLoader(val_dataset, batch_size = 8, num_workers = 2, shuffle = True)
+  val_dataloader = DataLoader(val_dataset, batch_size = 4, num_workers = 2, shuffle = True)
 
   #set up tensorboard
   writer = SummaryWriter(log_dir=save_dir)
@@ -117,7 +119,7 @@ for i in range(fold_num):
 
   #hyperparameters
   loss = L.BinaryFocalLoss()
-  optimizer = optim.Adam(model.parameters(), lr=0.000001)
+  optimizer = optim.Adam(model.parameters(), lr=0.00001)
   criterion = loss
   scheduler = lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
 
@@ -127,7 +129,7 @@ for i in range(fold_num):
   running_average = []
   patience = 0
   start = time.time()
-  num_epochs = 10
+  num_epochs = 40
   model.to(device)
 
   #training the model
@@ -184,8 +186,8 @@ for i in range(fold_num):
   #display the test images
   fig=plt.figure(figsize=(20, 10))
   ax = []
-  rows = 3
-  columns = 5
+  rows = 1
+  columns = 2
   for i in range(0, len(c3s)):
     ax.append(fig.add_subplot(rows,columns, i+1))
     segment_pred_slb[i][segment_pred_slb[i]==0] = np.nan #uncomment to get pretty images
@@ -216,5 +218,5 @@ plt.grid(True, linestyle='-', which='major', color='lightgrey',
             alpha=0.5)
 for i in range(len(median)):
     plt.text(i+0.75, median[i]-0.005, median[i])
-plt.savefig("MM_tweak_fold_info/box_plot.png")
+plt.savefig(save_path+"MM_tweak2_fold_info/box_plot.png")
 print("Saved Test Info.")

@@ -45,7 +45,7 @@ def crop2(slices_arr, masks_arr, bone_arr, sans_le_bone_arr):
       crop_slice = slices_arr[i][0:250, 0:512]
       ret,threshold = cv2.threshold(crop_slice,200,250, cv2.THRESH_TOZERO)
       coords = ndimage.measurements.center_of_mass(threshold)
-      size = 130
+      size = 110 #try 110?
       x_min = int(((coords[0] - size)+126)/2)
       x_max = int(((coords[0] + size)+386)/2)
       y_min = int(((coords[1] - size)+126)/2)
@@ -147,13 +147,14 @@ slices = data['slices']
 masks_slb = data['masks_slb']
 bone = data['bone']
 masks = data['masks']
-print(len(slices))
+print(slices.shape)
 print(np.unique(masks_slb))
 for i in range(len(slices)):
   plt.imshow(slices[i], cmap = plt.cm.gray)
   masks[i][masks[i]==0.0]=np.nan
   plt.imshow(masks[i], cmap = plt.cm.autumn, alpha= 0.5)
-  bone[i][bone[i]==True] = np.nan
+  bone[i] = bone[i].astype(float)
+  bone[i][bone[i]==1.0] = np.nan
   plt.imshow(bone[i], cmap = plt.cm.cool, alpha=0.5)
   plt.axis('off')
   plt.show()
