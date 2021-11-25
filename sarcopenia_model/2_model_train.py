@@ -63,6 +63,7 @@ masks_slb, masks_slb2 = np.split(data['boneless'],2)
 bone_masks, bone_masks2 = np.split(data['bone_masks'],2)
 pixel_area, pixel_area2 = np.split(data['areas'],2)
 
+#the ten extra slices can comment out if not training with them.
 extra_data = '/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/save_extras.npz'
 extra_data = np.load(extra_data, allow_pickle=True)
 Eslices = extra_data['slices']
@@ -124,13 +125,14 @@ for i in range(fold_num):
   #weight = weight(masks_train)
 
   #transform the data
+  import imgaug.augmenters as iaa
   train_transform = A.Compose([
     A.Resize(260, 260),
     A.RandomSizedCrop(min_max_height=(200, 260), height=260, width=260, p=0.2),
     A.HorizontalFlip(p=0.5),
     A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=20, p=0.5),
     A.ElasticTransform(alpha=120, sigma=120 * 0.8, alpha_affine=120 * 0.05, p= 0.2),
-    A.Downscale(p=0.5), #to reduce image quality could use noise or dropout
+    A.OneOf([A.Downscale(),iaa.MaxPooling((1,3)),iaa.GaussianBlur(sigma=(0.0, 2.0))],p=0.5), #to reduce image quality could use noise or dropout
     A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ToTensor()
   ])

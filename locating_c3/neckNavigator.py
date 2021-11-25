@@ -71,50 +71,65 @@ class neckNavigator(nn.Module):
     @torch.cuda.amp.autocast()
     def forward(self, im):
         # Down block 1
+        print("start",im.shape)
         x = F.relu(self.bn1(self.c1(im)))
         x = self.drop1(x)
+        print("0",x.shape)
         x = F.relu(self.bn2(self.c2(x)))
         skip1 = self.drop2(x)
+        print("1", x.shape)
         x = F.max_pool3d(skip1, (2,2,2))
         downscaled_im = F.interpolate(im, scale_factor=0.5, mode='trilinear', align_corners=False)
         x = torch.cat((x, downscaled_im), dim=1)
+        print("1.2",x.shape)
 
         # Down block 2
         x = F.relu(self.bn3(self.c3(x)))
         x = self.drop3(x)
+        print("2", x.shape)
         x = F.relu(self.bn4(self.c4(x)))
         skip2 = self.drop4(x)
+        print("2.2",x.shape)
         x = F.max_pool3d(skip2, (2,2,2))
         downscaled_im = F.interpolate(downscaled_im, scale_factor=0.5, mode='trilinear', align_corners=False)
         x = torch.cat((x, downscaled_im), dim=1)
-
+        print("2.2",x.shape)
         # Base block 
         x = F.relu(self.bn5(self.c5(x)))
         x = self.drop5(x)
+        print("3",x.shape)
         x = F.relu(self.bn6(self.c6(x)))
         x = self.drop6(x)
+        print("3.2",x.shape)
 
         # Upsample 1
         x = F.relu(self.bn_r1(self.rc_1(F.interpolate(x, scale_factor=2, mode='trilinear', align_corners=False))))
         x = self.drop_r1(x)
+        print("up1", x.shape)
         #attention here
 
         # Up block 1
         x = F.relu(self.bn7(self.c7(x+skip2)))
         x = self.drop7(x)
+        print("up1.1",x.shape)
         x = F.relu(self.bn8(self.c8(x)))
         x = self.drop8(x)
+        print("up1.2", x.shape)
 
         # Upsample 2
         x = F.relu(self.bn_r2(self.rc_2(F.interpolate(x, scale_factor=2, mode='trilinear', align_corners=False))))
         x = self.drop_r2(x)
+        print("up2", x.shape)
 
         # Up block 2
         x = F.relu(self.bn9(self.c9(x+skip1)))
         x = self.drop9(x)
+        print("up2.1", x.shape)
         x = F.relu(self.bn10(self.c10(x)))
         x = self.drop10(x)
+        print("up2.2",x.shape)
         x = self.pred(x)
+        print("fin",x.shape)
         #x+=1e-6
         #x = self.act(x)
         # Predict

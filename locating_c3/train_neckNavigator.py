@@ -74,9 +74,9 @@ def main():
     train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 5)
     
     #######*** K FOLD CROSS VALIDATION LOOP ***#######
-    for i in range(4,5):
+    for i in range(1):
 
-        checkpoint_dir = checkpoint + "_fold" + str(i+1)
+        checkpoint_dir = checkpoint + "_foldtest" + str(i+1)
         try:
             os.makedirs(checkpoint_dir)
         except OSError: #if already exists
@@ -124,7 +124,7 @@ def main():
         
         # Create model trainer
         trainer = neckNavigator_trainer(model=model, optimizer=optimizer, lr_scheduler=lr_scheduler, device=device, train_loader=training_dataloader, 
-                                    val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=300, num_iterations = iteration, 
+                                    val_loader=validation_dataloader, logger=logger, checkpoint_dir=checkpoint_dir, max_num_epochs=1, num_iterations = iteration, 
                                     num_epoch = epoch, patience=50, iters_to_accumulate=4)
 
         
