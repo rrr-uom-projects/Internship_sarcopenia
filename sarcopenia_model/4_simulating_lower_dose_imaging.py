@@ -1,8 +1,8 @@
-#simulating lower dose imaging through augmentations.
+#Simulating lower dose imaging (ldi) through augmentations.
 #test how well the model generalises through an ablation table of the dice scores of the ten extra patients.
 #created: 30/11/2021
 
-#imports
+###*** IMPORTS ***###
 from __future__ import division
 import cv2
 from albumentations.augmentations.transforms import Downscale, GaussNoise, GaussianBlur
@@ -35,12 +35,12 @@ from muscleMapper_utils import preprocess, do_it_urself_round, k_fold_cross_val,
 from muscleMapper_utils import H_custom_Dataset, train, validate, test, get_lr
 from muscleMapper_utils import getArea, getDensity, diceCoeff
 
-#paths
+###*** PATHS ***###
 save_path = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/" 
 data_path = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/total_abstract_training_data 1.npz"
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cuda:2")
 
-#%%
-#loading the data
+###*** LOADING THE DATA ***###
 data = np.load(data_path, allow_pickle=True)
 print([*data.keys()])
 slices, slices2 = np.split(data['slices'],2)
@@ -50,7 +50,7 @@ masks_slb, masks_slb2 = np.split(data['boneless'],2)
 bone_masks, bone_masks2 = np.split(data['bone_masks'],2)
 pixel_area, pixel_area2 = np.split(data['areas'],2)
 
-#the ten extra slices can comment out if not training with them.
+#the ten extra slices from james' lower res dataset
 extra_data = '/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/save_extras.npz'
 extra_data = np.load(extra_data, allow_pickle=True)
 Eslices = extra_data['slices']
@@ -60,9 +60,10 @@ Emasks_slb = extra_data['masks_slb']
 Eids = extra_data['ids']
 Eareas = extra_data['areas']
 
+print("bone!! ",bone_masks.shape, Ebone.shape)
 slices_processed, masks_processed = preprocess(slices, masks_slb)
 slices_processed2, masks_processed2 = preprocess(slices2, masks_slb2)
-Eslices_processed, Emasks_processed = preprocess(Eslices, Emasks)
+Eslices_processed, Emasks_processed = preprocess(Eslices, Emasks) #shouls be slb check
 
 #split into training and testing  #35 7 42 6 folds
 fold_num = 7
@@ -71,8 +72,8 @@ dataset_size = len(masks)
 train_array, test_array = k_fold_cross_val(dataset_size, num_splits = fold_num)
 
 test_dice_scores = []
-#fold 6 was the best so i = 5 for this 
-i=5
+gen_dice_scores = []
+i=5 #fold 6 was the best so i = 5 for this 
 
 #split into train and val
 val_split, train_split = np.split(train_array[i], [5], axis = 0)#5,25
@@ -97,7 +98,6 @@ print(slice_test.shape, slice_val.shape, slice_train.shape)
 ldi_augs = [Downscale(0.25,0.25), GaussNoise(var_limit=0.005), GaussianBlur(blur_limit=1)]
 ldi_aug_combinations = []
 for ldi in powerset(ldi_augs):
-  #print(ldi)
   ldi_aug_combinations.append(list(ldi))
 
 for m in range(len(ldi_aug_combinations)):
@@ -107,7 +107,8 @@ for m in range(len(ldi_aug_combinations)):
       os.makedirs(save_dir)
   except OSError: #if already exists
       pass
-  #transform the data
+
+  ###*** AUGMENTATIONS, DATASETS AND DATALOADERS ***###
   #training augmentations
   train_transform = A.Compose([
     A.Resize(260, 260),
@@ -135,13 +136,13 @@ for m in range(len(ldi_aug_combinations)):
 
   train_dataloader = DataLoader(train_dataset, batch_size = 8, num_workers = 2, shuffle = True)#used batch size 4 for sem1
   test_dataloader = DataLoader(test_dataset, batch_size = len(slice_test), num_workers = 2, shuffle = False)
-  generalise_dataset = DataLoader(generalise_dataset, batch_size = len(slice_test), num_workers = 2, shuffle = False)
+  generalise_dataloader = DataLoader(generalise_dataset, batch_size = len(slice_test), num_workers = 2, shuffle = False)
   val_dataloader = DataLoader(val_dataset, batch_size = 8, num_workers = 2, shuffle = True)
 
   #set up tensorboard
   writer = SummaryWriter(log_dir=save_dir)
 
-  # Load pre-trained model
+  ###*** LOAD PRE-TRAINED MODEL ***###
   pt_model = models.segmentation.fcn_resnet50(pretrained=True)
   model = models.segmentation.fcn_resnet50(pretrained=False, num_classes=1)
   # Change final layer as pre-trained model expects 21 outputs
@@ -162,21 +163,18 @@ for m in range(len(ldi_aug_combinations)):
   model_dict.update(pretrained_dict)
   # Load new state dict
   model.load_state_dict(model_dict)
-  #print(model)
 
-  #hyperparameters
+  ###*** HYPERPARAMETERS ***###
   loss = L.BinaryFocalLoss()
   #loss = torch.nn.BCEWithLogitsLoss(pos_weight=weight).cuda()
   optimizer = optim.Adam(model.parameters(), lr=0.001)
   criterion = loss
   scheduler = lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
 
-  #%%
   train_loss , train_accuracy = [], []
   val_loss , val_accuracy = [], []
   start = time.time()
   num_epochs = 10
-  device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
   model.to(device)
 
   ###*** TRAINING MODEL ***###
@@ -203,7 +201,6 @@ for m in range(len(ldi_aug_combinations)):
   l_df.to_excel(excel_writer = save_dir + "/loss.xlsx", index=False, sheet_name=f'fold{i+1}')
 
   ###*** TESTING THE MODEL ***###
-  device = torch.device("cuda:0" if torch.cuda.is_available() else "cuda:1")
   model.to(device)
   c3s, test_predictions, sig = test(model, test_dataloader,device)
   print(test_predictions.shape, c3s.shape)
@@ -211,10 +208,7 @@ for m in range(len(ldi_aug_combinations)):
   #removing the bone masks from the models predictions
   segment_pred_slb = np.logical_and(test_predictions, bone_masks_test[:,np.newaxis,...])
   segment_pred_slb = segment_pred_slb.float()
-  #segment_pred_slb = segment_pred_slb.astype(float)
-  print("segment unique values", np.unique(segment_pred_slb))
 
-  #%%
   #Dice - comparing our netowrks output to the GTs
   for batch_idx, test_dataset in enumerate(test_dataloader):  
         test_em, test_lab = test_dataset[0], test_dataset[1]
@@ -223,31 +217,31 @@ for m in range(len(ldi_aug_combinations)):
   for k in range(len(segment_pred_slb)):
     dice_net_v_pred.append(diceCoeff(segment_pred_slb[k], test_lab[k], smooth=1, activation=None))
 
-  print("Dice ", dice_net_v_pred)
   mean = np.mean(dice_net_v_pred)
   print("Dice mean: ", mean)
   test_dice_scores.append(dice_net_v_pred)
+   
+  #testing the lower dose image case
+  ldi_c3s, ldi_predictions,_ = test(model, generalise_dataloader, device)
+  print(ldi_predictions.shape, ldi_c3s.shape)
+  ldi_predictions = torch.from_numpy(ldi_predictions)
+  #segment_pred_slb = np.logical_and(ldi_predictions, Ebone[:,np.newaxis,...])
+  #segment_pred_slb = segment_pred_slb.float()
 
-  #display the test images
-  fig=plt.figure(figsize=(20, 10))
-  ax = []
-  rows = 3
-  columns = 5
-  for i in range(0, len(c3s)):
-    ax.append(fig.add_subplot(rows,columns, i+1))
-    segment_pred_slb[i][segment_pred_slb[i]==0] = np.nan #uncomment to get pretty images
-    plt.imshow(c3s[i,0,...], cmap="gray")
-    plt.imshow(segment_pred_slb[i,0,...], cmap = "autumn", alpha = 0.5)
-    #plt.imshow(sig[i,0,...], cmap = "cool", alpha = 0.5)
-    ax[-1].set_title("Network test:"+str(i))
-    plt.axis("off")
-  plt.savefig(save_dir + "/aug_test.png")
-  plt.close()
-  #plt.show()
+  #Dice
+  for batch_idx, test_dataset in enumerate(generalise_dataloader):  
+        test_em, test_lab = generalise_dataset[0], generalise_dataset[1]
+        break
+  dice_gen = []
+  for k in range(len(segment_pred_slb)):
+    dice_gen.append(diceCoeff(ldi_predictions[k], test_lab[k], smooth=1, activation=None))
+
+  mean = np.mean(dice_gen)
+  print("Dice mean: ", mean)
+  gen_dice_scores.append(dice_gen)
 
 #Put dice scores of each aug combo into an excel table here
-test_dice_scores = np.array(test_dice_scores)
-aug_dice_dict = {'aug': ldi_aug_combinations, 'Dice': test_dice_scores}
-print(test_dice_scores.shape)
+aug_dice_dict = {'aug': ldi_aug_combinations, 'Dice': np.array(test_dice_scores), 'LDI Dice': np.array(gen_dice_scores)}
+print(len(test_dice_scores), len(gen_dice_scores))
 df = pd.DataFrame(aug_dice_dict)
 df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/ablation_table.xlsx")
