@@ -29,7 +29,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensor
 from torch.utils.tensorboard import SummaryWriter
 import pandas as pd
-from itertools import powerset
+from more_itertools import powerset
 
 from muscleMapper_utils import preprocess, do_it_urself_round, k_fold_cross_val, dataset_TVTsplit, transforms
 from muscleMapper_utils import H_custom_Dataset, train, validate, test, get_lr
@@ -65,7 +65,7 @@ slices_processed2, masks_processed2 = preprocess(slices2, masks_slb2)
 Eslices_processed, Emasks_processed = preprocess(Eslices, Emasks)
 
 #split into training and testing  #35 7 42 6 folds
-fold_num = 5
+fold_num = 7
 print("Lengths: ", len(masks), len(slices), len(slices_processed), len(masks_processed))
 dataset_size = len(masks)
 train_array, test_array = k_fold_cross_val(dataset_size, num_splits = fold_num)
@@ -95,7 +95,10 @@ print(slice_test.shape, slice_val.shape, slice_train.shape)
 
 #augmentations to simulate lower dose imaging
 ldi_augs = [Downscale(0.25,0.25), GaussNoise(var_limit=0.005), GaussianBlur(blur_limit=1)]
-ldi_aug_combinations = powerset(ldi_augs)
+ldi_aug_combinations = []
+for ldi in powerset(ldi_augs):
+  #print(ldi)
+  ldi_aug_combinations.append(list(ldi))
 
 for m in range(len(ldi_aug_combinations)):
   #make fold files to save info
@@ -112,7 +115,7 @@ for m in range(len(ldi_aug_combinations)):
     A.HorizontalFlip(p=0.5),
     A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=20, p=0.5),
     A.ElasticTransform(alpha=120, sigma=120 * 0.8, alpha_affine=120 * 0.05, p= 0.2),
-    ldi_aug_combinations[m],
+    A.Compose(ldi_aug_combinations[m]),
     A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ToTensor()
   ])
@@ -127,10 +130,12 @@ for m in range(len(ldi_aug_combinations)):
 
   train_dataset = H_custom_Dataset(slice_train, masks_train, transform = train_transform)#transforms = aug
   test_dataset = H_custom_Dataset(slice_test, masks_test, transform = test_transform)
+  generalise_dataset = H_custom_Dataset(Eslices_processed, Emasks_processed, transform = test_transform)
   val_dataset = H_custom_Dataset(slice_val, masks_val, transform = val_transform)
 
   train_dataloader = DataLoader(train_dataset, batch_size = 8, num_workers = 2, shuffle = True)#used batch size 4 for sem1
   test_dataloader = DataLoader(test_dataset, batch_size = len(slice_test), num_workers = 2, shuffle = False)
+  generalise_dataset = DataLoader(generalise_dataset, batch_size = len(slice_test), num_workers = 2, shuffle = False)
   val_dataloader = DataLoader(val_dataset, batch_size = 8, num_workers = 2, shuffle = True)
 
   #set up tensorboard
@@ -169,14 +174,12 @@ for m in range(len(ldi_aug_combinations)):
   #%%
   train_loss , train_accuracy = [], []
   val_loss , val_accuracy = [], []
-  running_average = []
-  patience = 0
   start = time.time()
-  num_epochs = 300
+  num_epochs = 10
   device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
   model.to(device)
 
-  #training the model
+  ###*** TRAINING MODEL ***###
   for epoch in range(num_epochs):
     print('Epoch {}/{}'.format(epoch+1, num_epochs))
     print("\nlearning rate: ", get_lr(optimizer))
@@ -188,24 +191,18 @@ for m in range(len(ldi_aug_combinations)):
     print("val loss: ", val_epoch_loss) 
     scheduler.step()
 
-  #print("train loss: ", train_loss)
-  #print("val loss: ", val_loss)
   end = time.time()
   print((end-start)/60, 'minutes')
-  #%%
+
   #save model weights
   model_path = save_dir + "/model_state_dict.pt"
   model_stat_dict_300_FL = torch.save(model.cpu().state_dict(), model_path)
   #save the loss
   loss = {'Training': train_loss, 'Validation': val_loss}
-  #loss_table = np.transpose(np.array(loss))
-  print(loss)
-  #loss_table = np.savetxt("/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/loss_08_07.csv", loss, delimiter=',')
   l_df = pd.DataFrame(loss)
   l_df.to_excel(excel_writer = save_dir + "/loss.xlsx", index=False, sheet_name=f'fold{i+1}')
 
-  #%%
-  #testing the model
+  ###*** TESTING THE MODEL ***###
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cuda:1")
   model.to(device)
   c3s, test_predictions, sig = test(model, test_dataloader,device)
@@ -244,7 +241,7 @@ for m in range(len(ldi_aug_combinations)):
     #plt.imshow(sig[i,0,...], cmap = "cool", alpha = 0.5)
     ax[-1].set_title("Network test:"+str(i))
     plt.axis("off")
-  plt.savefig(save_dir + "/MME_test.png")
+  plt.savefig(save_dir + "/aug_test.png")
   plt.close()
   #plt.show()
 
