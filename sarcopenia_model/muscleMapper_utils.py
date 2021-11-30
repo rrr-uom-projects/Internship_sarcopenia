@@ -146,7 +146,15 @@ class H_custom_Dataset(TensorDataset):
         image = self.images
         mask = self.masks
       return image, mask
-  
+
+#show image
+def display_slice(ct_slice, segment):
+  plt.imshow(ct_slice[0,0], cmap = plt.cm.gray)#, vmin = level/2 - window, vmax = level/2 + window
+  seg = segment.astype(float)
+  seg[seg == 0.0] = np.nan
+  plt.imshow(seg[0,0], cmap = plt.cm.autumn, alpha = 0.5)
+  plt.axis('off')
+
 # training function
 def train(model, train_dataloader, device, optimizer, criterion, epoch, writer):
     model.train()
@@ -169,6 +177,10 @@ def train(model, train_dataloader, device, optimizer, criterion, epoch, writer):
     #train_accuracy = train_running_correct/len(train_dataloader.dataset)
     #train_accuracy = diceCoeff(output["out"], masks_train)
     writer.add_scalar('training loss', train_loss, epoch)
+    if epoch%2 ==0:
+      fig = plt.figure()
+      display_slice(slice_train.detach().cpu(), masks_train.detach().cpu().numpy())
+      plt.savefig(f'{epoch}aug_check.png')
     #print(f'Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.2f}')
     #writer.add_scalar('training accuracy', train_accuracy, epoch)
     return train_loss

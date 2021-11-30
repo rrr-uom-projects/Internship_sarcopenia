@@ -10,7 +10,9 @@
 
 #imports
 from __future__ import division
-from albumentations.augmentations.transforms import Downscale
+import cv2
+from albumentations.augmentations.transforms import Downscale, GaussNoise, GaussianBlur
+from albumentations.pytorch.transforms import ToTensorV2
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
@@ -18,7 +20,6 @@ import os
 import math
 from pytorch_toolbelt.losses import dice
 from scipy import ndimage
-import cv2
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -78,10 +79,10 @@ slices_processed2, masks_processed2 = preprocess(slices2, masks_slb2)
 Eslices_processed, Emasks_processed = preprocess(Eslices, Emasks)
 
 #split into training and testing  #35 7 42 6 folds
-fold_num = 7
+fold_num = 5
 print("Lengths: ", len(masks), len(slices), len(slices_processed), len(masks_processed))
 dataset_size = len(masks)
-train_array, test_array = k_fold_cross_val(dataset_size, num_splits = 7)
+train_array, test_array = k_fold_cross_val(dataset_size, num_splits = fold_num)
 Etrain_arr, Etest_arr = k_fold_cross_val(len(Emasks_processed), num_splits=7)
 
 test_dice_scores = []
@@ -106,18 +107,21 @@ for i in range(fold_num):
   slice_train2, masks_train2, slice_val2, masks_val2, slice_test2, masks_test2, bone_masks_test2 = dataset_TVTsplit(slices_processed2, masks_processed2, bone_masks2, train_split, val_split, test_array[i])
   Eslice_train, Emasks_train, Eslice_val, Emasks_val, Eslice_test, Emasks_test, Ebone_test = dataset_TVTsplit(Eslices_processed, Emasks_processed, Ebone, Etrain_split, Eval_split, Etest_arr[i])
   
-  slice_train = np.concatenate((slice_train, slice_train2, Eslice_train))
-  masks_train = np.concatenate((masks_train, masks_train2, Emasks_train))
-  slice_val = np.concatenate((slice_val, slice_val2, Eslice_val))
-  masks_val = np.concatenate((masks_val, masks_val2, Emasks_val))
-  slice_test = np.concatenate((slice_test, slice_test2, Eslice_test))
-  masks_test = np.concatenate((masks_test, masks_test2, Emasks_test))
-  bone_masks_test = np.concatenate((bone_masks_test, bone_masks_test2, Ebone_test))
-  # slice_train, slice_val, slice_test = splitandstick(slices_processed)
-  # masks_train, masks_val, masks_test = splitandstick(masks_processed)
-  # ids_train, ids_val, ids_test = splitandstick(ids)
-  # bone_masks_train, bone_masks_val, bone_masks_test = splitandstick(bone_masks)
-
+  # slice_train = np.concatenate((slice_train, slice_train2, Eslice_train))
+  # masks_train = np.concatenate((masks_train, masks_train2, Emasks_train))
+  # slice_val = np.concatenate((slice_val, slice_val2, Eslice_val))
+  # masks_val = np.concatenate((masks_val, masks_val2, Emasks_val))
+  # slice_test = np.concatenate((slice_test, slice_test2, Eslice_test))
+  # masks_test = np.concatenate((masks_test, masks_test2, Emasks_test))
+  # bone_masks_test = np.concatenate((bone_masks_test, bone_masks_test2, Ebone_test))
+  slice_train = np.concatenate((slice_train, slice_train2))
+  masks_train = np.concatenate((masks_train, masks_train2))
+  slice_val = np.concatenate((slice_val, slice_val2))
+  masks_val = np.concatenate((masks_val, masks_val2))
+  slice_test = np.concatenate((slice_test, slice_test2))
+  masks_test = np.concatenate((masks_test, masks_test2))
+  bone_masks_test = np.concatenate((bone_masks_test, bone_masks_test2))
+  
   print(slice_test.shape, slice_val.shape, slice_train.shape)
   #%%
   #classs inbalence
@@ -125,14 +129,13 @@ for i in range(fold_num):
   #weight = weight(masks_train)
 
   #transform the data
-  import imgaug.augmenters as iaa
   train_transform = A.Compose([
     A.Resize(260, 260),
     A.RandomSizedCrop(min_max_height=(200, 260), height=260, width=260, p=0.2),
     A.HorizontalFlip(p=0.5),
     A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=20, p=0.5),
     A.ElasticTransform(alpha=120, sigma=120 * 0.8, alpha_affine=120 * 0.05, p= 0.2),
-    A.OneOf([A.Downscale(),iaa.MaxPooling((1,3)),iaa.GaussianBlur(sigma=(0.0, 2.0))],p=0.5), #to reduce image quality could use noise or dropout
+    A.OneOf([Downscale(0.25,0.25), GaussNoise(var_limit=0.005), GaussianBlur(blur_limit=1)],p=1), #to reduce image quality could use noise or dropout
     A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ToTensor()
   ])
@@ -194,7 +197,7 @@ for i in range(fold_num):
   patience = 0
   start = time.time()
   num_epochs = 300
-  device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+  device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
   model.to(device)
 
   #training the model
