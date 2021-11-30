@@ -6,12 +6,11 @@
 from __future__ import division
 import cv2
 from albumentations.augmentations.transforms import Downscale, GaussNoise, GaussianBlur
-from albumentations.pytorch.transforms import ToTensorV2
+from albumentations.pytorch.transforms import ToTensor
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import os
-import math
 from pytorch_toolbelt.losses import dice
 from scipy import ndimage
 import torch
@@ -24,23 +23,16 @@ import torchvision
 from torchvision import datasets, models, transforms
 import segmentation_models_pytorch as smp
 from pytorch_toolbelt import losses as L
-from PIL import Image
 import time
-import copy
-from tqdm import tqdm
-import sklearn
-from sklearn import preprocessing
-from sklearn.model_selection import train_test_split
 import torchvision.transforms as T
 import albumentations as A
-import random
 from albumentations.pytorch import ToTensor
 from torch.utils.tensorboard import SummaryWriter
-from functools import partial
 import pandas as pd
+from itertools import powerset
 
-from muscleMapper_utils import preprocess, do_it_urself_round, splitandstick, k_fold_cross_val, dataset_TVTsplit, transforms
-from muscleMapper_utils import weight, H_custom_Dataset, train, validate, test, get_lr
+from muscleMapper_utils import preprocess, do_it_urself_round, k_fold_cross_val, dataset_TVTsplit, transforms
+from muscleMapper_utils import H_custom_Dataset, train, validate, test, get_lr
 from muscleMapper_utils import getArea, getDensity, diceCoeff
 
 #paths
@@ -79,51 +71,48 @@ dataset_size = len(masks)
 train_array, test_array = k_fold_cross_val(dataset_size, num_splits = fold_num)
 
 test_dice_scores = []
+#fold 6 was the best so i = 5 for this 
+i=5
 
-for i in range(fold_num):
+#split into train and val
+val_split, train_split = np.split(train_array[i], [5], axis = 0)#5,25
+ids_test = np.concatenate((ids[(test_array[i])], ids2[(test_array[i])]))
+ids_val = np.concatenate((ids[val_split], ids2[val_split]))
+ids_train = np.concatenate((ids[train_split], ids2[train_split]))
 
+slice_train, masks_train, slice_val, masks_val, slice_test, masks_test, bone_masks_test = dataset_TVTsplit(slices_processed, masks_processed, bone_masks, train_split, val_split, test_array[i])
+slice_train2, masks_train2, slice_val2, masks_val2, slice_test2, masks_test2, bone_masks_test2 = dataset_TVTsplit(slices_processed2, masks_processed2, bone_masks2, train_split, val_split, test_array[i])
+  
+slice_train = np.concatenate((slice_train, slice_train2))
+masks_train = np.concatenate((masks_train, masks_train2))
+slice_val = np.concatenate((slice_val, slice_val2))
+masks_val = np.concatenate((masks_val, masks_val2))
+slice_test = np.concatenate((slice_test, slice_test2))
+masks_test = np.concatenate((masks_test, masks_test2))
+bone_masks_test = np.concatenate((bone_masks_test, bone_masks_test2))
+
+print(slice_test.shape, slice_val.shape, slice_train.shape)
+
+#augmentations to simulate lower dose imaging
+ldi_augs = [Downscale(0.25,0.25), GaussNoise(var_limit=0.005), GaussianBlur(blur_limit=1)]
+ldi_aug_combinations = powerset(ldi_augs)
+
+for m in range(len(ldi_aug_combinations)):
   #make fold files to save info
-  save_dir = save_path + "ablation_MM_fold" + str(i+1)
+  save_dir = save_path + "ablation_MM_fold6" + str(m+1)
   try:
       os.makedirs(save_dir)
   except OSError: #if already exists
       pass
-
-  #split into train and val
-  val_split, train_split = np.split(train_array[i], [5], axis = 0)#5,25
-  ids_test = np.concatenate((ids[(test_array[i])], ids2[(test_array[i])]))
-  ids_val = np.concatenate((ids[val_split], ids2[val_split]))
-  ids_train = np.concatenate((ids[train_split], ids2[train_split]))
-  
-  slice_train, masks_train, slice_val, masks_val, slice_test, masks_test, bone_masks_test = dataset_TVTsplit(slices_processed, masks_processed, bone_masks, train_split, val_split, test_array[i])
-  slice_train2, masks_train2, slice_val2, masks_val2, slice_test2, masks_test2, bone_masks_test2 = dataset_TVTsplit(slices_processed2, masks_processed2, bone_masks2, train_split, val_split, test_array[i])
-   
-  slice_train = np.concatenate((slice_train, slice_train2))
-  masks_train = np.concatenate((masks_train, masks_train2))
-  slice_val = np.concatenate((slice_val, slice_val2))
-  masks_val = np.concatenate((masks_val, masks_val2))
-  slice_test = np.concatenate((slice_test, slice_test2))
-  masks_test = np.concatenate((masks_test, masks_test2))
-  bone_masks_test = np.concatenate((bone_masks_test, bone_masks_test2))
-  
-  print(slice_test.shape, slice_val.shape, slice_train.shape)
-  #%%
-  #classs inbalence
-  #ratio of no of 1s over no of 0s. averaged
-  #weight = weight(masks_train)
-
   #transform the data
   #training augmentations
-  #augmentations to simulate lower dose imaging
-  ldi_augs = [Downscale(0.25,0.25), GaussNoise(var_limit=0.005), GaussianBlur(blur_limit=1)]
-  
   train_transform = A.Compose([
     A.Resize(260, 260),
     A.RandomSizedCrop(min_max_height=(200, 260), height=260, width=260, p=0.2),
     A.HorizontalFlip(p=0.5),
     A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=20, p=0.5),
     A.ElasticTransform(alpha=120, sigma=120 * 0.8, alpha_affine=120 * 0.05, p= 0.2),
-    A.OneOf([Downscale(0.25,0.25), GaussNoise(var_limit=0.005), GaussianBlur(blur_limit=1)],p=1), #to reduce image quality could use noise or dropout
+    ldi_aug_combinations[m],
     A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ToTensor()
   ])
@@ -184,7 +173,7 @@ for i in range(fold_num):
   patience = 0
   start = time.time()
   num_epochs = 300
-  device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+  device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
   model.to(device)
 
   #training the model
@@ -234,8 +223,8 @@ for i in range(fold_num):
         test_em, test_lab = test_dataset[0], test_dataset[1]
         break
   dice_net_v_pred = []
-  for i in range(len(segment_pred_slb)):
-    dice_net_v_pred.append(diceCoeff(segment_pred_slb[i], test_lab[i], smooth=1, activation=None))
+  for k in range(len(segment_pred_slb)):
+    dice_net_v_pred.append(diceCoeff(segment_pred_slb[k], test_lab[k], smooth=1, activation=None))
 
   print("Dice ", dice_net_v_pred)
   mean = np.mean(dice_net_v_pred)
@@ -259,75 +248,9 @@ for i in range(fold_num):
   plt.close()
   #plt.show()
 
-#Dice scores box plot of the different test folds here.
-cols = []
-dict = {}
-median = []
+#Put dice scores of each aug combo into an excel table here
 test_dice_scores = np.array(test_dice_scores)
+aug_dice_dict = {'aug': ldi_aug_combinations, 'Dice': test_dice_scores}
 print(test_dice_scores.shape)
-for j in range(fold_num):
-    cols.append(f'fold{j+1}')
-    dict[f'fold{j+1}'] = test_dice_scores[j]
-    median.append(do_it_urself_round(np.nanmedian(test_dice_scores[j]),2))
-    print(test_dice_scores[j].shape)
-dfbp = pd.DataFrame(dict)
-plt.figure()
-plt.boxplot(dfbp.dropna().values, 0,  'r')
-plt.ylabel("Test Dice Scores")
-plt.grid(True, linestyle='-', which='major', color='lightgrey',
-            alpha=0.5)
-for i in range(len(median)):
-    plt.text(i+0.75, median[i]-0.005, median[i])
-plt.savefig("MME_fold_info/box_plot.png")
-print("Saved Test Info.")
-
-# #Area and Density of SM in the tests
-# ct_scans = np.array(slice_test)
-# #network_pred = segment_pred_slb[:,0,...]
-
-# print("Patients IDs in test data: ", ids_test)
-# ids_test = np.array(ids_test)
-# test_index = []
-# for i in range(0, len(ids)):
-#   if any(ids[i] == j for j in ids_test) == True:
-#     test_index.append(i)
-#     print(i)
-# print(test_index)
-# #%%
-# pixel_area_id = pixel_area[test_index]
-# pixel_area_id = np.array(pixel_area_id*(0.1*0.1))#cm^2->mm^2
-# print("pixel areas of the test images: ", pixel_area_id)
-# #pixel_area = np.repeat(np.array(pixel_area)*(0.1*0.1), 2)
-# #print(pixel_area.shape)
-# #%%
-
-# ## Note that the areas have some thresholds applied that are from the literature
-# extractionDict = {"sma" : partial(getArea, thresholds=(-30, +130)), 
-# 				  "smd" : partial(getDensity)
-# 				 }
-# feat_list = ["sma","smd"]
-# # Extract features from slices_processed
-# feature_list_net = []
-# feature_list_ours = []
-# for i in range(0,len(ct_scans)):
-#   feature_list_net.append([extractionDict[a](ct_scans[i], segment_pred_slb[i], pixel_area_id[i]) for a in feat_list])
-#   #feature_list_ours.append([extractionDict[a](ct_scans[i], ground_truths[i], pixel_area[i]) for a in feat_list])
-  
-# print("Area, Density: ", feature_list_net)
-
-# #for the network - avergae sma and smd
-# sma = np.array(feature_list_net)[:,0]
-# mean_area = np.mean(sma)
-# area_sd = ndimage.standard_deviation(sma)
-# print(mean_area, "cm^2 ", "sd: ", area_sd)
-
-# smd = np.array(feature_list_net)[:,1]
-# mean_density = np.mean(smd)
-# den_sd = ndimage.standard_deviation(smd)
-# print(mean_density, "HU" ,"sd", den_sd)
-
-# #saving to an excel file
-# array = np.transpose(np.array(feature_list_net))
-# print(array)
-# df = pd.DataFrame(array, index= feat_list, columns=ids).T
-# #df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/muscle_area_and_density_training_data_07_07.xlsx")
+df = pd.DataFrame(aug_dice_dict)
+df.to_excel(excel_writer = "/home/hermione/Documents/Internship_sarcopenia/sarcopenia_model/ablation_table.xlsx")
